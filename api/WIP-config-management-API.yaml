@@ -1,0 +1,422 @@
+openapi: 3.0.3
+info:
+  title: Configuration Management API
+  description: |
+    API for managing configuration resources with attributes.
+    Supports CRUD operations for configuration resources across multiple organizations.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://localhost:3000/api/v1
+    description: Local development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+security:
+  - basicAuth: []
+
+tags:
+  - name: Configuration Resources
+    description: Operations for managing configuration resources
+
+paths:
+  /config-mgt/resource/{resource-name}:
+    post:
+      tags:
+        - Configuration Resources
+      summary: Create a new configuration resource
+      description: Creates a new configuration resource with the specified name and attributes
+      operationId: createConfigResource
+      parameters:
+        - name: resource-name
+          in: path
+          description: Name of the configuration resource (e.g., smtp, database-config)
+          required: true
+          schema:
+            type: string
+            example: smtp
+        - $ref: '#/components/parameters/OrgIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigResourceRequest'
+            examples:
+              emailConfig:
+                summary: Email configuration
+                value:
+                  attributes:
+                    from: admin@wso2.com
+                    host: smtp.gmail.com
+                    port: "587"
+              databaseConfig:
+                summary: Database configuration
+                value:
+                  attributes:
+                    host: localhost
+                    port: "3306"
+                    database: config_db
+      responses:
+        '201':
+          description: Configuration resource created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResourceResponse'
+              example:
+                resourceId: 6e45c661-7671-4ee9-805c-8d3d1df46cbc
+                resourceName: smtp
+                lastModified: "2019-02-07T09:30:12.963Z"
+                created: "2019-02-07T09:30:12.963Z"
+                attributes:
+                  from: admin@wso2.com
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      tags:
+        - Configuration Resources
+      summary: Get a configuration resource
+      description: Retrieves a specific configuration resource by name
+      operationId: getConfigResource
+      parameters:
+        - name: resource-name
+          in: path
+          description: Name of the configuration resource
+          required: true
+          schema:
+            type: string
+            example: smtp
+        - $ref: '#/components/parameters/OrgIdHeader'
+      responses:
+        '200':
+          description: Configuration resource retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResourceResponse'
+              example:
+                resourceId: 6e45c661-7671-4ee9-805c-8d3d1df46cbc
+                resourceName: smtp
+                lastModified: "2019-02-07T09:30:12.963Z"
+                created: "2019-02-07T09:30:12.963Z"
+                attributes:
+                  from: admin@wso2.com
+                  host: smtp.gmail.com
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Configuration Resources
+      summary: Update a configuration resource
+      description: Updates an existing configuration resource with new attributes
+      operationId: updateConfigResource
+      parameters:
+        - name: resource-name
+          in: path
+          description: Name of the configuration resource
+          required: true
+          schema:
+            type: string
+            example: smtp
+        - $ref: '#/components/parameters/OrgIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigResourceUpdateRequest'
+            examples:
+              updateEmail:
+                summary: Update email configuration
+                value:
+                  attributes:
+                    from: noreply@wso2.com
+                    host: smtp.sendgrid.com
+                    port: "465"
+      responses:
+        '200':
+          description: Configuration resource updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResourceResponse'
+              example:
+                resourceId: 6e45c661-7671-4ee9-805c-8d3d1df46cbc
+                resourceName: smtp
+                lastModified: "2019-02-07T10:45:22.123Z"
+                created: "2019-02-07T09:30:12.963Z"
+                attributes:
+                  from: noreply@wso2.com
+                  host: smtp.sendgrid.com
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Configuration Resources
+      summary: Delete a configuration resource
+      description: Deletes a specific configuration resource by name
+      operationId: deleteConfigResource
+      parameters:
+        - name: resource-name
+          in: path
+          description: Name of the configuration resource
+          required: true
+          schema:
+            type: string
+            example: smtp
+        - $ref: '#/components/parameters/OrgIdHeader'
+      responses:
+        '204':
+          description: Configuration resource deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /config-mgt/resource/search:
+    get:
+      tags:
+        - Configuration Resources
+      summary: Search configuration resources
+      description: Search for configuration resources with optional filters
+      operationId: searchConfigResources
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Number of results to skip for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Configuration resources retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of resources matching the criteria
+                  limit:
+                    type: integer
+                    description: Number of results returned in this response
+                  offset:
+                    type: integer
+                    description: Number of results skipped
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConfigResourceResponse'
+              example:
+                total: 2
+                limit: 10
+                offset: 0
+                resources:
+                  - resourceId: 6e45c661-7671-4ee9-805c-8d3d1df46cbc
+                    resourceName: smtp
+                    lastModified: "2019-02-07T09:30:12.963Z"
+                    created: "2019-02-07T09:30:12.963Z"
+                    attributes:
+                      from: admin@wso2.com
+                  - resourceId: 7f56d772-8782-5ff0-916d-9e4e2ef57dcd
+                    resourceName: smtp-backup
+                    lastModified: "2019-02-08T14:22:45.789Z"
+                    created: "2019-02-08T14:22:45.789Z"
+                    attributes:
+                      from: backup@wso2.com
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Basic authentication with username and password
+
+  parameters:
+    OrgIdHeader:
+      name: org-id
+      in: header
+      description: Organization identifier for multi-tenancy
+      required: true
+      schema:
+        type: string
+        example: org1
+
+  schemas:
+    ConfigResourceRequest:
+      type: object
+      required:
+        - attributes
+      properties:
+        attributes:
+          type: object
+          description: Key-value pairs representing configuration attributes
+          additionalProperties:
+            type: string
+          example:
+            from: admin@wso2.com
+            host: smtp.gmail.com
+            port: "587"
+
+    ConfigResourceUpdateRequest:
+      type: object
+      required:
+        - attributes
+      properties:
+        attributes:
+          type: object
+          description: Updated key-value pairs (replaces all existing attributes)
+          additionalProperties:
+            type: string
+          example:
+            from: noreply@wso2.com
+            host: smtp.office365.com
+
+    ConfigResourceResponse:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          description: Unique identifier for the configuration resource
+          format: uuid
+          example: 6e45c661-7671-4ee9-805c-8d3d1df46cbc
+        resourceName:
+          type: string
+          description: Name of the configuration resource
+          example: smtp
+        lastModified:
+          type: string
+          format: date-time
+          description: Timestamp when the resource was last modified
+          example: "2019-02-07T09:30:12.963Z"
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the resource was created
+          example: "2019-02-07T09:30:12.963Z"
+        attributes:
+          type: object
+          description: Configuration attributes as key-value pairs
+          additionalProperties:
+            type: string
+          example:
+            from: admin@wso2.com
+            host: smtp.gmail.com
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+          example: CMT-10001
+        message:
+          type: string
+          description: Error message
+          example: Configuration resource not found
+        description:
+          type: string
+          description: Detailed error description
+          example: The configuration resource with type 'e-mail' and name 'smtp' does not exist in organization 'org1'
+        traceId:
+          type: string
+          description: Trace ID for debugging
+          example: 9f8e7d6c-5b4a-3c2d-1e0f-a1b2c3d4e5f6
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CMT-10400
+            message: Invalid request
+            description: The request body contains invalid data. Please check the required fields.
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CMT-10401
+            message: Unauthorized
+            description: Authentication credentials are missing or invalid.
+
+    NotFound:
+      description: Not found - resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CMT-10404
+            message: Configuration resource not found
+            description: The configuration resource with the specified type and name does not exist.
+
+    Conflict:
+      description: Conflict - resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CMT-10409
+            message: Configuration resource already exists
+            description: A configuration resource with the same type and name already exists in this organization.
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CMT-10500
+            message: Internal server error
+            description: An unexpected error occurred while processing the request.

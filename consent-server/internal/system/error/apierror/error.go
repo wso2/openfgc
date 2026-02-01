@@ -1,0 +1,39 @@
+/*
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package apierror
+
+// ErrorResponse represents the error response returned by the API.
+// It follows the format specified in the API contract with specific error codes,
+// human-readable messages, detailed descriptions, and trace IDs for debugging.
+type ErrorResponse struct {
+	Code        string `json:"code"`                  // Specific error code (e.g., "CSE-4040")
+	Message     string `json:"message"`               // Human-readable error message
+	Description string `json:"description,omitempty"` // Detailed error description with context
+	TraceID     string `json:"traceId"`               // Correlation ID for request tracking
+}
+
+// NewErrorResponse creates a new ErrorResponse with the provided details.
+func NewErrorResponse(code, message, description, traceID string) *ErrorResponse {
+	return &ErrorResponse{
+		Code:        code,
+		Message:     message,
+		Description: description,
+		TraceID:     traceID,
+	}
+}

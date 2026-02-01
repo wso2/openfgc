@@ -1,0 +1,36 @@
+server:
+  hostname: localhost
+  port: 3000
+  readTimeout: 30s
+  writeTimeout: 30s
+  idleTimeout: 120s
+
+database:
+  consent:
+    type: mysql
+    hostname: localhost
+    port: 3306
+    database: A_consent_mgt_integration_test
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: 5m
+    user: root
+    password: password
+
+logging:
+  level: debug
+
+# Consent status configuration
+consent:
+  status_mappings:
+    active_status: ACTIVE
+    expired_status: EXPIRED
+    revoked_status: REVOKED
+    created_status: CREATED
+    rejected_status: REJECTED
+  auth_status_mappings:
+    approved_state: APPROVED
+    rejected_state: REJECTED
+    created_state: CREATED
+    system_expired_state: SYS_EXPIRED
+    system_revoked_state: SYS_REVOKED

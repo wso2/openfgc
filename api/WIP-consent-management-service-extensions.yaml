@@ -1,0 +1,1180 @@
+openapi: 3.0.1
+info:
+  title: API contract for Service Extensions of Consent Management API
+  description: This API defines the REST API contract for services that implements logic to extend the Consent Management API.
+  contact:
+    name: WSO2
+    url: https://wso2.com/solutions/financial-services/open-banking/
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: v1.0.0
+servers:
+  - url: https://{km_host}:{km_port}/api/services
+    description: SwaggerHub API Auto Mocking
+security:
+  - BasicAuth: []
+  - OAuth2: []
+tags:
+  - name: Consent
+    description: APIs for consent flow extensions
+  - name: Error Handling
+    description: APIs for handling accelerator errors
+paths:
+  /pre-process-consent-creation:
+    post:
+      tags:
+        - Consent
+      summary: handle pre validations & obtain custom consent data to be stored
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreProcessConsentCreationRequestBody'
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForPreProcessConsentCreation'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                data:
+                  errorMessage: invalid_request
+                  errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+  /enrich-consent-creation-response:
+    post:
+      tags:
+        - Consent
+      summary: "handle post-consent generation -response generation,validations"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrichConsentCreationRequestBody'
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForResponseAlternation'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: invalid_request
+                errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+  /pre-process-consent-retrieval:
+    post:
+      tags:
+        - Consent
+      summary: handle pre-consent retrieval validations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreProcessConsentRequestBody'
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForResponseAlternation'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: invalid_request
+                errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+  /pre-process-consent-update:
+    post:
+      tags:
+        - Consent
+      summary: handle consent update pre validations & obtain custom consent data to be stored
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreProcessConsentUpdateRequestBody'
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForPreProcessConsentUpdate'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                data:
+                  errorMessage: invalid_request
+                  errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+  /enrich-consent-update-response:
+    post:
+      tags:
+        - Consent
+      summary: "handle post-consent update -response generation,validations"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrichConsentUpdateRequestBody'
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForResponseAlternation'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: invalid_request
+                errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+  /pre-process-consent-revoke:
+    post:
+      tags:
+        - Consent
+      summary: handle pre-consent revocation validations.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreProcessConsentRevokeRequestBody'
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForConsentRevocation'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: invalid_request
+                errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+  /validate-consent-access:
+    post:
+      tags:
+        - Consent
+      summary: Handle custom consent data validations before data access
+      description: |
+        Validates consent-specific business rules and custom logic before allowing data access.
+        This endpoint is invoked during the consent validation flow to perform additional
+        validation checks beyond standard consent status and expiry validation.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateConsentAccessRequestBody'
+            example:
+              requestId: Ec1wMjmiG8
+              data:
+                consentId: "CONSENT-123e4567-e89b-12d3-a456-426614174000"
+                consentResource:
+                  id: "CONSENT-123e4567-e89b-12d3-a456-426614174000"
+                  type: "accounts"
+                  status: "active"
+                  clientId: "client-app-123"
+                  createdTime: 1699564800
+                  updatedTime: 1699651200
+                  validityTime: 1707340800
+                  recurringIndicator: true
+                  frequency: 10
+                  consentPurpose:
+                    - name: "license_read"
+                      value: "license_read"
+                      isUserApproved: true
+                      isMandatory: true
+                  attributes:
+                    channel: "mobile"
+                  authorizations:
+                    - id: "AUTH-123"
+                      userId: "user-456"
+                      type: "authorization"
+                      status: "approved"
+                      resources:
+                        accountIds: ["123456", "789012"]
+                validateRequestPayload:
+                  consentId: "CNT_123456"
+                  userId: "user123"
+                  clientId: "banking-app-001"
+                  resourceParams:
+                    resource: "/accounts/ACC-789/transactions"
+                    httpMethod: "GET"
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForValidateConsentAccess'
+              examples:
+                success:
+                  summary: Validation passed
+                  value:
+                    responseId: Ec1wMjmiG8
+                    status: SUCCESS
+                error:
+                  summary: Validation failed
+                  value:
+                    responseId: Ec1wMjmiG8
+                    status: ERROR
+                    errorCode: 403
+                    data:
+                      errorMessage: insufficient_permissions
+                      errorDescription: User does not have permission to access the requested resource
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: invalid_request
+                errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                status: ERROR
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+  /map-accelerator-error-response:
+    post:
+      tags:
+        - Error Handling
+      summary: map accelerator level error formats to custom error formats
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorMapperRequestBody'
+            example:
+              requestId: Ec1wMjmiG8
+              data:
+                error:
+                  code: "401"
+                  description: Invalid client ID provided.
+                  operation: consent_create
+        required: true
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response200ForErrorMapper'
+              example:
+                responseId: Ec1wMjmiG8
+                errorCode: 400
+                data:
+                  customErrorCode: invalid
+                  customErrorDescription: Invalid client ID provided.
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                errorMessage: invalid_request
+                errorDescription: Data is missing
+        "500":
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                responseId: Ec1wMjmiG8
+                errorMessage: server_error
+                errorDescription: Failed to process the response
+components:
+  schemas:
+    Response200ForErrorMapper:
+      type: object
+      properties:
+        responseId:
+          type: string
+        errorCode:
+          type: integer
+        data:
+          type: object
+          description: Defines the custom error response.
+    ErrorMapperRequestBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/ErrorMapperData'
+    ErrorMapperData:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+      description: Defines the context data related to the errors.
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code identifying the specific issue.
+        description:
+          type: string
+          description: Detailed description of the error.
+        operation:
+          type: string
+          description: The operation where the error occurred.
+      description: Defines an error object with details.
+    UpdateRequest:
+      type: object
+      description: Request for pre-process-consent-update (same structure as pre-process-consent-creation)
+      properties:
+        consentInitiationData:
+          description: |
+            The consent update payload matching POST /consents request body.
+            Contains the complete consent data including type, purposes, authorizations, etc.
+          allOf:
+            - $ref: '#/components/schemas/ConsentCreatePayload'
+        requestHeaders:
+          $ref: '#/components/schemas/RequestHeaders'
+    Request:
+      type: object
+      properties:
+        consentInitiationData:
+          description: |
+            The consent creation payload matching POST /consents request body.
+            Contains the complete consent initiation data including type, purposes, authorizations, etc.
+          allOf:
+            - $ref: '#/components/schemas/ConsentCreatePayload'
+        requestHeaders:
+          $ref: '#/components/schemas/RequestHeaders'
+    ConsentCreatePayload:
+      type: object
+      description: |
+        The request body for initiating a new consent (matches POST /consents schema).
+        Status is derived from authorization states.
+      required:
+        - type
+        - consentPurpose
+      properties:
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        validityTime:
+          description: The duration for which the consent is valid, in seconds.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for recurring access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds.
+          type: integer
+          format: int64
+          example: 86400
+        frequency:
+          description: For recurring consents, this indicates the frequency.
+          type: integer
+          format: int32
+          example: 0
+        consentPurpose:
+          description: Array of consent purposes for this consent (REQUIRED, minimum 1 item).
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        attributes:
+          description: A key-value map of additional attributes.
+          type: object
+          additionalProperties:
+            type: string
+        authorizations:
+          description: Array of authorization resources linked to this consent.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreatePayload"
+    ConsentPurposeItem:
+      type: object
+      description: Represents a single consent purpose with its approval state and optional value.
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The purpose identifier/name
+          example: "license_read"
+        value:
+          description: Optional purpose value (string, object, or array)
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+          example: "license_read"
+        isUserApproved:
+          type: boolean
+          description: Whether the user has approved this purpose (defaults to false)
+          default: false
+          example: true
+        isMandatory:
+          type: boolean
+          description: Whether this purpose is mandatory (defaults to true)
+          default: true
+          example: true
+    ConsentAuthorizationCreatePayload:
+      type: object
+      description: Represents a detailed authorization object.
+      properties:
+        userId:
+          description: The unique ID of the user who performed this authorization.
+          type: string
+          example: "admin@carbon.super"
+        type:
+          description: The type of authorization (e.g., 'authorisation', 're-authorisation').
+          type: string
+          example: "authorisation"
+        status:
+          description: The authorization state (defaults to 'approved' if not provided).
+          type: string
+          example: "approved"
+        resources:
+          description: Flexible resources field containing authorization-specific data.
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+          example:
+            accountIds: ["123456", "789012"]
+    RequestForEnrichConsentCreationResponse:
+      type: object
+      properties:
+        consentResource:
+          $ref: '#/components/schemas/StoredDetailedConsentResourceData'
+        requestHeaders:
+          $ref: '#/components/schemas/RequestHeaders'
+    RequestForEnrichConsentUpdateResponse:
+      type: object
+      properties:
+        consentResource:
+          $ref: '#/components/schemas/StoredDetailedConsentResourceDataForUpdate'
+        requestHeaders:
+          $ref: '#/components/schemas/RequestHeaders'
+    PreProcessConsentRetrievalData:
+      type: object
+      properties:
+        consentResource:
+          $ref: '#/components/schemas/StoredBasicConsentResourceData'
+        requestHeaders:
+          $ref: '#/components/schemas/RequestHeaders'
+    PreProcessConsentRevokeData:
+      type: object
+      properties:
+        consentResource:
+          $ref: '#/components/schemas/StoredBasicConsentResourceDataForRevoke'
+        requestHeaders:
+          $ref: '#/components/schemas/RequestHeaders'
+        requestBody:
+          $ref: '#/components/schemas/RevokeRequestBody'  
+    SuccessResponse:
+      type: object
+      properties:
+        responseId:
+          type: string
+        status:
+          type: string
+          enum:
+            - SUCCESS
+    SuccessResponseConsentRevocation:
+      type: object
+      properties:
+        responseId:
+          type: string
+        status:
+          type: string
+          enum:
+            - SUCCESS
+        data:
+          $ref: '#/components/schemas/SuccessResponseConsentRevocationData'
+    SuccessResponseForResponseAlternation:
+      type: object
+      properties:
+        responseId:
+          type: string
+        status:
+          type: string
+          enum:
+            - SUCCESS
+        data:
+          $ref: '#/components/schemas/SuccessResponseForResponseAlternationData'
+    SuccessResponsePreProcessConsentCreation:
+      type: object
+      properties:
+        responseId:
+          type: string
+        status:
+          type: string
+          enum:
+            - SUCCESS
+        data:
+          $ref: '#/components/schemas/SuccessResponseWithDetailedConsentData'
+    FailedResponse:
+      required:
+        - data
+        - errorCode
+        - status
+      type: object
+      properties:
+        status:
+          type: string
+          description: "Indicates the outcome of the request. For a failed operation, this should be set to ERROR."
+          enum:
+            - ERROR
+        errorCode:
+          type: integer
+          description: If any custom error code to return.
+        data:
+          type: object
+          description: :"Custom error object to response back"
+    ErrorResponse:
+      required:
+        - data
+        - status
+      type: object
+      properties:
+        status:
+          type: string
+          description: "Indicates the outcome of the request. For an error operation, this should be set to ERROR."
+          enum:
+            - ERROR
+        data:
+          type: object
+          description: :"Custom error object to response back"
+    PreProcessConsentUpdateRequestBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/UpdateRequest'
+    PreProcessConsentCreationRequestBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/Request'
+    EnrichConsentUpdateRequestBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/RequestForEnrichConsentUpdateResponse'
+    EnrichConsentCreationRequestBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/RequestForEnrichConsentCreationResponse'
+    PreProcessConsentRevokeRequestBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/PreProcessConsentRevokeData'
+    PreProcessConsentRequestBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/PreProcessConsentRetrievalData'
+    ValidateConsentAccessRequestBody:
+      type: object
+      description: Request body for validate-consent-access endpoint
+      properties:
+        requestId:
+          type: string
+          description: A unique correlation identifier
+          example: Ec1wMjmiG8
+        data:
+          $ref: '#/components/schemas/ValidateConsentAccessData'
+    ValidateConsentAccessData:
+      type: object
+      description: Data for consent access validation
+      required:
+        - consentId
+        - consentResource
+        - validateRequestPayload
+      properties:
+        consentId:
+          type: string
+          description: The unique identifier of the consent being validated
+          example: "CONSENT-123e4567-e89b-12d3-a456-426614174000"
+        consentResource:
+          description: Complete consent details (matches GET /consents/{consentId} response structure)
+          allOf:
+            - $ref: '#/components/schemas/StoredDetailedConsentResourceData'
+        validateRequestPayload:
+          type: object
+          description: The original validate request payload from the client
+          properties:
+            consentId:
+              type: string
+              example: "CNT_123456"
+            userId:
+              type: string
+              example: "user123"
+            clientId:
+              type: string
+              example: "banking-app-001"
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+            payload:
+              type: object
+            electedResource:
+              type: string
+            resourceParams:
+              type: object
+              properties:
+                resource:
+                  type: string
+                httpMethod:
+                  type: string
+                context:
+                  type: string
+    Response200ForValidateConsentAccess:
+      oneOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - $ref: '#/components/schemas/FailedResponse'
+    Response200ForPreProcessConsentUpdate:
+      oneOf:
+        - $ref: '#/components/schemas/SuccessResponsePreProcessConsentCreation'
+        - $ref: '#/components/schemas/FailedResponse'
+    Response200ForPreProcessConsentCreation:
+      oneOf:
+        - $ref: '#/components/schemas/SuccessResponsePreProcessConsentCreation'
+        - $ref: '#/components/schemas/FailedResponse'
+    Response200ForResponseAlternation:
+      oneOf:
+        - $ref: '#/components/schemas/SuccessResponseForResponseAlternation'
+        - $ref: '#/components/schemas/FailedResponse'
+    Response200:
+      oneOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - $ref: '#/components/schemas/FailedResponse'
+    Response200ForConsentRevocation:
+      oneOf:
+        - $ref: '#/components/schemas/SuccessResponseConsentRevocation'
+        - $ref: '#/components/schemas/FailedResponse'
+    SuccessResponseConsentRevocationData:
+      type: object
+      description: Response data for pre-process-consent-revoke (echoes back the request data)
+      properties:
+        actionBy:
+          description: Identifier of the user or system performing the delete/revoke action.
+          type: string
+          example: "admin@wso2.com"
+        revocationReason:
+          description: The reason for revoking the consent.
+          type: string
+          example: "Admin revoke"
+    SuccessResponseForResponseAlternationData:
+      type: object
+      properties:
+        responseHeaders:
+          type: object
+          description: Headers to be included in the response.
+        modifiedResponse:
+          type: object
+          description: Generated custom response body
+    SuccessResponseWithDetailedConsentData:
+      type: object
+      description: Response data for pre-process-consent-creation (matches request's consentInitiationData)
+      properties:
+        consentResource:
+          description: |
+            The consent resource matching the request's consentInitiationData structure.
+            Contains the same fields as ConsentCreatePayload.
+          allOf:
+            - $ref: '#/components/schemas/ConsentCreatePayload'
+    DetailedConsentResourceData:
+      type: object
+      description: Detailed consent resource data without ID (used in pre-process responses)
+      properties:
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: The current status of the consent (e.g., 'created', 'active', 'rejected', 'revoked', 'expired').
+          type: string
+          example: "active"
+        validityTime:
+          description: The duration for which the consent is valid, in seconds.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for recurring access.
+          type: boolean
+          example: false
+        frequency:
+          description: For recurring consents, this indicates the frequency.
+          type: integer
+          format: int32
+          example: 0
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds.
+          type: integer
+          format: int64
+          example: 86400
+        consentPurpose:
+          description: Array of consent purposes with their approval states and values.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        attributes:
+          description: A key-value map of additional attributes.
+          type: object
+          additionalProperties:
+            type: string
+        authorizations:
+          description: Array of authorization resources linked to this consent.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreatePayload"
+    StoredBasicConsentResourceData:
+      type: object
+      description: Basic stored consent resource data (used in pre-process-consent-retrieval)
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        createdTime:
+          type: integer
+          format: int32
+        updatedTime:
+          type: integer
+          format: int32
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: The current status of the consent (e.g., 'created', 'active', 'rejected', 'revoked', 'expired').
+          type: string
+          example: "active"
+        frequency:
+          description: For recurring consents, this indicates the frequency.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for recurring access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds.
+          type: integer
+          format: int64
+          example: 86400
+        consentPurpose:
+          description: Array of consent purposes with their approval states and values.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        attributes:
+          description: A key-value map of additional attributes.
+          type: object
+          additionalProperties:
+            type: string
+        authorizations:
+          description: Array of authorization resources linked to this consent.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+    StoredBasicConsentResourceDataForRevoke:
+      type: object
+      description: Basic consent resource data for revoke operations
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        createdTime:
+          type: integer
+          format: int32
+        updatedTime:
+          type: integer
+          format: int32
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: The current status of the consent (e.g., 'created', 'active', 'rejected', 'revoked', 'expired').
+          type: string
+          example: "active"
+        frequency:
+          description: For recurring consents, this indicates the frequency.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for recurring access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds.
+          type: integer
+          format: int64
+          example: 86400
+        consentPurpose:
+          description: Array of consent purposes with their approval states and values.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        attributes:
+          description: A key-value map of additional attributes.
+          type: object
+          properties:
+            key:
+              type: string
+        authorizations:
+          description: An array of authorization resources linked to this consent, detailing which users have acted upon it.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+    RevokeRequestBody:
+      type: object
+      description: Revoke request payload sent by client
+      required:
+        - actionBy
+        - revocationReason
+      properties:
+        actionBy:
+          description: Identifier of the user or system performing the delete/revoke action.
+          type: string
+          example: "admin@wso2.com"
+        revocationReason:
+          description: The reason for revoking the consent.
+          type: string
+          example: "Admin revoke"
+    StoredDetailedConsentResourceData:
+      type: object
+      description: Complete stored consent resource data (used in enrich-consent-creation-response)
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        createdTime:
+          type: integer
+          format: int32
+        updatedTime:
+          type: integer
+          format: int32
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: The current status of the consent (e.g., 'created', 'active', 'rejected', 'revoked', 'expired').
+          type: string
+          example: "active"
+        frequency:
+          description: For recurring consents, this indicates the frequency.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for recurring access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds.
+          type: integer
+          format: int64
+          example: 86400
+        consentPurpose:
+          description: Array of consent purposes with their approval states and values.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        attributes:
+          description: A key-value map of additional attributes.
+          type: object
+          additionalProperties:
+            type: string
+        authorizations:
+          description: Array of authorization resources linked to this consent.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+    StoredDetailedConsentResourceDataForUpdate:
+      type: object
+      description: Complete stored consent resource data for update operations
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        createdTime:
+          type: integer
+          format: int32
+        updatedTime:
+          type: integer
+          format: int32
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: The current status of the consent (e.g., 'created', 'active', 'rejected', 'revoked', 'expired').
+          type: string
+          example: "active"
+        frequency:
+          description: For recurring consents, this indicates the frequency.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for recurring access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds.
+          type: integer
+          format: int64
+          example: 86400
+        consentPurpose:
+          description: Array of consent purposes with their approval states and values.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        attributes:
+          description: A key-value map of additional attributes.
+          type: object
+          additionalProperties:
+            type: string
+        authorizations:
+          description: Array of authorization resources linked to this consent.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+    ConsentAuthorizationCreateResponse:
+      type: object
+      description: Represents a detailed authorization object in responses.
+      properties:
+        id:
+          description: Auth Id
+          type: string
+          example: "auth_id"
+        userId:
+          description: The unique ID of the user who performed this authorization.
+          type: string
+          example: "admin@carbon.super"
+        type:
+          description: The type of authorization (e.g., 'authorisation', 're-authorisation').
+          type: string
+          example: "authorisation"
+        status:
+          description: The current status of this specific authorization (e.g., 'created', 'approved', 'rejected').
+          type: string
+          example: "approved"
+        updatedTime:
+          type: integer
+          format: int32
+        resources:
+          description: Flexible resources field containing authorization-specific data.
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+          example:
+            accountIds: ["123456", "789012"]
+    RequestHeaders:
+      type: object
+      description: Request headers sent by the TPP. Filtered set of headers are sent to the external service.
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://example.com/oauth/token
+          scopes:
+            process: process request generate response
