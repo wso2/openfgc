@@ -64,9 +64,9 @@ func (ts *ElementAPITestSuite) TestValidateElements_AllValid_ReturnsAll() {
 
 	// Create three elements
 	createPayload := []ConsentElementCreateRequest{
-		{Name: "test_validate_1", Description: "First", Type: "string-type"},
-		{Name: "test_validate_2", Description: "Second", Type: "string-type"},
-		{Name: "test_validate_3", Description: "Third", Type: "string-type"},
+		{Name: "test_validate_1", Description: "First", Type: "basic"},
+		{Name: "test_validate_2", Description: "Second", Type: "basic"},
+		{Name: "test_validate_3", Description: "Third", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(createPayload)
@@ -94,8 +94,8 @@ func (ts *ElementAPITestSuite) TestValidateElements_PartialValid_ReturnsSubset()
 
 	// Create two elements
 	createPayload := []ConsentElementCreateRequest{
-		{Name: "test_partial_1", Description: "First", Type: "string-type"},
-		{Name: "test_partial_2", Description: "Second", Type: "string-type"},
+		{Name: "test_partial_1", Description: "First", Type: "basic"},
+		{Name: "test_partial_2", Description: "Second", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(createPayload)
@@ -164,7 +164,7 @@ func (ts *ElementAPITestSuite) TestValidateElements_SingleName_ReturnsOne() {
 
 	// Create element
 	createPayload := []ConsentElementCreateRequest{
-		{Name: "test_single_validate", Description: "Single", Type: "string-type"},
+		{Name: "test_single_validate", Description: "Single", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(createPayload)
@@ -188,7 +188,7 @@ func (ts *ElementAPITestSuite) TestValidateElements_DuplicatesInRequest_ReturnsD
 
 	// Create element
 	createPayload := []ConsentElementCreateRequest{
-		{Name: "test_duplicate_validate", Description: "Duplicate test", Type: "string-type"},
+		{Name: "test_duplicate_validate", Description: "Duplicate test", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(createPayload)
@@ -220,12 +220,12 @@ func (ts *ElementAPITestSuite) TestValidateElements_MixedTypes_ReturnsAllValid()
 		{
 			Name:        "test_validate_string",
 			Description: "String type",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 		{
 			Name:        "test_validate_jsonpayload",
 			Description: "JSON Payload type",
-			Type:        "json-payload-type",
+			Type:        "json-payload",
 			Properties: map[string]string{
 				"validationSchema": `{"type":"object"}`,
 			},
@@ -233,7 +233,7 @@ func (ts *ElementAPITestSuite) TestValidateElements_MixedTypes_ReturnsAllValid()
 		{
 			Name:        "test_validate_resourcefield",
 			Description: "Resource Field type",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"resourcePath": "/test",
 				"jsonPath":     "$.test",
@@ -381,7 +381,7 @@ func (ts *ElementAPITestSuite) TestValidateElements_LargeList_HandlesMany() {
 		createPayload[i] = ConsentElementCreateRequest{
 			Name:        name,
 			Description: fmt.Sprintf("Element %d", i),
-			Type:        "string-type",
+			Type:        "basic",
 		}
 		validatePayload[i] = name
 	}

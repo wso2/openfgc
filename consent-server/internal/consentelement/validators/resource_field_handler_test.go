@@ -24,15 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAttributeElementTypeHandler_GetType tests the GetType method
-func TestAttributeElementTypeHandler_GetType(t *testing.T) {
-	handler := &AttributeElementTypeHandler{}
+// TestResourceFieldElementTypeHandler_GetType tests the GetType method
+func TestResourceFieldElementTypeHandler_GetType(t *testing.T) {
+	handler := &ResourceFieldElementTypeHandler{}
 	require.Equal(t, "resource-field", handler.GetType())
 }
 
-// TestAttributeElementTypeHandler_ValidateProperties tests property validation
-func TestAttributeElementTypeHandler_ValidateProperties(t *testing.T) {
-	handler := &AttributeElementTypeHandler{}
+// TestResourceFieldElementTypeHandler_ValidateProperties tests property validation
+func TestResourceFieldElementTypeHandler_ValidateProperties(t *testing.T) {
+	handler := &ResourceFieldElementTypeHandler{}
 
 	testCases := []struct {
 		name          string
@@ -138,9 +138,9 @@ func TestAttributeElementTypeHandler_ValidateProperties(t *testing.T) {
 	}
 }
 
-// TestAttributeElementTypeHandler_ProcessProperties tests property processing
-func TestAttributeElementTypeHandler_ProcessProperties(t *testing.T) {
-	handler := &AttributeElementTypeHandler{}
+// TestResourceFieldElementTypeHandler_ProcessProperties tests property processing
+func TestResourceFieldElementTypeHandler_ProcessProperties(t *testing.T) {
+	handler := &ResourceFieldElementTypeHandler{}
 
 	testCases := []struct {
 		name       string
@@ -178,9 +178,9 @@ func TestAttributeElementTypeHandler_ProcessProperties(t *testing.T) {
 	}
 }
 
-// TestAttributeElementTypeHandler_GetPropertySpec tests property specification
-func TestAttributeElementTypeHandler_GetPropertySpec(t *testing.T) {
-	handler := &AttributeElementTypeHandler{}
+// TestResourceFieldElementTypeHandler_GetPropertySpec tests property specification
+func TestResourceFieldElementTypeHandler_GetPropertySpec(t *testing.T) {
+	handler := &ResourceFieldElementTypeHandler{}
 	spec := handler.GetPropertySpec()
 
 	require.NotNil(t, spec)

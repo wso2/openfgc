@@ -37,7 +37,7 @@ type ElementPropertySpec struct {
 
 // ElementTypeHandler defines behavior for a specific consent element type
 type ElementTypeHandler interface {
-	// GetType returns the type string this handler manages (e.g., "string-type", "json-payload-type", "resource-field-type")
+	// GetType returns the type string this handler manages (e.g., "basic", "json-payload", "resource-field")
 	GetType() string
 
 	// ValidateProperties checks if required properties are present and valid

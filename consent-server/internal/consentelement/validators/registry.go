@@ -35,9 +35,9 @@ func init() {
 	defaultRegistry = NewElementTypeHandlerRegistry()
 
 	// Register built-in handlers
-	_ = defaultRegistry.Register(&StringElementTypeHandler{})
-	_ = defaultRegistry.Register(&JsonSchemaElementTypeHandler{})
-	_ = defaultRegistry.Register(&AttributeElementTypeHandler{})
+	_ = defaultRegistry.Register(&BasicElementTypeHandler{})
+	_ = defaultRegistry.Register(&JsonPayloadElementTypeHandler{})
+	_ = defaultRegistry.Register(&ResourceFieldElementTypeHandler{})
 }
 
 // NewElementTypeHandlerRegistry creates a new registry instance

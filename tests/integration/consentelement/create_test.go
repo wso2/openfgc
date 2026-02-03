@@ -33,7 +33,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_StringType_WithValue() {
 	element := ConsentElementCreateRequest{
 		Name:        "test_license_read",
 		Description: "Allows accessing driving license API",
-		Type:        "string-type",
+		Type:        "basic",
 		Properties: map[string]string{
 			"value": "license:read",
 		},
@@ -65,7 +65,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_StringType_NoProperties() {
 	element := ConsentElementCreateRequest{
 		Name:        "test_basic_string",
 		Description: "String type with no properties",
-		Type:        "string-type",
+		Type:        "basic",
 		Properties:  map[string]string{},
 	}
 
@@ -82,12 +82,12 @@ func (ts *ElementAPITestSuite) TestCreateElement_StringType_NoProperties() {
 	ts.trackElement(createResp.Data[0].ID) // Track for suite cleanup
 }
 
-// TestCreateElement_JsonPayloadType_WithValidationSchema creates a json-payload-type element
+// TestCreateElement_JsonPayloadType_WithValidationSchema creates a json-payload element
 func (ts *ElementAPITestSuite) TestCreateElement_JsonPayloadType_WithValidationSchema() {
 	element := ConsentElementCreateRequest{
 		Name:        "test_account_schema",
 		Description: "Account access schema validation",
-		Type:        "json-payload-type",
+		Type:        "json-payload",
 		Properties: map[string]string{
 			"validationSchema": "{}",
 		},
@@ -105,17 +105,17 @@ func (ts *ElementAPITestSuite) TestCreateElement_JsonPayloadType_WithValidationS
 
 	created := createResp.Data[0]
 	ts.Require().Equal(element.Name, created.Name)
-	ts.Require().Equal("json-payload-type", created.Type)
+	ts.Require().Equal("json-payload", created.Type)
 	ts.Require().NotEmpty(created.Properties["validationSchema"])
 	ts.trackElement(created.ID) // Track for suite cleanup
 }
 
-// TestCreateElement_ResourceFieldType_FirstName creates a resource-field-type element with jsonPath and resourcePath
+// TestCreateElement_ResourceFieldType_FirstName creates a resource-field element with jsonPath and resourcePath
 func (ts *ElementAPITestSuite) TestCreateElement_ResourceFieldType_FirstName() {
 	element := ConsentElementCreateRequest{
 		Name:        "test_first_name",
 		Description: "Allows access to the user's first name",
-		Type:        "resource-field-type",
+		Type:        "resource-field",
 		Properties: map[string]string{
 			"jsonPath":     "$.personal.firstName",
 			"resourcePath": "/user/{nic}",
@@ -134,19 +134,19 @@ func (ts *ElementAPITestSuite) TestCreateElement_ResourceFieldType_FirstName() {
 
 	created := createResp.Data[0]
 	ts.Require().Equal(element.Name, created.Name)
-	ts.Require().Equal("resource-field-type", created.Type)
+	ts.Require().Equal("resource-field", created.Type)
 	ts.Require().Equal("$.personal.firstName", created.Properties["jsonPath"])
 	ts.Require().Equal("/user/{nic}", created.Properties["resourcePath"])
 	ts.trackElement(created.ID) // Track for suite cleanup
 }
 
-// TestCreateElement_Batch_ThreeResourceFieldTypeElements creates 3 resource-field-type elements in one request
+// TestCreateElement_Batch_ThreeResourceFieldTypeElements creates 3 resource-field elements in one request
 func (ts *ElementAPITestSuite) TestCreateElement_Batch_ThreeResourceFieldTypeElements() {
 	elements := []ConsentElementCreateRequest{
 		{
 			Name:        "test_batch_first_name",
 			Description: "Allows access to the user's first name",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"jsonPath":     "$.personal.firstName",
 				"resourcePath": "/user/{nic}",
@@ -155,7 +155,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_Batch_ThreeResourceFieldTypeEle
 		{
 			Name:        "test_batch_last_name",
 			Description: "Allows access to the user's last name",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"jsonPath":     "$.personal.lastName",
 				"resourcePath": "/user/{nic}",
@@ -164,7 +164,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_Batch_ThreeResourceFieldTypeEle
 		{
 			Name:        "test_batch_full_name",
 			Description: "Allows access to the user's full name",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"jsonPath":     "$.personal.fullName",
 				"resourcePath": "/user/{nic}",
@@ -185,7 +185,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_Batch_ThreeResourceFieldTypeEle
 	// Verify all three were created
 	for i, element := range elements {
 		ts.Require().Equal(element.Name, createResp.Data[i].Name)
-		ts.Require().Equal("resource-field-type", createResp.Data[i].Type)
+		ts.Require().Equal("resource-field", createResp.Data[i].Type)
 		ts.Require().NotEmpty(createResp.Data[i].ID)
 	}
 
@@ -201,7 +201,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_Batch_MixedTypes() {
 		{
 			Name:        "test_mixed_string",
 			Description: "String type",
-			Type:        "string-type",
+			Type:        "basic",
 			Properties: map[string]string{
 				"value": "api:resource:read",
 			},
@@ -209,7 +209,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_Batch_MixedTypes() {
 		{
 			Name:        "test_mixed_json_payload",
 			Description: "JSON Payload type",
-			Type:        "json-payload-type",
+			Type:        "json-payload",
 			Properties: map[string]string{
 				"validationSchema": "{}",
 			},
@@ -217,7 +217,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_Batch_MixedTypes() {
 		{
 			Name:        "test_mixed_resource_field",
 			Description: "Resource Field type",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"jsonPath":     "$.data.field",
 				"resourcePath": "/resource/{id}",
@@ -236,9 +236,9 @@ func (ts *ElementAPITestSuite) TestCreateElement_Batch_MixedTypes() {
 	ts.Require().Len(createResp.Data, 3)
 
 	// Verify types
-	ts.Require().Equal("string-type", createResp.Data[0].Type)
-	ts.Require().Equal("json-payload-type", createResp.Data[1].Type)
-	ts.Require().Equal("resource-field-type", createResp.Data[2].Type)
+	ts.Require().Equal("basic", createResp.Data[0].Type)
+	ts.Require().Equal("json-payload", createResp.Data[1].Type)
+	ts.Require().Equal("resource-field", createResp.Data[2].Type)
 
 	// Track all for cleanup
 	for _, e := range createResp.Data {
@@ -251,7 +251,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_RetrieveAndVerifyAllFields() {
 	element := ConsentElementCreateRequest{
 		Name:        "test_verify_all_fields",
 		Description: "Test element for field verification",
-		Type:        "resource-field-type",
+		Type:        "resource-field",
 		Properties: map[string]string{
 			"jsonPath":     "$.user.email",
 			"resourcePath": "/user/{id}",
@@ -295,7 +295,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 	validElement := ConsentElementCreateRequest{
 		Name:        "test_error_valid",
 		Description: "Valid element",
-		Type:        "string-type",
+		Type:        "basic",
 		Properties:  map[string]string{},
 	}
 
@@ -341,7 +341,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 			payload: []ConsentElementCreateRequest{
 				{
 					Description: "Missing name",
-					Type:        "string-type",
+					Type:        "basic",
 					Properties:  map[string]string{},
 				},
 			},
@@ -356,7 +356,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 				{
 					Name:        strings.Repeat("a", 256),
 					Description: "Name too long",
-					Type:        "string-type",
+					Type:        "basic",
 					Properties:  map[string]string{},
 				},
 			},
@@ -371,13 +371,13 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 				{
 					Name:        "test_error_duplicate",
 					Description: "First",
-					Type:        "string-type",
+					Type:        "basic",
 					Properties:  map[string]string{},
 				},
 				{
 					Name:        "test_error_duplicate",
 					Description: "Duplicate",
-					Type:        "string-type",
+					Type:        "basic",
 					Properties:  map[string]string{},
 				},
 			},
@@ -455,7 +455,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 				{
 					Name:        "test_error_json_no_schema",
 					Description: "JSON payload without validationSchema",
-					Type:        "json-payload-type",
+					Type:        "json-payload",
 					Properties:  map[string]string{},
 				},
 			},
@@ -470,7 +470,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 				{
 					Name:        "test_error_resource_no_path",
 					Description: "Resource field without resourcePath",
-					Type:        "resource-field-type",
+					Type:        "resource-field",
 					Properties: map[string]string{
 						"jsonPath": "$.data",
 					},
@@ -479,7 +479,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 			setHeaders:      true,
 			expectedStatus:  http.StatusInternalServerError,
 			expectedCode:    "CE-5010",
-			messageContains: "resourcePath is required for resource-field-type",
+			messageContains: "resourcePath is required for resource-field",
 		},
 		{
 			name: "ResourceFieldType_MissingJsonPath_ReturnsValidationError",
@@ -487,7 +487,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 				{
 					Name:        "test_error_resource_no_json",
 					Description: "Resource field without jsonPath",
-					Type:        "resource-field-type",
+					Type:        "resource-field",
 					Properties: map[string]string{
 						"resourcePath": "/resource/{id}",
 					},
@@ -504,14 +504,14 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 				{
 					Name:        "test_error_resource_no_paths",
 					Description: "Resource field without any paths",
-					Type:        "resource-field-type",
+					Type:        "resource-field",
 					Properties:  map[string]string{},
 				},
 			},
 			setHeaders:      true,
 			expectedStatus:  http.StatusInternalServerError,
 			expectedCode:    "CE-5010",
-			messageContains: "resourcePath is required for resource-field-type",
+			messageContains: "resourcePath is required for resource-field",
 		},
 
 		// Description validation
@@ -521,7 +521,7 @@ func (ts *ElementAPITestSuite) TestCreateElement_ErrorCases() {
 				{
 					Name:        "test_error_desc_1025",
 					Description: strings.Repeat("x", 1025), // Exceeds 1024 char limit
-					Type:        "string-type",
+					Type:        "basic",
 					Properties:  map[string]string{},
 				},
 			},

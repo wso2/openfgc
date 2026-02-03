@@ -105,7 +105,7 @@ func (ts *PurposeAPITestSuite) setupTestElements() {
 			{
 				"name":        name,
 				"description": fmt.Sprintf("Test element for %s", name),
-				"type":        "string-type",
+				"type":        "basic",
 				"attributes": map[string]string{
 					"resourcePath": fmt.Sprintf("/user/%s", name),
 				},

@@ -18,32 +18,32 @@
 
 package validators
 
-// StringElementTypeHandler handles "basic" consent elements
-// String type has no mandatory properties - all properties are optional
-type StringElementTypeHandler struct{}
+// BasicElementTypeHandler handles "basic" consent elements
+// Basic type has no mandatory properties - all properties are optional
+type BasicElementTypeHandler struct{}
 
 // GetType returns the type identifier
-func (handler *StringElementTypeHandler) GetType() string {
+func (handler *BasicElementTypeHandler) GetType() string {
 	return "basic"
 }
 
-// ValidateProperties validates properties for string type
-// String type has no mandatory properties, so validation always passes
-func (handler *StringElementTypeHandler) ValidateProperties(properties map[string]string) []ValidationError {
-	// String type: no mandatory properties
+// ValidateProperties validates properties for basic type
+// Basic type has no mandatory properties, so validation always passes
+func (handler *BasicElementTypeHandler) ValidateProperties(properties map[string]string) []ValidationError {
+	// Basic type: no mandatory properties
 	// All properties are optional
 	return nil
 }
 
-// ProcessProperties processes properties for string type
-// No special processing needed for string type
-func (handler *StringElementTypeHandler) ProcessProperties(properties map[string]string) map[string]string {
+// ProcessProperties processes properties for basic type
+// No special processing needed for basic type
+func (handler *BasicElementTypeHandler) ProcessProperties(properties map[string]string) map[string]string {
 	// Return as-is, no transformation needed
 	return properties
 }
 
-// GetPropertySpec returns the property specification for string type
-func (handler *StringElementTypeHandler) GetPropertySpec() []ElementPropertySpec {
+// GetPropertySpec returns the property specification for basic type
+func (handler *BasicElementTypeHandler) GetPropertySpec() []ElementPropertySpec {
 	return []ElementPropertySpec{
 		{
 			Name:        "validationSchema",

@@ -42,23 +42,23 @@ func TestRegister(t *testing.T) {
 	}{
 		{
 			name:        "Register single handler",
-			handlers:    []ElementTypeHandler{&StringElementTypeHandler{}},
+			handlers:    []ElementTypeHandler{&BasicElementTypeHandler{}},
 			expectError: false,
 		},
 		{
 			name: "Register multiple different handlers",
 			handlers: []ElementTypeHandler{
-				&StringElementTypeHandler{},
-				&JsonSchemaElementTypeHandler{},
-				&AttributeElementTypeHandler{},
+				&BasicElementTypeHandler{},
+				&JsonPayloadElementTypeHandler{},
+				&ResourceFieldElementTypeHandler{},
 			},
 			expectError: false,
 		},
 		{
 			name: "Register duplicate handler",
 			handlers: []ElementTypeHandler{
-				&StringElementTypeHandler{},
-				&StringElementTypeHandler{},
+				&BasicElementTypeHandler{},
+				&BasicElementTypeHandler{},
 			},
 			expectError:   true,
 			errorContains: "already registered",
@@ -99,27 +99,27 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:          "Get existing handler",
-			setupHandlers: []ElementTypeHandler{&StringElementTypeHandler{}},
-			getType:       "string-type",
+			setupHandlers: []ElementTypeHandler{&BasicElementTypeHandler{}},
+			getType:       "basic",
 			expectError:   false,
-			expectedType:  "string-type",
+			expectedType:  "basic",
 		},
 		{
 			name:          "Get non-existent handler",
-			setupHandlers: []ElementTypeHandler{&StringElementTypeHandler{}},
+			setupHandlers: []ElementTypeHandler{&BasicElementTypeHandler{}},
 			getType:       "non-existent-type",
 			expectError:   true,
 		},
 		{
 			name: "Get from multiple handlers",
 			setupHandlers: []ElementTypeHandler{
-				&StringElementTypeHandler{},
-				&JsonSchemaElementTypeHandler{},
-				&AttributeElementTypeHandler{},
+				&BasicElementTypeHandler{},
+				&JsonPayloadElementTypeHandler{},
+				&ResourceFieldElementTypeHandler{},
 			},
-			getType:      "json-payload-type",
+			getType:      "json-payload",
 			expectError:  false,
-			expectedType: "json-payload-type",
+			expectedType: "json-payload",
 		},
 	}
 
@@ -161,19 +161,19 @@ func TestGetAllTypes(t *testing.T) {
 		},
 		{
 			name:          "Single handler",
-			setupHandlers: []ElementTypeHandler{&StringElementTypeHandler{}},
+			setupHandlers: []ElementTypeHandler{&BasicElementTypeHandler{}},
 			expectedCount: 1,
-			expectedTypes: []string{"string-type"},
+			expectedTypes: []string{"basic"},
 		},
 		{
 			name: "Multiple handlers",
 			setupHandlers: []ElementTypeHandler{
-				&StringElementTypeHandler{},
-				&JsonSchemaElementTypeHandler{},
-				&AttributeElementTypeHandler{},
+				&BasicElementTypeHandler{},
+				&JsonPayloadElementTypeHandler{},
+				&ResourceFieldElementTypeHandler{},
 			},
 			expectedCount: 3,
-			expectedTypes: []string{"string-type", "json-payload-type", "resource-field-type"},
+			expectedTypes: []string{"basic", "json-payload", "resource-field"},
 		},
 	}
 
@@ -203,18 +203,18 @@ func TestGetHandler(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:        "Get string-type handler",
-			typeStr:     "string-type",
+			name:        "Get basic handler",
+			typeStr:     "basic",
 			expectError: false,
 		},
 		{
-			name:        "Get json-payload-type handler",
-			typeStr:     "json-payload-type",
+			name:        "Get json-payload handler",
+			typeStr:     "json-payload",
 			expectError: false,
 		},
 		{
-			name:        "Get resource-field-type handler",
-			typeStr:     "resource-field-type",
+			name:        "Get resource-field handler",
+			typeStr:     "resource-field",
 			expectError: false,
 		},
 		{
@@ -243,23 +243,23 @@ func TestGetHandler(t *testing.T) {
 // TestGetAllHandlerTypes tests the global GetAllHandlerTypes function
 func TestGetAllHandlerTypes(t *testing.T) {
 	types := GetAllHandlerTypes()
-
+	
 	// Default registry should have 3 handlers registered
 	require.Equal(t, 3, len(types))
-	require.Contains(t, types, "string-type")
-	require.Contains(t, types, "json-payload-type")
-	require.Contains(t, types, "resource-field-type")
+	require.Contains(t, types, "basic")
+	require.Contains(t, types, "json-payload")
+	require.Contains(t, types, "resource-field")
 }
 
 // TestGetDefaultRegistry tests the global registry getter
 func TestGetDefaultRegistry(t *testing.T) {
 	registry := GetDefaultRegistry()
 	require.NotNil(t, registry)
-
+	
 	// Should be the same instance on multiple calls
 	registry2 := GetDefaultRegistry()
 	require.Equal(t, registry, registry2)
-
+	
 	// Should have handlers from init()
 	types := registry.GetAllTypes()
 	require.Equal(t, 3, len(types))

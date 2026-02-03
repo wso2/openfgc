@@ -26,7 +26,7 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 servers:
-  - url: https://{km_host}:{km_port}/api/v1
+  - url: http://localhost:3000/api/v1
     variables:
       km_host:
         default: localhost
@@ -723,7 +723,7 @@ paths:
                           value: {}
                           isUserApproved: true
                           isMandatory: true
-                          type: "resource-field-type"
+                          type: "resource-field"
                           description: "Allows access to the user's first name"
                           properties:
                             jsonPath: "$.personal.firstName"
@@ -772,9 +772,9 @@ paths:
 
         **Type Handlers:**
         Each element has a type that determines which properties are mandatory:
-        - **string-type**: No mandatory properties (any properties are optional)
-        - **json-payload-type**: Requires `validationSchema` property
-        - **resource-field-type**: Requires both `resourcePath` and `jsonPath` properties
+        - **basic**: No mandatory properties (any properties are optional)
+        - **json-payload**: Requires `validationSchema` property
+        - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
 
         **Transactional Behavior:**
         Batch creation is atomic - either all elements in the request are created successfully, or none
@@ -784,7 +784,7 @@ paths:
         **Validation Rules:**
         - Name is required and must not exceed 255 characters
         - Name must be unique within the organization (checked against existing elements and within the batch)
-        - Type is required and must be one of: `string`, `json-schema`, `attribute`
+        - Type is required and must be one of: `basic`, `json-payload`, `resource-field`
         - Properties validation depends on type (see Type Handlers above)
         - Description is optional but must not exceed 1024 characters if provided
         - At least one element must be provided in the request array
@@ -812,24 +812,24 @@ paths:
                 $ref: "#/components/schemas/ConsentPurposeCreateRequest"
             examples:
               stringType:
-                summary: String type with optional properties
+                summary: Basic type with optional properties
                 value:
                   - name: "license_read"
                     description: "Allows accessing license API"
-                    type: "string-type"
+                    type: "basic"
                     properties:
                       value: "license:read"
               stringTypeNoAttributes:
-                summary: String type without properties (valid)
+                summary: Basic type without properties (valid)
                 value:
                   - name: "basic_access"
-                    type: "string-type"
+                    type: "basic"
               jsonPayloadType:
                 summary: JSON payload type with validationSchema
                 value:
                   - name: "account_schema"
                     description: "Account access schema validation"
-                    type: "json-payload-type"
+                    type: "json-payload"
                     properties:
                       validationSchema: |
                         {
@@ -845,7 +845,7 @@ paths:
                 value:
                   - name: "first_name"
                     description: "Allows access to the user's first name"
-                    type: "resource-field-type"
+                    type: "resource-field"
                     properties:
                       resourcePath: "/user/{nic}"
                       jsonPath: "$.personal.firstName"
@@ -853,15 +853,15 @@ paths:
                 summary: Create multiple elements with different types
                 value:
                   - name: "license_read"
-                    type: "string-type"
+                    type: "basic"
                     properties:
                       value: "license:read"
                   - name: "tax_schema"
-                    type: "json-payload-type"
+                    type: "json-payload"
                     properties:
                       validationSchema: '{"type":"object"}'
                   - name: "dynamic_roles"
-                    type: "resource-field-type"
+                    type: "resource-field"
                     properties:
                       resourcePath: "/api/roles"
                       jsonPath: "$.data.roles"
@@ -882,13 +882,13 @@ paths:
                     example: "Consent elements created successfully"
               examples:
                 stringType:
-                  summary: String type element created
+                  summary: Basic type element created
                   value:
                     data:
                       - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                         name: "license_read"
                         description: "Allows accessing license API"
-                        type: "string-type"
+                        type: "basic"
                         properties:
                           value: "license:read"
                     message: "Consent elements created successfully"
@@ -899,7 +899,7 @@ paths:
                       - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                         name: "account_schema"
                         description: "Account access schema validation"
-                        type: "json-payload-type"
+                        type: "json-payload"
                         properties:
                           validationSchema: '{"type":"object","properties":{"accountId":{"type":"string"}}}'
                     message: "Consent elements created successfully"
@@ -910,7 +910,7 @@ paths:
                       - id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
                         name: "first_name"
                         description: "Allows access to the user's first name"
-                        type: "resource-field-type"
+                        type: "resource-field"
                         properties:
                           resourcePath: "/user/{nic}"
                           jsonPath: "$.personal.firstName"
@@ -941,28 +941,28 @@ paths:
                   value:
                     code: "BAD_REQUEST"
                     message: "Invalid element type"
-                    description: "Type must be one of: string, json-schema, attribute"
+                    description: "Type must be one of: basic, json-payload, resource-field"
                     traceId: "20260107T123456Z-abc123"
                 jsonSchemaMissingValidationSchema:
                   summary: JSON payload type missing validationSchema attribute
                   value:
                     code: "BAD_REQUEST"
                     message: "Validation failed"
-                    description: "validationSchema is required for json-schema type"
+                    description: "validationSchema is required for json-payload type"
                     traceId: "20260107T123456Z-abc123"
-                attributeMissingResourcePath:
+                resourceFieldMissingResourcePath:
                   summary: Resource field type missing resourcePath
                   value:
                     code: "BAD_REQUEST"
                     message: "Validation failed"
-                    description: "resourcePath is required for attribute type"
+                    description: "resourcePath is required for resource-field type"
                     traceId: "20260107T123456Z-abc123"
-                attributeMissingJsonPath:
+                resourceFieldMissingJsonPath:
                   summary: Resource field type missing jsonPath
                   value:
                     code: "BAD_REQUEST"
                     message: "Validation failed"
-                    description: "jsonPath is required for attribute type"
+                    description: "jsonPath is required for resource-field type"
                     traceId: "20260107T123456Z-abc123"
                 duplicateName:
                   summary: Element name already exists
@@ -1042,20 +1042,20 @@ paths:
                   - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     name: "first_name"
                     description: "Allows access to the user's first name"
-                    type: "resource-field-type"
+                    type: "resource-field"
                     properties:
                       jsonPath: "$.personal.firstName"
                       resourcePath: "/user/{nic}"
                   - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                     name: "readAccountBasic"
                     description: "Allows reading basic account information"
-                    type: "string-type"
+                    type: "basic"
                     properties:
                       value: "account:read:basic"
                   - id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
                     name: "readTransactions"
                     description: "Allows reading transaction history"
-                    type: "string-type"
+                    type: "basic"
                     properties:
                       value: "account:read:transactions"
                 metadata:
@@ -1228,7 +1228,7 @@ paths:
                 id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 name: "first_name"
                 description: "Allows access to the user's first name"
-                type: "resource-field-type"
+                type: "resource-field"
                 properties:
                   jsonPath: "$.personal.firstName"
                   resourcePath: "/user/{nic}"
@@ -1263,9 +1263,9 @@ paths:
 
         **Type Handlers:**
         Each element has a type that determines which properties are mandatory:
-        - **string-type**: No mandatory properties (any properties are optional)
-        - **json-payload-type**: Requires `validationSchema` property
-        - **resource-field-type**: Requires both `resourcePath` and `jsonPath` properties
+        - **basic**: No mandatory properties (any properties are optional)
+        - **json-payload**: Requires `validationSchema` property
+        - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
 
         **Update Behavior:**
         - All fields (name, description, type, properties) must be provided in the request
@@ -1276,7 +1276,7 @@ paths:
         **Validation Rules:**
         - Name is required and must not exceed 255 characters
         - Name must be unique within the organization (excluding the current element)
-        - Type is required and must be one of: `string-type`, `json-payload-type`, `resource-field-type`
+        - Type is required and must be one of: `basic`, `json-payload`, `resource-field`
         - Properties validation depends on type (see Type Handlers above)
         - Description is optional but must not exceed 1024 characters if provided
       operationId: updateConsentPurpose
@@ -1306,11 +1306,11 @@ paths:
               $ref: "#/components/schemas/ConsentPurposeUpdateRequest"
             examples:
               updateToString:
-                summary: Update to string type (no mandatory properties)
+                summary: Update to basic type (no mandatory properties)
                 value:
                   name: "license_read_updated"
                   description: "Updated license access permission"
-                  type: "string-type"
+                  type: "basic"
                   properties:
                     value: "license:read:v2"
               updateToJsonSchema:
@@ -1318,7 +1318,7 @@ paths:
                 value:
                   name: "account_schema_v2"
                   description: "Updated account schema validation"
-                  type: "json-payload-type"
+                  type: "json-payload"
                   properties:
                     validationSchema: |
                       {
@@ -1329,12 +1329,12 @@ paths:
                         },
                         "required": ["accountId"]
                       }
-              updateToAttribute:
-                summary: Update to Attribute type (requires resourcePath and jsonPath)
+              updateToResourceField:
+                summary: Update to resource-field type (requires resourcePath and jsonPath)
                 value:
                   name: "first_name"
                   description: "Allows access to the user's first name"
-                  type: "resource-field-type"
+                  type: "resource-field"
                   properties:
                     resourcePath: "/user/{nic}"
                     jsonPath: "$.personal.firstName"
@@ -1347,12 +1347,12 @@ paths:
                 $ref: "#/components/schemas/ConsentPurposeResponse"
               examples:
                 stringType:
-                  summary: Updated to string type
+                  summary: Updated to basic type
                   value:
                     id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     name: "license_read_updated"
                     description: "Updated license access permission"
-                    type: "string-type"
+                    type: "basic"
                     properties:
                       value: "license:read:v2"
                 jsonPayloadType:
@@ -1361,16 +1361,16 @@ paths:
                     id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     name: "account_schema_v2"
                     description: "Updated account schema validation"
-                    type: "json-payload-type"
+                    type: "json-payload"
                     properties:
                       validationSchema: '{"type":"object","properties":{"accountId":{"type":"string"}}}'
                 resourceFieldType:
-                  summary: Updated to Attribute type
+                  summary: Updated to resource-field type
                   value:
                     id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     name: "first_name"
                     description: "Allows access to the user's first name"
-                    type: "resource-field-type"
+                    type: "resource-field"
                     properties:
                       resourcePath: "/user/{nic}"
                       jsonPath: "$.personal.firstName"
@@ -1393,21 +1393,21 @@ paths:
                   value:
                     code: "BAD_REQUEST"
                     message: "Invalid element type"
-                    description: "Type must be one of: string, json-schema, attribute"
+                    description: "Type must be one of: basic, json-payload, resource-field"
                     traceId: "20260107T123456Z-abc123"
                 jsonSchemaMissingValidationSchema:
                   summary: JSON payload type missing validationSchema
                   value:
                     code: "BAD_REQUEST"
                     message: "Validation failed"
-                    description: "validationSchema is required for json-schema type"
+                    description: "validationSchema is required for json-payload type"
                     traceId: "20260107T123456Z-abc123"
                 attributeMissingResourcePath:
                   summary: Resource field type missing resourcePath
                   value:
                     code: "BAD_REQUEST"
                     message: "Validation failed"
-                    description: "resourcePath is required for attribute type"
+                    description: "resourcePath is required for resource-field type"
                     traceId: "20260107T123456Z-abc123"
                 duplicateName:
                   summary: Name already exists in organization
@@ -3096,7 +3096,7 @@ components:
             - value: User-provided value for this element (if any)
             - isUserApproved: Whether the user has approved this element (boolean, default false)
             - isMandatory: Whether this element is mandatory (boolean, default true)
-            - type: Element type from definition (string, json-schema, or attribute)
+            - type: Element type from definition (basic, json-payload, or resource-field)
             - description: Element description from definition
             - properties: Element properties from definition (e.g., validationSchema, resourcePath, jsonPath)
           items:
@@ -3116,9 +3116,9 @@ components:
                       properties:
                         type:
                           type: string
-                          enum: [string-type, json-payload-type, resource-field-type]
+                          enum: [basic, json-payload, resource-field]
                           description: Element type from the consent element definition
-                          example: "resource-field-type"
+                          example: "resource-field"
                         description:
                           type: string
                           description: Element description from the consent element definition
@@ -3203,9 +3203,9 @@ components:
 
         **Type Handler Architecture:**
         Each element type has specific property requirements:
-        - **string-type**: No mandatory properties (any properties are optional)
-        - **json-payload-type**: Requires `validationSchema` property
-        - **resource-field-type**: Requires both `resourcePath` and `jsonPath` properties
+        - **basic**: No mandatory properties (any properties are optional)
+        - **json-payload**: Requires `validationSchema` property
+        - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
 
         **Batch Creation:**
         When creating multiple purposes in a batch:
@@ -3229,24 +3229,24 @@ components:
         type:
           type: string
           enum:
-            - string-type
-            - json-payload-type
-            - resource-field-type
+            - basic
+            - json-payload
+            - resource-field
           description: |
             The type of the element determines which properties are mandatory:
-            - 'string-type': No mandatory properties (any properties are optional)
-            - 'json-payload-type': Requires `validationSchema` property
-            - 'resource-field-type': Requires `resourcePath` and `jsonPath` properties
-          example: "string-type"
+            - 'basic': No mandatory properties (any properties are optional)
+            - 'json-payload': Requires `validationSchema` property
+            - 'resource-field': Requires `resourcePath` and `jsonPath` properties
+          example: "basic"
         properties:
           type: object
           additionalProperties:
             type: string
           description: |
             Key-value map of properties. Required properties depend on the type:
-            - **string-type**: No mandatory properties. Can have any properties (e.g., value: "license:read")
-            - **json-payload-type**: Must have `validationSchema` property containing JSON schema
-            - **resource-field-type**: Must have `resourcePath` and `jsonPath`, optionally `validationSchema`
+            - **basic**: No mandatory properties. Can have any properties (e.g., value: "license:read")
+            - **json-payload**: Must have `validationSchema` property containing JSON schema
+            - **resource-field**: Must have `resourcePath` and `jsonPath`, optionally `validationSchema`
           example:
             value: "license:read"
     ConsentPurposeUpdateRequest:
@@ -3269,24 +3269,24 @@ components:
         type:
           type: string
           enum:
-            - string-type
-            - json-payload-type
-            - resource-field-type
+            - basic
+            - json-payload
+            - resource-field
           description: |
             Type of the consent element (required). Determines mandatory properties:
-            - 'string-type': No mandatory properties
-            - 'json-payload-type': Requires `validationSchema` property
-            - 'resource-field-type': Requires `resourcePath` and `jsonPath` properties
-          example: "string-type"
+            - 'basic': No mandatory properties
+            - 'json-payload': Requires `validationSchema` property
+            - 'resource-field': Requires `resourcePath` and `jsonPath` properties
+          example: "basic"
         properties:
           type: object
           additionalProperties:
             type: string
           description: |
             Key-value map of properties (required). Required properties depend on type:
-            - **string-type**: No mandatory properties
-            - **json-payload-type**: Must have `validationSchema` property
-            - **resource-field-type**: Must have `resourcePath` and `jsonPath` properties
+            - **basic**: No mandatory properties
+            - **json-payload**: Must have `validationSchema` property
+            - **resource-field**: Must have `resourcePath` and `jsonPath` properties
           example:
             value: "license:read:v2"
       description: All fields except description are required - partial updates are not supported
@@ -3308,24 +3308,24 @@ components:
         type:
           type: string
           enum:
-            - string-type
-            - json-payload-type
-            - resource-field-type
+            - basic
+            - json-payload
+            - resource-field
           description: |
             The type of the element. Determines which properties are mandatory:
-            - 'string-type': No mandatory properties
-            - 'json-payload-type': Requires `validationSchema` property
-            - 'resource-field-type': Requires `resourcePath` and `jsonPath` properties
-          example: "string-type"
+            - 'basic': No mandatory properties
+            - 'json-payload': Requires `validationSchema` property
+            - 'resource-field': Requires `resourcePath` and `jsonPath` properties
+          example: "basic"
         properties:
           type: object
           additionalProperties:
             type: string
           description: |
             Key-value map of properties (optional). Content depends on the element type:
-            - **string-type**: Can have any properties (e.g., value: "license:read")
-            - **json-payload-type**: Must have `validationSchema` property
-            - **resource-field-type**: Must have `resourcePath` and `jsonPath` properties
+            - **basic**: Can have any properties (e.g., value: "license:read")
+            - **json-payload**: Must have `validationSchema` property
+            - **resource-field**: Must have `resourcePath` and `jsonPath` properties
           example:
             value: "license:read"
       required:

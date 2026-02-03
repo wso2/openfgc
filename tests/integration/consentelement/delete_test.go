@@ -42,7 +42,7 @@ func (ts *ElementAPITestSuite) TestDeleteElement_StringType_Success() {
 		{
 			Name:        "test_delete_string",
 			Description: "To be deleted",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 	}
 
@@ -62,16 +62,16 @@ func (ts *ElementAPITestSuite) TestDeleteElement_StringType_Success() {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode, "Element should not exist after deletion")
 }
 
-// TestDeleteElement_JsonPayloadType_Success tests deleting a json-payload-type element
+// TestDeleteElement_JsonPayloadType_Success tests deleting a json-payload element
 func (ts *ElementAPITestSuite) TestDeleteElement_JsonPayloadType_Success() {
 	t := ts.T()
 
-	// Create json-payload-type element
+	// Create json-payload element
 	createPayload := []ConsentElementCreateRequest{
 		{
 			Name:        "test_delete_jsonpayload",
 			Description: "To be deleted",
-			Type:        "json-payload-type",
+			Type:        "json-payload",
 			Properties: map[string]string{
 				"validationSchema": `{"type":"object"}`,
 			},
@@ -94,16 +94,16 @@ func (ts *ElementAPITestSuite) TestDeleteElement_JsonPayloadType_Success() {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
-// TestDeleteElement_ResourceFieldType_Success tests deleting a resource-field-type element
+// TestDeleteElement_ResourceFieldType_Success tests deleting a resource-field element
 func (ts *ElementAPITestSuite) TestDeleteElement_ResourceFieldType_Success() {
 	t := ts.T()
 
-	// Create resource-field-type element
+	// Create resource-field element
 	createPayload := []ConsentElementCreateRequest{
 		{
 			Name:        "test_delete_resourcefield",
 			Description: "To be deleted",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"resourcePath": "/users",
 				"jsonPath":     "$.email",
@@ -136,7 +136,7 @@ func (ts *ElementAPITestSuite) TestDeleteElement_AlreadyDeleted_ReturnsNotFound(
 		{
 			Name:        "test_delete_twice",
 			Description: "Delete twice test",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 	}
 
@@ -167,7 +167,7 @@ func (ts *ElementAPITestSuite) TestDeleteElement_ThenRecreateWithSameName_Succee
 		{
 			Name:        elementName,
 			Description: "First version",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 	}
 
@@ -270,7 +270,7 @@ func (ts *ElementAPITestSuite) TestDeleteElement_WithDependentConsents_ChecksBeh
 		{
 			Name:        "test_delete_with_deps",
 			Description: "Element with potential dependencies",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 	}
 

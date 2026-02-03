@@ -18,18 +18,18 @@
 
 package validators
 
-// JsonSchemaElementTypeHandler handles "json-payload" consent elements
+// JsonPayloadElementTypeHandler handles "json-payload" consent elements
 // JSON payload type requires validationSchema property to be present and valid JSON
-type JsonSchemaElementTypeHandler struct{}
+type JsonPayloadElementTypeHandler struct{}
 
 // GetType returns the type identifier
-func (handler *JsonSchemaElementTypeHandler) GetType() string {
+func (handler *JsonPayloadElementTypeHandler) GetType() string {
 	return "json-payload"
 }
 
 // ValidateProperties validates properties for json-payload
 // Mandatory: validationSchema must be present and valid JSON
-func (handler *JsonSchemaElementTypeHandler) ValidateProperties(properties map[string]string) []ValidationError {
+func (handler *JsonPayloadElementTypeHandler) ValidateProperties(properties map[string]string) []ValidationError {
 	var errors []ValidationError
 
 	// validationSchema is MANDATORY
@@ -55,13 +55,13 @@ func (handler *JsonSchemaElementTypeHandler) ValidateProperties(properties map[s
 
 // ProcessProperties processes properties for json-payload
 // Could normalize JSON, add defaults, etc.
-func (handler *JsonSchemaElementTypeHandler) ProcessProperties(properties map[string]string) map[string]string {
+func (handler *JsonPayloadElementTypeHandler) ProcessProperties(properties map[string]string) map[string]string {
 	// Return as-is, basic processing
 	return properties
 }
 
 // GetPropertySpec returns the property specification for json-payload
-func (handler *JsonSchemaElementTypeHandler) GetPropertySpec() []ElementPropertySpec {
+func (handler *JsonPayloadElementTypeHandler) GetPropertySpec() []ElementPropertySpec {
 	return []ElementPropertySpec{
 		{
 			Name:        "validationSchema",

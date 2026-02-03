@@ -44,7 +44,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_DescriptionChange_Succeeds() {
 		{
 			Name:        "test_update_desc",
 			Description: "Original description",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 	}
 
@@ -60,7 +60,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_DescriptionChange_Succeeds() {
 	updatePayload := ConsentElementUpdateRequest{
 		Name:        "test_update_desc",
 		Description: "Updated description",
-		Type:        "string-type",
+		Type:        "basic",
 	}
 
 	resp, bodyBytes = ts.updateElement(elementID, updatePayload)
@@ -75,12 +75,12 @@ func (ts *ElementAPITestSuite) TestUpdateElement_DescriptionChange_Succeeds() {
 func (ts *ElementAPITestSuite) TestUpdateElement_PropertyChange_JsonPath_Succeeds() {
 	t := ts.T()
 
-	// Create resource-field-type element
+	// Create resource-field element
 	createPayload := []ConsentElementCreateRequest{
 		{
 			Name:        "test_update_jsonpath",
 			Description: "Resource field element",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"resourcePath": "/users",
 				"jsonPath":     "$.firstName",
@@ -100,7 +100,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_PropertyChange_JsonPath_Succeed
 	updatePayload := ConsentElementUpdateRequest{
 		Name:        "test_update_jsonpath",
 		Description: "Resource field element",
-		Type:        "resource-field-type",
+		Type:        "resource-field",
 		Properties: map[string]string{
 			"resourcePath": "/users",
 			"jsonPath":     "$.profile.firstName", // Changed
@@ -119,12 +119,12 @@ func (ts *ElementAPITestSuite) TestUpdateElement_PropertyChange_JsonPath_Succeed
 func (ts *ElementAPITestSuite) TestUpdateElement_TypeChange_StringToJsonPayload_Succeeds() {
 	t := ts.T()
 
-	// Create string-type element
+	// Create basic element
 	createPayload := []ConsentElementCreateRequest{
 		{
 			Name:        "test_type_change",
 			Description: "Type change test",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 	}
 
@@ -136,11 +136,11 @@ func (ts *ElementAPITestSuite) TestUpdateElement_TypeChange_StringToJsonPayload_
 	elementID := createResp.Data[0].ID
 	ts.trackElement(elementID)
 
-	// Change to json-payload-type
+	// Change to json-payload
 	updatePayload := ConsentElementUpdateRequest{
 		Name:        "test_type_change",
 		Description: "Type change test",
-		Type:        "json-payload-type",
+		Type:        "json-payload",
 		Properties: map[string]string{
 			"validationSchema": `{"type":"object","properties":{"name":{"type":"string"}}}`,
 		},
@@ -151,7 +151,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_TypeChange_StringToJsonPayload_
 
 	var updateResp ElementResponse
 	json.Unmarshal(bodyBytes, &updateResp)
-	require.Equal(t, "json-payload-type", updateResp.Type)
+	require.Equal(t, "json-payload", updateResp.Type)
 	require.NotEmpty(t, updateResp.Properties["validationSchema"])
 }
 
@@ -164,7 +164,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_AllFieldsAtOnce_Succeeds() {
 		{
 			Name:        "test_full_update",
 			Description: "Original",
-			Type:        "string-type",
+			Type:        "basic",
 			Properties: map[string]string{
 				"value": "old:value",
 			},
@@ -183,7 +183,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_AllFieldsAtOnce_Succeeds() {
 	updatePayload := ConsentElementUpdateRequest{
 		Name:        "test_full_update_new",
 		Description: "Completely new description",
-		Type:        "resource-field-type",
+		Type:        "resource-field",
 		Properties: map[string]string{
 			"resourcePath": "/new/path",
 			"jsonPath":     "$.newField",
@@ -197,7 +197,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_AllFieldsAtOnce_Succeeds() {
 	json.Unmarshal(bodyBytes, &updateResp)
 	require.Equal(t, "test_full_update_new", updateResp.Name)
 	require.Equal(t, "Completely new description", *updateResp.Description)
-	require.Equal(t, "resource-field-type", updateResp.Type)
+	require.Equal(t, "resource-field", updateResp.Type)
 	require.Equal(t, "/new/path", updateResp.Properties["resourcePath"])
 	require.Equal(t, "$.newField", updateResp.Properties["jsonPath"])
 }
@@ -210,7 +210,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_NonExistent_ReturnsNotFound() {
 	updatePayload := ConsentElementUpdateRequest{
 		Name:        "test_nonexistent",
 		Description: "Should fail",
-		Type:        "string-type",
+		Type:        "basic",
 	}
 
 	resp, bodyBytes := ts.updateElement(nonExistentID, updatePayload)
@@ -228,8 +228,8 @@ func (ts *ElementAPITestSuite) TestUpdateElement_NameConflict_ReturnsBadRequest(
 
 	// Create two elements
 	createPayload := []ConsentElementCreateRequest{
-		{Name: "test_conflict_1", Description: "First", Type: "string-type"},
-		{Name: "test_conflict_2", Description: "Second", Type: "string-type"},
+		{Name: "test_conflict_1", Description: "First", Type: "basic"},
+		{Name: "test_conflict_2", Description: "Second", Type: "basic"},
 	}
 
 	resp, bodyBytes := ts.createElement(createPayload)
@@ -245,7 +245,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_NameConflict_ReturnsBadRequest(
 	updatePayload := ConsentElementUpdateRequest{
 		Name:        "test_conflict_2", // Conflict!
 		Description: "Try to rename",
-		Type:        "string-type",
+		Type:        "basic",
 	}
 
 	resp, bodyBytes = ts.updateElement(elementID1, updatePayload)
@@ -261,7 +261,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_NameConflict_ReturnsBadRequest(
 func (ts *ElementAPITestSuite) TestUpdateElement_ErrorCases() {
 	// Create an element for testing
 	createPayload := []ConsentElementCreateRequest{
-		{Name: "test_update_errors", Description: "For error testing", Type: "string-type"},
+		{Name: "test_update_errors", Description: "For error testing", Type: "basic"},
 	}
 
 	resp, bodyBytes := ts.createElement(createPayload)
@@ -284,7 +284,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_ErrorCases() {
 			name: "MissingName_ReturnsValidationError",
 			payload: map[string]interface{}{
 				"description": "Missing name",
-				"type":        "string-type",
+				"type":        "basic",
 			},
 			setHeaders:      true,
 			expectedStatus:  http.StatusBadRequest,
@@ -319,7 +319,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_ErrorCases() {
 			payload: ConsentElementUpdateRequest{
 				Name:        "test_json_no_schema",
 				Description: "Missing validation schema",
-				Type:        "json-payload-type",
+				Type:        "json-payload",
 				Properties:  map[string]string{},
 			},
 			setHeaders:      true,
@@ -332,7 +332,7 @@ func (ts *ElementAPITestSuite) TestUpdateElement_ErrorCases() {
 			payload: ConsentElementUpdateRequest{
 				Name:        "test_missing_resource",
 				Description: "Missing resourcePath",
-				Type:        "resource-field-type",
+				Type:        "resource-field",
 				Properties: map[string]string{
 					"jsonPath": "$.test",
 				},

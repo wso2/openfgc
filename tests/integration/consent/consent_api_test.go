@@ -421,19 +421,19 @@ func (ts *ConsentAPITestSuite) createTestElements() {
 		{
 			"name":        "marketing-purpose",
 			"description": "Marketing consent element",
-			"type":        "string-type",
+			"type":        "basic",
 			"attributes":  map[string]string{},
 		},
 		{
 			"name":        "analytics-purpose",
 			"description": "Analytics consent element",
-			"type":        "string-type",
+			"type":        "basic",
 			"attributes":  map[string]string{},
 		},
 		{
 			"name":        "terms-purpose",
 			"description": "Terms and conditions element",
-			"type":        "string-type",
+			"type":        "basic",
 			"attributes":  map[string]string{},
 		},
 	}

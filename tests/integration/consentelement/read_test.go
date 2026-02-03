@@ -42,7 +42,7 @@ func (ts *ElementAPITestSuite) TestGetElementByID_StringType_ReturnsWithValue() 
 		{
 			Name:        "test_license_read_get",
 			Description: "License read permission",
-			Type:        "string-type",
+			Type:        "basic",
 			Properties: map[string]string{
 				"value": "license:read",
 			},
@@ -73,12 +73,12 @@ func (ts *ElementAPITestSuite) TestGetElementByID_StringType_ReturnsWithValue() 
 	require.Equal(t, "test_license_read_get", getResp.Name, "Name mismatch")
 	require.NotNil(t, getResp.Description, "Description should not be nil")
 	require.Equal(t, "License read permission", *getResp.Description, "Description mismatch")
-	require.Equal(t, "string-type", getResp.Type, "Type mismatch")
+	require.Equal(t, "basic", getResp.Type, "Type mismatch")
 	require.NotNil(t, getResp.Properties, "Properties should not be nil")
 	require.Equal(t, "license:read", getResp.Properties["value"], "Value property mismatch")
 }
 
-// TestGetElementByID_JsonPayloadType_ReturnsWithValidationSchema tests retrieving json-payload-type element
+// TestGetElementByID_JsonPayloadType_ReturnsWithValidationSchema tests retrieving json-payload element
 func (ts *ElementAPITestSuite) TestGetElementByID_JsonPayloadType_ReturnsWithValidationSchema() {
 	t := ts.T()
 
@@ -88,7 +88,7 @@ func (ts *ElementAPITestSuite) TestGetElementByID_JsonPayloadType_ReturnsWithVal
 		{
 			Name:        "test_account_schema_get",
 			Description: "Account schema validation",
-			Type:        "json-payload-type",
+			Type:        "json-payload",
 			Properties: map[string]string{
 				"validationSchema": validationSchema,
 			},
@@ -116,11 +116,11 @@ func (ts *ElementAPITestSuite) TestGetElementByID_JsonPayloadType_ReturnsWithVal
 
 	require.Equal(t, elementID, getResp.ID)
 	require.Equal(t, "test_account_schema_get", getResp.Name)
-	require.Equal(t, "json-payload-type", getResp.Type)
+	require.Equal(t, "json-payload", getResp.Type)
 	require.NotNil(t, getResp.Properties["validationSchema"])
 }
 
-// TestGetElementByID_ResourceFieldType_ReturnsWithBothPaths tests retrieving resource-field-type with both paths
+// TestGetElementByID_ResourceFieldType_ReturnsWithBothPaths tests retrieving resource-field with both paths
 func (ts *ElementAPITestSuite) TestGetElementByID_ResourceFieldType_ReturnsWithBothPaths() {
 	t := ts.T()
 
@@ -128,7 +128,7 @@ func (ts *ElementAPITestSuite) TestGetElementByID_ResourceFieldType_ReturnsWithB
 		{
 			Name:        "test_first_name_get",
 			Description: "First name field",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"resourcePath": "/users",
 				"jsonPath":     "$.firstName",
@@ -154,7 +154,7 @@ func (ts *ElementAPITestSuite) TestGetElementByID_ResourceFieldType_ReturnsWithB
 	err = json.Unmarshal([]byte(body), &getResp)
 	require.NoError(t, err)
 
-	require.Equal(t, "resource-field-type", getResp.Type)
+	require.Equal(t, "resource-field", getResp.Type)
 	require.Equal(t, "/users", getResp.Properties["resourcePath"], "ResourcePath missing")
 	require.Equal(t, "$.firstName", getResp.Properties["jsonPath"], "JsonPath missing")
 }
@@ -184,7 +184,7 @@ func (ts *ElementAPITestSuite) TestGetElementByID_AfterDelete_ReturnsNotFound() 
 		{
 			Name:        "test_to_delete",
 			Description: "Will be deleted",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 	}
 
@@ -271,9 +271,9 @@ func (ts *ElementAPITestSuite) TestListElements_DefaultPagination_ReturnsAllElem
 
 	// Create 3 elements
 	payload := []ConsentElementCreateRequest{
-		{Name: "test_list_1", Description: "First element", Type: "string-type"},
-		{Name: "test_list_2", Description: "Second element", Type: "string-type"},
-		{Name: "test_list_3", Description: "Third element", Type: "string-type"},
+		{Name: "test_list_1", Description: "First element", Type: "basic"},
+		{Name: "test_list_2", Description: "Second element", Type: "basic"},
+		{Name: "test_list_3", Description: "Third element", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(payload)
@@ -317,11 +317,11 @@ func (ts *ElementAPITestSuite) TestListElements_WithLimit_ReturnsPaginatedResult
 
 	// Create 5 elements
 	elements := []ConsentElementCreateRequest{
-		{Name: "test_page_1", Description: "Page test 1", Type: "string-type"},
-		{Name: "test_page_2", Description: "Page test 2", Type: "string-type"},
-		{Name: "test_page_3", Description: "Page test 3", Type: "string-type"},
-		{Name: "test_page_4", Description: "Page test 4", Type: "string-type"},
-		{Name: "test_page_5", Description: "Page test 5", Type: "string-type"},
+		{Name: "test_page_1", Description: "Page test 1", Type: "basic"},
+		{Name: "test_page_2", Description: "Page test 2", Type: "basic"},
+		{Name: "test_page_3", Description: "Page test 3", Type: "basic"},
+		{Name: "test_page_4", Description: "Page test 4", Type: "basic"},
+		{Name: "test_page_5", Description: "Page test 5", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(elements)
@@ -359,9 +359,9 @@ func (ts *ElementAPITestSuite) TestListElements_WithLimitAndOffset_ReturnsCorrec
 
 	// Create 3 elements to ensure we have data
 	elements := []ConsentElementCreateRequest{
-		{Name: "test_offset_1", Description: "Offset test 1", Type: "string-type"},
-		{Name: "test_offset_2", Description: "Offset test 2", Type: "string-type"},
-		{Name: "test_offset_3", Description: "Offset test 3", Type: "string-type"},
+		{Name: "test_offset_1", Description: "Offset test 1", Type: "basic"},
+		{Name: "test_offset_2", Description: "Offset test 2", Type: "basic"},
+		{Name: "test_offset_3", Description: "Offset test 3", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(elements)
@@ -399,8 +399,8 @@ func (ts *ElementAPITestSuite) TestListElements_FilterByName_ReturnsMatchingElem
 
 	// Create elements with distinctive names
 	elements := []ConsentElementCreateRequest{
-		{Name: "test_filter_exact", Description: "Exact match test", Type: "string-type"},
-		{Name: "test_filter_other", Description: "Other element", Type: "string-type"},
+		{Name: "test_filter_exact", Description: "Exact match test", Type: "basic"},
+		{Name: "test_filter_other", Description: "Other element", Type: "basic"},
 	}
 
 	resp, body := ts.createElement(elements)
@@ -476,12 +476,12 @@ func (ts *ElementAPITestSuite) TestListElements_VerifyAllTypes_ReturnsMixedTypes
 		{
 			Name:        "test_alltypes_string",
 			Description: "String type",
-			Type:        "string-type",
+			Type:        "basic",
 		},
 		{
 			Name:        "test_alltypes_jsonpayload",
 			Description: "JSON Payload type",
-			Type:        "json-payload-type",
+			Type:        "json-payload",
 			Properties: map[string]string{
 				"validationSchema": `{"type":"object"}`,
 			},
@@ -489,7 +489,7 @@ func (ts *ElementAPITestSuite) TestListElements_VerifyAllTypes_ReturnsMixedTypes
 		{
 			Name:        "test_alltypes_resourcefield",
 			Description: "Resource Field type",
-			Type:        "resource-field-type",
+			Type:        "resource-field",
 			Properties: map[string]string{
 				"resourcePath": "/test",
 				"jsonPath":     "$.test",
@@ -527,9 +527,9 @@ func (ts *ElementAPITestSuite) TestListElements_VerifyAllTypes_ReturnsMixedTypes
 		typesSeen[e.Type] = true
 	}
 
-	require.True(t, typesSeen["string-type"], "Should have string-type element")
-	require.True(t, typesSeen["json-payload-type"], "Should have json-payload-type element")
-	require.True(t, typesSeen["resource-field-type"], "Should have resource-field-type element")
+	require.True(t, typesSeen["basic"], "Should have basic element")
+	require.True(t, typesSeen["json-payload"], "Should have json-payload element")
+	require.True(t, typesSeen["resource-field"], "Should have resource-field element")
 }
 
 // TestListElements_ErrorCases tests error scenarios for LIST

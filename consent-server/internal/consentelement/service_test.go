@@ -59,8 +59,8 @@ func TestService_CreateElementsInBatch_DuplicateNameInBatch(t *testing.T) {
 	service := newConsentElementService(registry)
 
 	requests := []model.ConsentElementCreateRequest{
-		{Name: "duplicate", Type: "string-type"},
-		{Name: "duplicate", Type: "string-type"},
+		{Name: "duplicate", Type: "basic"},
+		{Name: "duplicate", Type: "basic"},
 	}
 
 	// Mock CheckNameExists for first occurrence - service checks DB before detecting duplicate in batch
@@ -84,7 +84,7 @@ func TestService_CreateElementsInBatch_NameAlreadyExists(t *testing.T) {
 	service := newConsentElementService(registry)
 
 	requests := []model.ConsentElementCreateRequest{
-		{Name: "existing", Type: "string-type"},
+		{Name: "existing", Type: "basic"},
 	}
 
 	// Mock name existence check - returns true
@@ -111,7 +111,7 @@ func TestService_GetElement_Success(t *testing.T) {
 	expectedElement := &model.ConsentElement{
 		ID:         testElementID,
 		Name:       "test_element",
-		Type:       "string-type",
+		Type:       "basic",
 		OrgID:      testOrgID,
 		Properties: make(map[string]string),
 	}

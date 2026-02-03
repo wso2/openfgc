@@ -24,15 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestStringElementTypeHandler_GetType tests the GetType method
-func TestStringElementTypeHandler_GetType(t *testing.T) {
-	handler := &StringElementTypeHandler{}
+// TestBasicElementTypeHandler_GetType tests the GetType method
+func TestBasicElementTypeHandler_GetType(t *testing.T) {
+	handler := &BasicElementTypeHandler{}
 	require.Equal(t, "basic", handler.GetType())
 }
 
-// TestStringElementTypeHandler_ValidateProperties tests property validation
-func TestStringElementTypeHandler_ValidateProperties(t *testing.T) {
-	handler := &StringElementTypeHandler{}
+// TestBasicElementTypeHandler_ValidateProperties tests property validation
+func TestBasicElementTypeHandler_ValidateProperties(t *testing.T) {
+	handler := &BasicElementTypeHandler{}
 
 	testCases := []struct {
 		name       string
@@ -84,9 +84,9 @@ func TestStringElementTypeHandler_ValidateProperties(t *testing.T) {
 	}
 }
 
-// TestStringElementTypeHandler_ProcessProperties tests property processing
-func TestStringElementTypeHandler_ProcessProperties(t *testing.T) {
-	handler := &StringElementTypeHandler{}
+// TestBasicElementTypeHandler_ProcessProperties tests property processing
+func TestBasicElementTypeHandler_ProcessProperties(t *testing.T) {
+	handler := &BasicElementTypeHandler{}
 
 	testCases := []struct {
 		name       string
@@ -124,9 +124,9 @@ func TestStringElementTypeHandler_ProcessProperties(t *testing.T) {
 	}
 }
 
-// TestStringElementTypeHandler_GetPropertySpec tests property specification
-func TestStringElementTypeHandler_GetPropertySpec(t *testing.T) {
-	handler := &StringElementTypeHandler{}
+// TestBasicElementTypeHandler_GetPropertySpec tests property specification
+func TestBasicElementTypeHandler_GetPropertySpec(t *testing.T) {
+	handler := &BasicElementTypeHandler{}
 	spec := handler.GetPropertySpec()
 
 	require.NotNil(t, spec)

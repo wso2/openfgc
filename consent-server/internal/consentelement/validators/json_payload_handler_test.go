@@ -24,15 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestJsonSchemaElementTypeHandler_GetType tests the GetType method
-func TestJsonSchemaElementTypeHandler_GetType(t *testing.T) {
-	handler := &JsonSchemaElementTypeHandler{}
+// TestJsonPayloadElementTypeHandler_GetType tests the GetType method
+func TestJsonPayloadElementTypeHandler_GetType(t *testing.T) {
+	handler := &JsonPayloadElementTypeHandler{}
 	require.Equal(t, "json-payload", handler.GetType())
 }
 
-// TestJsonSchemaElementTypeHandler_ValidateProperties tests property validation
-func TestJsonSchemaElementTypeHandler_ValidateProperties(t *testing.T) {
-	handler := &JsonSchemaElementTypeHandler{}
+// TestJsonPayloadElementTypeHandler_ValidateProperties tests property validation
+func TestJsonPayloadElementTypeHandler_ValidateProperties(t *testing.T) {
+	handler := &JsonPayloadElementTypeHandler{}
 
 	testCases := []struct {
 		name          string
@@ -139,9 +139,9 @@ func TestJsonSchemaElementTypeHandler_ValidateProperties(t *testing.T) {
 	}
 }
 
-// TestJsonSchemaElementTypeHandler_ProcessProperties tests property processing
-func TestJsonSchemaElementTypeHandler_ProcessProperties(t *testing.T) {
-	handler := &JsonSchemaElementTypeHandler{}
+// TestJsonPayloadElementTypeHandler_ProcessProperties tests property processing
+func TestJsonPayloadElementTypeHandler_ProcessProperties(t *testing.T) {
+	handler := &JsonPayloadElementTypeHandler{}
 
 	testCases := []struct {
 		name       string
@@ -179,9 +179,9 @@ func TestJsonSchemaElementTypeHandler_ProcessProperties(t *testing.T) {
 	}
 }
 
-// TestJsonSchemaElementTypeHandler_GetPropertySpec tests property specification
-func TestJsonSchemaElementTypeHandler_GetPropertySpec(t *testing.T) {
-	handler := &JsonSchemaElementTypeHandler{}
+// TestJsonPayloadElementTypeHandler_GetPropertySpec tests property specification
+func TestJsonPayloadElementTypeHandler_GetPropertySpec(t *testing.T) {
+	handler := &JsonPayloadElementTypeHandler{}
 	spec := handler.GetPropertySpec()
 
 	require.NotNil(t, spec)

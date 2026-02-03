@@ -248,6 +248,8 @@ function run_server() {
 function test_unit() {
     echo "================================================================"
     echo "Running unit tests..."
+    echo "Cleaning test cache..."
+    go clean -testcache
     cd consent-server || exit 1
     go test ./internal/... -v -cover
     cd "$SCRIPT_DIR" || exit 1
@@ -257,6 +259,10 @@ function test_unit() {
 function test_integration() {
     echo "================================================================"
     echo "Running integration tests..."
+    
+    # Clean test cache to ensure tests run with latest changes
+    echo "Cleaning test cache..."
+    go clean -testcache
     
     # Build the server first if binary doesn't exist
     if [ ! -f "$OUTPUT_DIR/$BINARY_NAME" ]; then

@@ -50,7 +50,7 @@ func TestCreateElement_Success(t *testing.T) {
 	requests := []model.ConsentElementCreateRequest{
 		{
 			Name:        "test_element",
-			Type:        "string-type",
+			Type:        "basic",
 			Description: "Test element",
 			Properties:  map[string]string{"value": "test"},
 		},
@@ -61,7 +61,7 @@ func TestCreateElement_Success(t *testing.T) {
 			ID:          testElementID,
 			Name:        "test_element",
 			Description: stringPtr("Test element"),
-			Type:        "string-type",
+			Type:        "basic",
 			OrgID:       testOrgID,
 			Properties:  map[string]string{"value": "test"},
 		},
@@ -96,7 +96,7 @@ func TestCreateElement_MissingOrgID(t *testing.T) {
 	mockService := NewMockConsentElementService(t)
 	handler := newConsentElementHandler(mockService)
 
-	requests := []model.ConsentElementCreateRequest{{Name: "test", Type: "string-type"}}
+	requests := []model.ConsentElementCreateRequest{{Name: "test", Type: "basic"}}
 	body, _ := json.Marshal(requests)
 	req := httptest.NewRequest(http.MethodPost, "/consent-elements", bytes.NewBuffer(body))
 	rr := httptest.NewRecorder()
@@ -143,7 +143,7 @@ func TestCreateElement_ServiceError(t *testing.T) {
 	mockService := NewMockConsentElementService(t)
 
 	requests := []model.ConsentElementCreateRequest{
-		{Name: "test_element", Type: "string-type"},
+		{Name: "test_element", Type: "basic"},
 	}
 
 	serviceErr := &serviceerror.ServiceError{
@@ -175,7 +175,7 @@ func TestGetElement_Success(t *testing.T) {
 		ID:          testElementID,
 		Name:        "test_element",
 		Description: stringPtr("Test element"),
-		Type:        "string-type",
+		Type:        "basic",
 		OrgID:       testOrgID,
 		Properties:  map[string]string{"value": "test"},
 	}
@@ -242,14 +242,14 @@ func TestListElements_Success(t *testing.T) {
 		{
 			ID:         "elem-1",
 			Name:       "element_1",
-			Type:       "string-type",
+			Type:       "basic",
 			OrgID:      testOrgID,
 			Properties: map[string]string{},
 		},
 		{
 			ID:         "elem-2",
 			Name:       "element_2",
-			Type:       "json-payload-type",
+			Type:       "json-payload",
 			OrgID:      testOrgID,
 			Properties: map[string]string{"validationSchema": "{}"},
 		},
@@ -348,7 +348,7 @@ func TestUpdateElement_Success(t *testing.T) {
 	updateReq := model.ConsentElementUpdateRequest{
 		Name:        "updated_element",
 		Description: stringPtr("Updated description"),
-		Type:        "string-type",
+		Type:        "basic",
 		Properties:  map[string]string{"value": "updated"},
 	}
 
@@ -356,7 +356,7 @@ func TestUpdateElement_Success(t *testing.T) {
 		ID:          testElementID,
 		Name:        "updated_element",
 		Description: stringPtr("Updated description"),
-		Type:        "string-type",
+		Type:        "basic",
 		OrgID:       testOrgID,
 		Properties:  map[string]string{"value": "updated"},
 	}
@@ -386,7 +386,7 @@ func TestUpdateElement_MissingOrgID(t *testing.T) {
 	mockService := NewMockConsentElementService(t)
 	handler := newConsentElementHandler(mockService)
 
-	updateReq := model.ConsentElementUpdateRequest{Name: "test", Type: "string-type"}
+	updateReq := model.ConsentElementUpdateRequest{Name: "test", Type: "basic"}
 	body, _ := json.Marshal(updateReq)
 	req := httptest.NewRequest(http.MethodPut, "/consent-elements/"+testElementID, bytes.NewBuffer(body))
 	req.SetPathValue("elementId", testElementID)
