@@ -104,67 +104,67 @@ func (j *JSON) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ConsentElementItem represents a single consent purpose with name, value, and selection status
+// ConsentElementItem represents a single consent element with name, value, and selection status
 type ConsentElementItem struct {
 	Name           string                 `json:"name"`
 	Value          interface{}            `json:"value,omitempty"`          // Can be string, object, or array - omitted when nil
 	IsUserApproved *bool                  `json:"isUserApproved,omitempty"` // Optional: defaults to false if not provided
 	IsMandatory    *bool                  `json:"isMandatory,omitempty"`    // Optional: defaults to true if not provided
-	Type           *string                `json:"type,omitempty"`           // Enriched from purpose definition (optional)
-	Description    *string                `json:"description,omitempty"`    // Enriched from purpose definition (optional)
-	Attributes     map[string]interface{} `json:"attributes,omitempty"`     // Enriched from purpose definition (optional)
+	Type           *string                `json:"type,omitempty"`           // Enriched from element definition (optional)
+	Description    *string                `json:"description,omitempty"`    // Enriched from element definition (optional)
+	Properties     map[string]interface{} `json:"properties,omitempty"`     // Enriched from element definition (optional)
 }
 
 // ConsentPurposeItem represents a purpose in consent API
 type ConsentPurposeItem struct {
 	PurposeName string                       `json:"name" binding:"required"`
-	Elements    []ConsentPurposeApprovalItem `json:"elements" binding:"required,min=1"`
+	Elements    []ConsentElementApprovalItem `json:"elements" binding:"required,min=1"`
 }
 
-// ConsentPurposeApprovalItem represents an element approval within a purpose (for POST, GET, PUT, Search)
-type ConsentPurposeApprovalItem struct {
-	PurposeName    string      `json:"name" binding:"required"`
+// ConsentElementApprovalItem represents an element approval within a purpose (for POST, GET, PUT, Search)
+type ConsentElementApprovalItem struct {
+	ElementName    string      `json:"name" binding:"required"`
 	IsUserApproved bool        `json:"isUserApproved"`
 	Value          interface{} `json:"value,omitempty"`
 	// IsMandatory is tracked internally but excluded from JSON in regular responses
 	IsMandatory bool `json:"-"`
 }
 
-// ConsentPurposeApprovalItemValidate represents a purpose approval with enriched details (for Validate endpoint)
-type ConsentPurposeApprovalItemValidate struct {
-	PurposeName    string                 `json:"name" binding:"required"`
+// ConsentElementApprovalItemValidate represents a purpose approval with enriched details (for Validate endpoint)
+type ConsentElementApprovalItemValidate struct {
+	ElementName    string                 `json:"name" binding:"required"`
 	IsUserApproved bool                   `json:"isUserApproved"`
 	Value          interface{}            `json:"value,omitempty"`
 	IsMandatory    bool                   `json:"isMandatory"`
 	Type           string                 `json:"type,omitempty"`
 	Description    string                 `json:"description,omitempty"`
-	Attributes     map[string]interface{} `json:"attributes,omitempty"`
+	Properties     map[string]interface{} `json:"properties,omitempty"`
 }
 
 // ConsentPurposeItemValidate represents a purpose with enriched details (for Validate endpoint)
 type ConsentPurposeItemValidate struct {
 	PurposeName string                               `json:"name" binding:"required"`
-	Elements    []ConsentPurposeApprovalItemValidate `json:"elements" binding:"required,min=1"`
+	Elements    []ConsentElementApprovalItemValidate `json:"elements" binding:"required,min=1"`
 }
 
 // ConsentPurposeCreateRequest - internal format for purpose processing
 type ConsentPurposeCreateRequest struct {
 	PurposeName string
 	PurposeID   string
-	Elements    []ConsentPurposeApprovalCreateRequest
+	Elements    []ConsentElementApprovalCreateRequest
 }
 
-// ConsentPurposeApprovalCreateRequest - internal format for purpose approval
-type ConsentPurposeApprovalCreateRequest struct {
-	PurposeID      string
-	PurposeName    string
+// ConsentElementApprovalCreateRequest - internal format for element approval
+type ConsentElementApprovalCreateRequest struct {
+	ElementID      string
+	ElementName    string
 	IsUserApproved bool
 	Value          *string // JSON string
 	IsMandatory    bool    // from purpose definition
 }
 
-// ConsentPurposeApprovalRecord represents the DB record for element approvals
-type ConsentPurposeApprovalRecord struct {
+// ConsentElementApprovalRecord represents the DB record for element approvals
+type ConsentElementApprovalRecord struct {
 	ConsentID      string
 	PurposeID      string
 	PurposeName    string
@@ -418,7 +418,7 @@ func (req *ConsentAPIRequest) ToConsentCreateRequest() (*ConsentCreateRequest, e
 	// Structure purposes data (validation happens in service layer)
 	purposes := make([]ConsentPurposeCreateRequest, len(req.Purposes))
 	for i, pg := range req.Purposes {
-		elements := make([]ConsentPurposeApprovalCreateRequest, len(pg.Elements))
+		elements := make([]ConsentElementApprovalCreateRequest, len(pg.Elements))
 		for j, p := range pg.Elements {
 			var valueJSON *string
 			if p.Value != nil {
@@ -430,8 +430,8 @@ func (req *ConsentAPIRequest) ToConsentCreateRequest() (*ConsentCreateRequest, e
 				valueJSON = &valueStr
 			}
 
-			elements[j] = ConsentPurposeApprovalCreateRequest{
-				PurposeName:    p.PurposeName,
+			elements[j] = ConsentElementApprovalCreateRequest{
+				ElementName:    p.ElementName,
 				IsUserApproved: p.IsUserApproved,
 				Value:          valueJSON,
 			}
@@ -483,21 +483,21 @@ func (req *ConsentAPIUpdateRequest) ToConsentUpdateRequest() (*ConsentUpdateRequ
 		purposes = make([]ConsentPurposeCreateRequest, len(req.Purposes))
 		for i, pg := range req.Purposes {
 			// Convert elements within the purpose
-			elements := make([]ConsentPurposeApprovalCreateRequest, len(pg.Elements))
+			elements := make([]ConsentElementApprovalCreateRequest, len(pg.Elements))
 			for j, p := range pg.Elements {
 				// Marshal value to JSON if present
 				var valueJSON *string
 				if p.Value != nil {
 					valueBytes, err := json.Marshal(p.Value)
 					if err != nil {
-						return nil, fmt.Errorf("failed to marshal purpose value for '%s': %w", p.PurposeName, err)
+						return nil, fmt.Errorf("failed to marshal purpose value for '%s': %w", p.ElementName, err)
 					}
 					valueStr := string(valueBytes)
 					valueJSON = &valueStr
 				}
 
-				elements[j] = ConsentPurposeApprovalCreateRequest{
-					PurposeName:    p.PurposeName,
+				elements[j] = ConsentElementApprovalCreateRequest{
+					ElementName:    p.ElementName,
 					IsUserApproved: p.IsUserApproved,
 					Value:          valueJSON,
 					// PurposeID and IsMandatory will be resolved during validation

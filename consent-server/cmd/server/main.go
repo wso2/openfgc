@@ -139,7 +139,7 @@ func waitForShutdown(server *http.Server, logger *log.Logger) {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Fatal("Server forced to shutdown", log.Error(err))
+		logger.Error("Server forced to shutdown", log.Error(err))
 	}
 
 	// Unregister services

@@ -130,21 +130,17 @@ func (ts *ConsentAPITestSuite) TestValidateConsent_NonExistentConsent_ReturnsInv
 	}
 }
 
-// TestValidateConsent_InvalidConsentID_ReturnsBadRequest validates malformed consent ID returns validation result
+// TestValidateConsent_InvalidConsentID_ReturnsBadRequest validates non-existent consent ID returns 404
 func (ts *ConsentAPITestSuite) TestValidateConsent_InvalidConsentID_ReturnsBadRequest() {
 	validatePayload := ConsentValidateRequest{
 		ConsentID: "not-a-valid-uuid",
 	}
 
-	resp, body := ts.validateConsent(validatePayload)
+	resp, _ := ts.validateConsent(validatePayload)
 	defer resp.Body.Close()
 
-	// Validate API returns 200 with isValid=false for invalid consent ID
-	ts.Equal(http.StatusOK, resp.StatusCode)
-
-	var validateResp ConsentValidateResponse
-	ts.NoError(json.Unmarshal(body, &validateResp))
-	ts.False(validateResp.IsValid, "Invalid consent ID should result in invalid validation")
+	// Validate API returns 404 for non-existent consent ID
+	ts.Equal(http.StatusNotFound, resp.StatusCode)
 }
 
 // TestValidateConsent_MissingConsentID_ReturnsBadRequest validates missing consent ID returns 400

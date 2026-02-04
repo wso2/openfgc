@@ -32,28 +32,24 @@ import (
 // ConsentStore defines the interface for consent data operations
 type ConsentStore interface {
 	GetByID(ctx context.Context, consentID, orgID string) (*consentModel.Consent, error)
-	List(ctx context.Context, orgID string, limit, offset int) ([]consentModel.Consent, int, error)
 	Search(ctx context.Context, filters consentModel.ConsentSearchFilters) ([]consentModel.Consent, int, error)
-	GetByClientID(ctx context.Context, clientID, orgID string) ([]consentModel.Consent, error)
 	GetAttributesByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentAttribute, error)
 	GetAttributesByConsentIDs(ctx context.Context, consentIDs []string, orgID string) (map[string]map[string]string, error)
-	GetStatusAuditByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentStatusAudit, error)
 	FindConsentIDsByAttributeKey(ctx context.Context, key, orgID string) ([]string, error)
 	FindConsentIDsByAttribute(ctx context.Context, key, value, orgID string) ([]string, error)
 	Create(tx dbmodel.TxInterface, consent *consentModel.Consent) error
 	Update(tx dbmodel.TxInterface, consent *consentModel.Consent) error
 	UpdateStatus(tx dbmodel.TxInterface, consentID, orgID, status string, updatedTime int64) error
-	Delete(tx dbmodel.TxInterface, consentID, orgID string) error
 	CreateAttributes(tx dbmodel.TxInterface, attributes []consentModel.ConsentAttribute) error
 	DeleteAttributesByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
 	CreateStatusAudit(tx dbmodel.TxInterface, audit *consentModel.ConsentStatusAudit) error
-	// Purpose Consent mapping methods
-	CreateConsentPurposeConsent(tx dbmodel.TxInterface, consentID, purposeID, orgID string) error
-	CreatePurposeApproval(tx dbmodel.TxInterface, approval *consentModel.ConsentPurposeApprovalRecord) error
-	GetConsentPurposesByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentPurposeMapping, error)
-	GetPurposeApprovalsByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentPurposeApprovalRecord, error)
-	DeleteConsentPurposesByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
-	DeletePurposeApprovalsByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
+
+	CreateConsentPurposeMapping(tx dbmodel.TxInterface, consentID, purposeID, orgID string) error
+	CreatePurposeElementApproval(tx dbmodel.TxInterface, approval *consentModel.ConsentElementApprovalRecord) error
+	GetConsentPurposeMappingsByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentPurposeMapping, error)
+	GetPurposeElementApprovalsByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentElementApprovalRecord, error)
+	DeleteConsentPurposeMappingsByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
+	DeletePurposeElementApprovalsByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
 	CheckPurposeUsedInConsents(ctx context.Context, purposeID, orgID string) (bool, error)
 }
 
@@ -91,7 +87,7 @@ type ConsentElementStore interface {
 type ConsentPurposeStore interface {
 	CreatePurpose(tx dbmodel.TxInterface, purpose *consentConsentPurposeModel.ConsentPurpose) error
 	GetPurposeByID(ctx context.Context, purposeID, orgID string) (*consentConsentPurposeModel.ConsentPurpose, error)
-	ListPurposes(ctx context.Context, orgID, name string, clientIDs []string, purposeNames []string, offset, limit int) ([]consentConsentPurposeModel.ConsentPurpose, int, error)
+	ListPurposes(ctx context.Context, orgID, name string, clientIDs []string, elementNames []string, offset, limit int) ([]consentConsentPurposeModel.ConsentPurpose, int, error)
 	UpdatePurpose(tx dbmodel.TxInterface, purpose *consentConsentPurposeModel.ConsentPurpose) error
 	DeletePurpose(tx dbmodel.TxInterface, purposeID, orgID string) error
 	CheckPurposeNameExists(ctx context.Context, name, clientID, orgID string, excludePurposeID *string) (bool, error)

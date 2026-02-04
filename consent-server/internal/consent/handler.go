@@ -47,7 +47,7 @@ func (h *consentHandler) createConsent(w http.ResponseWriter, r *http.Request) {
 	clientID := r.Header.Get(constants.HeaderTPPClientID)
 
 	if err := utils.ValidateOrgIdAndClientIdIsPresent(r); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *consentHandler) createConsent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	apiResponse := consent.ToAPIResponse()
-	w.Header().Set(constants.HeaderContentType, "application/json")
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(apiResponse)
 }
@@ -78,12 +78,12 @@ func (h *consentHandler) getConsent(w http.ResponseWriter, r *http.Request) {
 	// TODO: Is clientID validation needed?
 
 	if err := utils.ValidateOrgID(orgID); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
 	if err := utils.ValidateConsentID(consentID); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
@@ -104,7 +104,7 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 	orgID := r.Header.Get(constants.HeaderOrgID)
 
 	if orgID == "" {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, "Organization ID is required"))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "Organization ID is required"))
 		return
 	}
 
@@ -197,12 +197,12 @@ func (h *consentHandler) updateConsent(w http.ResponseWriter, r *http.Request) {
 	clientID := r.Header.Get(constants.HeaderTPPClientID)
 
 	if err := utils.ValidateOrgIdAndClientIdIsPresent(r); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
 	if err := utils.ValidateConsentID(consentID); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
@@ -231,12 +231,12 @@ func (h *consentHandler) revokeConsent(w http.ResponseWriter, r *http.Request) {
 	orgID := r.Header.Get(constants.HeaderOrgID)
 
 	if err := utils.ValidateOrgID(orgID); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
 	if err := utils.ValidateConsentID(consentID); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
@@ -263,7 +263,7 @@ func (h *consentHandler) validateConsent(w http.ResponseWriter, r *http.Request)
 	orgID := r.Header.Get(constants.HeaderOrgID)
 
 	if err := utils.ValidateOrgID(orgID); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
@@ -292,7 +292,7 @@ func (h *consentHandler) searchConsentsByAttribute(w http.ResponseWriter, r *htt
 	orgID := r.Header.Get(constants.HeaderOrgID)
 
 	if err := utils.ValidateOrgID(orgID); err != nil {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, err.Error()))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return
 	}
 
@@ -302,7 +302,7 @@ func (h *consentHandler) searchConsentsByAttribute(w http.ResponseWriter, r *htt
 
 	// Validate that key parameter is present
 	if key == "" {
-		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, "key parameter is required"))
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "key parameter is required"))
 		return
 	}
 

@@ -227,7 +227,7 @@ func (_c *ConsentStore_CreateConsentPurposeConsent_Call) RunAndReturn(run func(m
 }
 
 // CreatePurposeApproval provides a mock function with given fields: tx, approval
-func (_m *ConsentStore) CreatePurposeApproval(tx model.TxInterface, approval *consentmodel.ConsentPurposeApprovalRecord) error {
+func (_m *ConsentStore) CreatePurposeApproval(tx model.TxInterface, approval *consentmodel.ConsentElementApprovalRecord) error {
 	ret := _m.Called(tx, approval)
 
 	if len(ret) == 0 {
@@ -235,7 +235,7 @@ func (_m *ConsentStore) CreatePurposeApproval(tx model.TxInterface, approval *co
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(model.TxInterface, *consentmodel.ConsentPurposeApprovalRecord) error); ok {
+	if rf, ok := ret.Get(0).(func(model.TxInterface, *consentmodel.ConsentElementApprovalRecord) error); ok {
 		r0 = rf(tx, approval)
 	} else {
 		r0 = ret.Error(0)
@@ -256,9 +256,9 @@ func (_e *ConsentStore_Expecter) CreatePurposeApproval(tx interface{}, approval 
 	return &ConsentStore_CreatePurposeApproval_Call{Call: _e.mock.On("CreatePurposeApproval", tx, approval)}
 }
 
-func (_c *ConsentStore_CreatePurposeApproval_Call) Run(run func(tx model.TxInterface, approval *consentmodel.ConsentPurposeApprovalRecord)) *ConsentStore_CreatePurposeApproval_Call {
+func (_c *ConsentStore_CreatePurposeApproval_Call) Run(run func(tx model.TxInterface, approval *consentmodel.ConsentElementApprovalRecord)) *ConsentStore_CreatePurposeApproval_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(model.TxInterface), args[1].(*consentmodel.ConsentPurposeApprovalRecord))
+		run(args[0].(model.TxInterface), args[1].(*consentmodel.ConsentElementApprovalRecord))
 	})
 	return _c
 }
@@ -268,7 +268,7 @@ func (_c *ConsentStore_CreatePurposeApproval_Call) Return(_a0 error) *ConsentSto
 	return _c
 }
 
-func (_c *ConsentStore_CreatePurposeApproval_Call) RunAndReturn(run func(model.TxInterface, *consentmodel.ConsentPurposeApprovalRecord) error) *ConsentStore_CreatePurposeApproval_Call {
+func (_c *ConsentStore_CreatePurposeApproval_Call) RunAndReturn(run func(model.TxInterface, *consentmodel.ConsentElementApprovalRecord) error) *ConsentStore_CreatePurposeApproval_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -934,23 +934,23 @@ func (_c *ConsentStore_GetConsentPurposesByConsentID_Call) RunAndReturn(run func
 }
 
 // GetPurposeApprovalsByConsentID provides a mock function with given fields: ctx, consentID, orgID
-func (_m *ConsentStore) GetPurposeApprovalsByConsentID(ctx context.Context, consentID string, orgID string) ([]consentmodel.ConsentPurposeApprovalRecord, error) {
+func (_m *ConsentStore) GetPurposeApprovalsByConsentID(ctx context.Context, consentID string, orgID string) ([]consentmodel.ConsentElementApprovalRecord, error) {
 	ret := _m.Called(ctx, consentID, orgID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPurposeApprovalsByConsentID")
 	}
 
-	var r0 []consentmodel.ConsentPurposeApprovalRecord
+	var r0 []consentmodel.ConsentElementApprovalRecord
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]consentmodel.ConsentPurposeApprovalRecord, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]consentmodel.ConsentElementApprovalRecord, error)); ok {
 		return rf(ctx, consentID, orgID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) []consentmodel.ConsentPurposeApprovalRecord); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []consentmodel.ConsentElementApprovalRecord); ok {
 		r0 = rf(ctx, consentID, orgID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]consentmodel.ConsentPurposeApprovalRecord)
+			r0 = ret.Get(0).([]consentmodel.ConsentElementApprovalRecord)
 		}
 	}
 
@@ -983,12 +983,12 @@ func (_c *ConsentStore_GetPurposeApprovalsByConsentID_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *ConsentStore_GetPurposeApprovalsByConsentID_Call) Return(_a0 []consentmodel.ConsentPurposeApprovalRecord, _a1 error) *ConsentStore_GetPurposeApprovalsByConsentID_Call {
+func (_c *ConsentStore_GetPurposeApprovalsByConsentID_Call) Return(_a0 []consentmodel.ConsentElementApprovalRecord, _a1 error) *ConsentStore_GetPurposeApprovalsByConsentID_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *ConsentStore_GetPurposeApprovalsByConsentID_Call) RunAndReturn(run func(context.Context, string, string) ([]consentmodel.ConsentPurposeApprovalRecord, error)) *ConsentStore_GetPurposeApprovalsByConsentID_Call {
+func (_c *ConsentStore_GetPurposeApprovalsByConsentID_Call) RunAndReturn(run func(context.Context, string, string) ([]consentmodel.ConsentElementApprovalRecord, error)) *ConsentStore_GetPurposeApprovalsByConsentID_Call {
 	_c.Call.Return(run)
 	return _c
 }

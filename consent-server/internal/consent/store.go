@@ -42,16 +42,6 @@ var (
 		Query: "SELECT CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID FROM CONSENT WHERE CONSENT_ID = ? AND ORG_ID = ?",
 	}
 
-	QueryListConsents = dbmodel.DBQuery{
-		ID:    "LIST_CONSENTS",
-		Query: "SELECT CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID FROM CONSENT WHERE ORG_ID = ? ORDER BY CREATED_TIME DESC LIMIT ? OFFSET ?",
-	}
-
-	QueryCountConsents = dbmodel.DBQuery{
-		ID:    "COUNT_CONSENTS",
-		Query: "SELECT COUNT(*) as count FROM CONSENT WHERE ORG_ID = ?",
-	}
-
 	QueryUpdateConsent = dbmodel.DBQuery{
 		ID:    "UPDATE_CONSENT",
 		Query: "UPDATE CONSENT SET UPDATED_TIME = ?, CONSENT_TYPE = ?, CONSENT_FREQUENCY = ?, VALIDITY_TIME = ?, RECURRING_INDICATOR = ?, DATA_ACCESS_VALIDITY_DURATION = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
@@ -60,16 +50,6 @@ var (
 	QueryUpdateConsentStatus = dbmodel.DBQuery{
 		ID:    "UPDATE_CONSENT_STATUS",
 		Query: "UPDATE CONSENT SET CURRENT_STATUS = ?, UPDATED_TIME = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
-	}
-
-	QueryDeleteConsent = dbmodel.DBQuery{
-		ID:    "DELETE_CONSENT",
-		Query: "DELETE FROM CONSENT WHERE CONSENT_ID = ? AND ORG_ID = ?",
-	}
-
-	QueryGetConsentsByClientID = dbmodel.DBQuery{
-		ID:    "GET_CONSENTS_BY_CLIENT_ID",
-		Query: "SELECT CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID FROM CONSENT WHERE CLIENT_ID = ? AND ORG_ID = ?",
 	}
 
 	// Attribute queries
@@ -104,24 +84,14 @@ var (
 		Query: "INSERT INTO CONSENT_STATUS_AUDIT (STATUS_AUDIT_ID, CONSENT_ID, CURRENT_STATUS, ACTION_TIME, REASON, ACTION_BY, PREVIOUS_STATUS, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 	}
 
-	QueryGetStatusAuditByConsentID = dbmodel.DBQuery{
-		ID:    "GET_STATUS_AUDIT_BY_CONSENT_ID",
-		Query: "SELECT STATUS_AUDIT_ID, CONSENT_ID, CURRENT_STATUS, ACTION_TIME, REASON, ACTION_BY, PREVIOUS_STATUS, ORG_ID FROM CONSENT_STATUS_AUDIT WHERE CONSENT_ID = ? AND ORG_ID = ? ORDER BY ACTION_TIME DESC",
-	}
-
 	QueryGetAttributesByConsentIDs = dbmodel.DBQuery{
 		ID:    "GET_ATTRIBUTES_BY_CONSENT_IDS",
 		Query: "", // Built dynamically
 	}
 
-	QuerySearchConsents = dbmodel.DBQuery{
-		ID:    "SEARCH_CONSENTS",
-		Query: "", // Built dynamically
-	}
-
 	// Purpose Consent queries
-	QueryCreateConsentPurposeConsent = dbmodel.DBQuery{
-		ID:    "CREATE_CONSENT_PURPOSE_CONSENT",
+	QueryCreateConsentPurposeMapping = dbmodel.DBQuery{
+		ID:    "CREATE_CONSENT_PURPOSE_MAPPING",
 		Query: "INSERT INTO PURPOSE_CONSENT_MAPPING (CONSENT_ID, PURPOSE_ID, ORG_ID) VALUES (?, ?, ?)",
 	}
 
@@ -196,7 +166,7 @@ func (s *store) getDBClient() (provider.DBClientInterface, error) {
 	return provider.GetDBProvider().GetConsentDBClient()
 }
 
-// Create creates a new consent within a transaction
+// Create a new consent within a transaction
 func (s *store) Create(tx dbmodel.TxInterface, consent *model.Consent) error {
 	_, err := tx.Exec(QueryCreateConsent,
 		consent.ConsentID, consent.CreatedTime, consent.UpdatedTime, consent.ClientID,
@@ -221,41 +191,6 @@ func (s *store) GetByID(ctx context.Context, consentID, orgID string) (*model.Co
 		return nil, nil
 	}
 	return mapToConsent(rows[0]), nil
-}
-
-// List retrieves paginated consents
-func (s *store) List(ctx context.Context, orgID string, limit, offset int) ([]model.Consent, int, error) {
-	dbClient, err := s.getDBClient()
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get database client: %w", err)
-	}
-
-	countRows, err := dbClient.Query(QueryCountConsents, orgID)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	totalCount := 0
-	if len(countRows) > 0 {
-		if count, ok := countRows[0]["count"].(int64); ok {
-			totalCount = int(count)
-		}
-	}
-
-	rows, err := dbClient.Query(QueryListConsents, orgID, limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	consents := make([]model.Consent, 0, len(rows))
-	for _, row := range rows {
-		consent := mapToConsent(row)
-		if consent != nil {
-			consents = append(consents, *consent)
-		}
-	}
-
-	return consents, totalCount, nil
 }
 
 // Search retrieves consents based on filters with pagination
@@ -404,35 +339,6 @@ func (s *store) UpdateStatus(tx dbmodel.TxInterface, consentID, orgID, status st
 	return nil
 }
 
-// Delete deletes a consent within a transaction
-func (s *store) Delete(tx dbmodel.TxInterface, consentID, orgID string) error {
-	_, err := tx.Exec(QueryDeleteConsent, consentID, orgID)
-	return err
-}
-
-// GetByClientID retrieves consents by client ID
-func (s *store) GetByClientID(ctx context.Context, clientID, orgID string) ([]model.Consent, error) {
-	dbClient, err := s.getDBClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database client: %w", err)
-	}
-
-	rows, err := dbClient.Query(QueryGetConsentsByClientID, clientID, orgID)
-	if err != nil {
-		return nil, err
-	}
-
-	consents := make([]model.Consent, 0, len(rows))
-	for _, row := range rows {
-		consent := mapToConsent(row)
-		if consent != nil {
-			consents = append(consents, *consent)
-		}
-	}
-
-	return consents, nil
-}
-
 // CreateAttributes creates multiple consent attributes within a transaction
 func (s *store) CreateAttributes(tx dbmodel.TxInterface, attributes []model.ConsentAttribute) error {
 	for _, attr := range attributes {
@@ -537,15 +443,10 @@ func (s *store) FindConsentIDsByAttributeKey(ctx context.Context, key, orgID str
 
 	consentIDs := make([]string, 0, len(rows))
 	for _, row := range rows {
-		// Try lowercase first (normalized), then uppercase (raw)
-		if consentID, ok := row["consent_id"].(string); ok {
+		if consentID := getString(row, "consent_id"); consentID != "" {
 			consentIDs = append(consentIDs, consentID)
-		} else if consentID, ok := row["consent_id"].([]byte); ok {
-			consentIDs = append(consentIDs, string(consentID))
-		} else if consentID, ok := row["CONSENT_ID"].(string); ok {
+		} else if consentID := getString(row, "CONSENT_ID"); consentID != "" {
 			consentIDs = append(consentIDs, consentID)
-		} else if consentID, ok := row["CONSENT_ID"].([]byte); ok {
-			consentIDs = append(consentIDs, string(consentID))
 		}
 	}
 
@@ -566,15 +467,10 @@ func (s *store) FindConsentIDsByAttribute(ctx context.Context, key, value, orgID
 
 	consentIDs := make([]string, 0, len(rows))
 	for _, row := range rows {
-		// Try lowercase first (normalized), then uppercase (raw)
-		if consentID, ok := row["consent_id"].(string); ok {
+		if consentID := getString(row, "consent_id"); consentID != "" {
 			consentIDs = append(consentIDs, consentID)
-		} else if consentID, ok := row["consent_id"].([]byte); ok {
-			consentIDs = append(consentIDs, string(consentID))
-		} else if consentID, ok := row["CONSENT_ID"].(string); ok {
+		} else if consentID := getString(row, "CONSENT_ID"); consentID != "" {
 			consentIDs = append(consentIDs, consentID)
-		} else if consentID, ok := row["CONSENT_ID"].([]byte); ok {
-			consentIDs = append(consentIDs, string(consentID))
 		}
 	}
 
@@ -589,29 +485,6 @@ func (s *store) CreateStatusAudit(tx dbmodel.TxInterface, audit *model.ConsentSt
 	return err
 }
 
-// GetStatusAuditByConsentID retrieves status audit history for a consent
-func (s *store) GetStatusAuditByConsentID(ctx context.Context, consentID, orgID string) ([]model.ConsentStatusAudit, error) {
-	dbClient, err := s.getDBClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database client: %w", err)
-	}
-
-	rows, err := dbClient.Query(QueryGetStatusAuditByConsentID, consentID, orgID)
-	if err != nil {
-		return nil, err
-	}
-
-	audits := make([]model.ConsentStatusAudit, 0, len(rows))
-	for _, row := range rows {
-		audit := mapToStatusAudit(row)
-		if audit != nil {
-			audits = append(audits, *audit)
-		}
-	}
-
-	return audits, nil
-}
-
 // Mapper functions
 
 // mapToConsent converts a database row map to Consent
@@ -621,68 +494,19 @@ func mapToConsent(row map[string]interface{}) *model.Consent {
 		return nil
 	}
 
-	consent := &model.Consent{}
-
-	// Handle string columns (may be string or []byte from MySQL)
-	if id, ok := row["consent_id"].(string); ok {
-		consent.ConsentID = id
-	} else if id, ok := row["consent_id"].([]byte); ok {
-		consent.ConsentID = string(id)
+	return &model.Consent{
+		ConsentID:                  getString(row, "consent_id"),
+		CreatedTime:                row["created_time"].(int64),
+		UpdatedTime:                row["updated_time"].(int64),
+		ClientID:                   getString(row, "client_id"),
+		ConsentType:                getString(row, "consent_type"),
+		CurrentStatus:              getString(row, "current_status"),
+		ConsentFrequency:           getIntPointer(row, "consent_frequency"),
+		ValidityTime:               getInt64Pointer(row, "validity_time"),
+		RecurringIndicator:         getBoolPointer(row, "recurring_indicator"),
+		DataAccessValidityDuration: getInt64Pointer(row, "data_access_validity_duration"),
+		OrgID:                      getString(row, "org_id"),
 	}
-
-	if created, ok := row["created_time"].(int64); ok {
-		consent.CreatedTime = created
-	}
-
-	if updated, ok := row["updated_time"].(int64); ok {
-		consent.UpdatedTime = updated
-	}
-
-	if clientID, ok := row["client_id"].(string); ok {
-		consent.ClientID = clientID
-	} else if clientID, ok := row["client_id"].([]byte); ok {
-		consent.ClientID = string(clientID)
-	}
-
-	if cType, ok := row["consent_type"].(string); ok {
-		consent.ConsentType = cType
-	} else if cType, ok := row["consent_type"].([]byte); ok {
-		consent.ConsentType = string(cType)
-	}
-
-	if status, ok := row["current_status"].(string); ok {
-		consent.CurrentStatus = status
-	} else if status, ok := row["current_status"].([]byte); ok {
-		consent.CurrentStatus = string(status)
-	}
-
-	if freq, ok := row["consent_frequency"].(int64); ok {
-		freqInt := int(freq)
-		consent.ConsentFrequency = &freqInt
-	}
-
-	if valid, ok := row["validity_time"].(int64); ok {
-		consent.ValidityTime = &valid
-	}
-
-	if recurring, ok := row["recurring_indicator"].(bool); ok {
-		consent.RecurringIndicator = &recurring
-	} else if recurring, ok := row["recurring_indicator"].(int64); ok {
-		recurringBool := recurring != 0
-		consent.RecurringIndicator = &recurringBool
-	}
-
-	if duration, ok := row["data_access_validity_duration"].(int64); ok {
-		consent.DataAccessValidityDuration = &duration
-	}
-
-	if orgID, ok := row["org_id"].(string); ok {
-		consent.OrgID = orgID
-	} else if orgID, ok := row["org_id"].([]byte); ok {
-		consent.OrgID = string(orgID)
-	}
-
-	return consent
 }
 
 // mapToConsentAttribute converts a database row map to ConsentAttribute
@@ -692,101 +516,17 @@ func mapToConsentAttribute(row map[string]interface{}) *model.ConsentAttribute {
 		return nil
 	}
 
-	attr := &model.ConsentAttribute{}
-
-	// Handle string columns (may be string or []byte from MySQL)
-	if consentID, ok := row["consent_id"].(string); ok {
-		attr.ConsentID = consentID
-	} else if consentID, ok := row["consent_id"].([]byte); ok {
-		attr.ConsentID = string(consentID)
+	return &model.ConsentAttribute{
+		ConsentID: getString(row, "consent_id"),
+		AttKey:    getString(row, "att_key"),
+		AttValue:  getString(row, "att_value"),
+		OrgID:     getString(row, "org_id"),
 	}
-
-	if key, ok := row["att_key"].(string); ok {
-		attr.AttKey = key
-	} else if key, ok := row["att_key"].([]byte); ok {
-		attr.AttKey = string(key)
-	}
-
-	if value, ok := row["att_value"].(string); ok {
-		attr.AttValue = value
-	} else if value, ok := row["att_value"].([]byte); ok {
-		attr.AttValue = string(value)
-	}
-
-	if orgID, ok := row["org_id"].(string); ok {
-		attr.OrgID = orgID
-	} else if orgID, ok := row["org_id"].([]byte); ok {
-		attr.OrgID = string(orgID)
-	}
-
-	return attr
 }
 
-// mapToStatusAudit converts a database row map to ConsentStatusAudit
-// Note: DBClient normalizes column names to lowercase
-func mapToStatusAudit(row map[string]interface{}) *model.ConsentStatusAudit {
-	if row == nil {
-		return nil
-	}
-
-	audit := &model.ConsentStatusAudit{}
-
-	// Handle string columns (may be string or []byte from MySQL)
-	if id, ok := row["status_audit_id"].(string); ok {
-		audit.StatusAuditID = id
-	} else if id, ok := row["status_audit_id"].([]byte); ok {
-		audit.StatusAuditID = string(id)
-	}
-
-	if consentID, ok := row["consent_id"].(string); ok {
-		audit.ConsentID = consentID
-	} else if consentID, ok := row["consent_id"].([]byte); ok {
-		audit.ConsentID = string(consentID)
-	}
-
-	if status, ok := row["current_status"].(string); ok {
-		audit.CurrentStatus = status
-	} else if status, ok := row["current_status"].([]byte); ok {
-		audit.CurrentStatus = string(status)
-	}
-
-	if actionTime, ok := row["action_time"].(int64); ok {
-		audit.ActionTime = actionTime
-	}
-
-	if reason, ok := row["reason"].(string); ok {
-		audit.Reason = &reason
-	} else if reason, ok := row["reason"].([]byte); ok {
-		reasonStr := string(reason)
-		audit.Reason = &reasonStr
-	}
-
-	if actionBy, ok := row["action_by"].(string); ok {
-		audit.ActionBy = &actionBy
-	} else if actionBy, ok := row["action_by"].([]byte); ok {
-		actionByStr := string(actionBy)
-		audit.ActionBy = &actionByStr
-	}
-
-	if prevStatus, ok := row["previous_status"].(string); ok {
-		audit.PreviousStatus = &prevStatus
-	} else if prevStatus, ok := row["previous_status"].([]byte); ok {
-		prevStatusStr := string(prevStatus)
-		audit.PreviousStatus = &prevStatusStr
-	}
-
-	if orgID, ok := row["org_id"].(string); ok {
-		audit.OrgID = orgID
-	} else if orgID, ok := row["org_id"].([]byte); ok {
-		audit.OrgID = string(orgID)
-	}
-
-	return audit
-}
-
-// CreateConsentPurposeConsent links a consent to a purpose
-func (s *store) CreateConsentPurposeConsent(tx dbmodel.TxInterface, consentID, purposeID, orgID string) error {
-	_, err := tx.Exec(QueryCreateConsentPurposeConsent, consentID, purposeID, orgID)
+// CreateConsentPurposeMapping links a consent to a purpose
+func (s *store) CreateConsentPurposeMapping(tx dbmodel.TxInterface, consentID, purposeID, orgID string) error {
+	_, err := tx.Exec(QueryCreateConsentPurposeMapping, consentID, purposeID, orgID)
 	return err
 }
 
@@ -818,8 +558,8 @@ func (s *store) CheckPurposeUsedInConsents(ctx context.Context, purposeID, orgID
 	return count > 0, nil
 }
 
-// GetConsentPurposesByConsentID retrieves all purpose mappings for a consent
-func (s *store) GetConsentPurposesByConsentID(ctx context.Context, consentID, orgID string) ([]model.ConsentPurposeMapping, error) {
+// GetConsentPurposeMappingsByConsentID retrieves all purpose mappings for a consent
+func (s *store) GetConsentPurposeMappingsByConsentID(ctx context.Context, consentID, orgID string) ([]model.ConsentPurposeMapping, error) {
 	dbClient, err := s.getDBClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database client: %w", err)
@@ -843,8 +583,8 @@ func (s *store) GetConsentPurposesByConsentID(ctx context.Context, consentID, or
 	return mappings, nil
 }
 
-// CreatePurposeApproval creates a purpose approval record
-func (s *store) CreatePurposeApproval(tx dbmodel.TxInterface, approval *model.ConsentPurposeApprovalRecord) error {
+// CreatePurposeElementApproval creates a purpose approval record
+func (s *store) CreatePurposeElementApproval(tx dbmodel.TxInterface, approval *model.ConsentElementApprovalRecord) error {
 	_, err := tx.Exec(QueryCreateElementApproval,
 		approval.ConsentID,
 		approval.PurposeID,
@@ -856,8 +596,8 @@ func (s *store) CreatePurposeApproval(tx dbmodel.TxInterface, approval *model.Co
 	return err
 }
 
-// GetPurposeApprovalsByConsentID retrieves all purpose approvals for a consent, grouped by purpose
-func (s *store) GetPurposeApprovalsByConsentID(ctx context.Context, consentID, orgID string) ([]model.ConsentPurposeApprovalRecord, error) {
+// GetPurposeElementApprovalsByConsentID retrieves all purpose approvals for a consent, grouped by purpose
+func (s *store) GetPurposeElementApprovalsByConsentID(ctx context.Context, consentID, orgID string) ([]model.ConsentElementApprovalRecord, error) {
 	dbClient, err := s.getDBClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database client: %w", err)
@@ -868,9 +608,9 @@ func (s *store) GetPurposeApprovalsByConsentID(ctx context.Context, consentID, o
 		return nil, err
 	}
 
-	approvals := make([]model.ConsentPurposeApprovalRecord, 0)
+	approvals := make([]model.ConsentElementApprovalRecord, 0)
 	for _, row := range rows {
-		approval := model.ConsentPurposeApprovalRecord{
+		approval := model.ConsentElementApprovalRecord{
 			ConsentID:      getString(row, "consent_id"),
 			PurposeID:      getString(row, "purpose_id"),
 			PurposeName:    getString(row, "purpose_name"),
@@ -887,14 +627,14 @@ func (s *store) GetPurposeApprovalsByConsentID(ctx context.Context, consentID, o
 	return approvals, nil
 }
 
-// DeleteConsentPurposesByConsentID deletes all purpose mappings for a consent
-func (s *store) DeleteConsentPurposesByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error {
+// DeleteConsentPurposeMappingsByConsentID deletes all purpose mappings for a consent
+func (s *store) DeleteConsentPurposeMappingsByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error {
 	_, err := tx.Exec(QueryDeleteConsentPurposesByConsentID, consentID, orgID)
 	return err
 }
 
-// DeletePurposeApprovalsByConsentID deletes all purpose approval records for a consent
-func (s *store) DeletePurposeApprovalsByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error {
+// DeletePurposeElementApprovalsByConsentID deletes all purpose approval records for a consent
+func (s *store) DeletePurposeElementApprovalsByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error {
 	_, err := tx.Exec(QueryDeleteElementApprovalsByConsentID, consentID, orgID)
 	return err
 }
@@ -921,6 +661,36 @@ func getBool(row map[string]interface{}, key string) bool {
 		return val != 0
 	}
 	return false
+}
+
+func getBoolPointer(row map[string]interface{}, key string) *bool {
+	if val, ok := row[key].(bool); ok {
+		return &val
+	}
+	if val, ok := row[key].(int64); ok {
+		result := val != 0
+		return &result
+	}
+	if val, ok := row[key].(uint8); ok {
+		result := val != 0
+		return &result
+	}
+	return nil
+}
+
+func getInt64Pointer(row map[string]interface{}, key string) *int64 {
+	if val, ok := row[key].(int64); ok {
+		return &val
+	}
+	return nil
+}
+
+func getIntPointer(row map[string]interface{}, key string) *int {
+	if val, ok := row[key].(int64); ok {
+		result := int(val)
+		return &result
+	}
+	return nil
 }
 
 func getStringPointer(row map[string]interface{}, key string) *string {

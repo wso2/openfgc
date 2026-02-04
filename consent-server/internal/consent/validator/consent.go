@@ -34,8 +34,8 @@ func ValidateConsentCreateRequest(req model.ConsentAPIRequest, clientID, orgID s
 	if req.Type == "" {
 		return fmt.Errorf("type is required")
 	}
-	if len(req.Type) > 64 {
-		return fmt.Errorf("type cannot exceed 64 characters")
+	if len(req.Type) > 255 {
+		return fmt.Errorf("type cannot exceed 255 characters")
 	}
 	if clientID == "" {
 		return fmt.Errorf("clientID is required")
@@ -78,6 +78,11 @@ func ValidateConsentUpdateRequest(req model.ConsentAPIUpdateRequest) error {
 		req.ValidityTime == nil && req.RecurringIndicator == nil &&
 		req.Attributes == nil && req.Authorizations == nil && req.Purposes == nil {
 		return fmt.Errorf("at least one field must be provided for update")
+	}
+
+	// Validate Type length if provided (match create constraint)
+	if req.Type != "" && len(req.Type) > 255 {
+		return fmt.Errorf("type must be at most 255 characters")
 	}
 
 	// Validate validity time if provided

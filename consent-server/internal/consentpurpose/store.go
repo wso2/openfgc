@@ -139,7 +139,7 @@ func (s *store) mapRowToPurpose(row map[string]interface{}) model.ConsentPurpose
 }
 
 // buildListPurposesQuery builds dynamic query with filters for listing purposes
-func (s *store) buildListPurposesQuery(orgID, name string, clientIDs []string, purposeNames []string) (string, string, []interface{}, []interface{}) {
+func (s *store) buildListPurposesQuery(orgID, name string, clientIDs []string, elementNames []string) (string, string, []interface{}, []interface{}) {
 	baseQuery := BaseListPurposesQuery
 	countQuery := BaseCountPurposesQuery
 
@@ -166,20 +166,20 @@ func (s *store) buildListPurposesQuery(orgID, name string, clientIDs []string, p
 		}
 	}
 
-	// Filter by purposeNames - AND logic: purpose must contain ALL specified purposes
-	if len(purposeNames) > 0 {
-		for _, purposeName := range purposeNames {
+	// Filter by elementNames - AND logic: purpose must contain ALL specified elements
+	if len(elementNames) > 0 {
+		for _, elementName := range elementNames {
 			subQuery := ` AND EXISTS (
-				SELECT 1 FROM PURPOSE_ELEMENT_MAPPING m
-				JOIN CONSENT_ELEMENT p ON m.ELEMENT_ID = p.ID AND m.ORG_ID = p.ORG_ID
-				WHERE m.PURPOSE_ID = CONSENT_PURPOSE.ID 
-				  AND m.ORG_ID = CONSENT_PURPOSE.ORG_ID
-				  AND p.NAME = ?
+				SELECT 1 FROM PURPOSE_ELEMENT_MAPPING pem
+				JOIN CONSENT_ELEMENT ce ON pem.ELEMENT_ID = ce.ID AND pem.ORG_ID = ce.ORG_ID
+				WHERE pem.PURPOSE_ID = CONSENT_PURPOSE.ID 
+				  AND pem.ORG_ID = CONSENT_PURPOSE.ORG_ID
+				  AND ce.NAME = ?
 			)`
 			baseQuery += subQuery
 			countQuery += subQuery
-			args = append(args, purposeName)
-			countArgs = append(countArgs, purposeName)
+			args = append(args, elementName)
+			countArgs = append(countArgs, elementName)
 		}
 	}
 
@@ -231,14 +231,14 @@ func (s *store) GetPurposeByID(ctx context.Context, purposeID, orgID string) (*m
 }
 
 // ListPurposes retrieves a list of purposes with filtering
-func (s *store) ListPurposes(ctx context.Context, orgID, name string, clientIDs []string, purposeNames []string, offset, limit int) ([]model.ConsentPurpose, int, error) {
+func (s *store) ListPurposes(ctx context.Context, orgID, name string, clientIDs []string, elementNames []string, offset, limit int) ([]model.ConsentPurpose, int, error) {
 	dbClient, err := s.getDBClient()
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get database client: %w", err)
 	}
 
 	// Build dynamic query with filters
-	query, countQuery, args, countArgs := s.buildListPurposesQuery(orgID, name, clientIDs, purposeNames)
+	query, countQuery, args, countArgs := s.buildListPurposesQuery(orgID, name, clientIDs, elementNames)
 
 	// Get total count
 	var total int
