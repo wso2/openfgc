@@ -1,0 +1,3532 @@
+openapi: 3.0.0
+info:
+  version: v1.0
+  title: Consent Management API
+  description: |
+    This API provides a comprehensive set of endpoints for managing consent elements, consent purposes and consents.
+
+    **Key Concepts:**
+
+    - **Consent Elements**: A single, reference data element for which user consent is requested.
+      Each consent element has a unique name and can be configured with name, description, properties, and a type.
+      Examples: email, mobile
+
+    - **Consent Purpose**: A logical grouping of related consent elements that represents a specific reason for requesting consent.
+      Consent purposes help organize multiple consent elements to enable clear and streamlined consent collection.
+      A consent can be associated with one or more, consent purposes.
+
+    - **Consent**: A Consent represents the explicit approval given by a user for each one or more consent purposes.
+      Each consent purpose contains a set of consent elements that specify exactly what data the user is agreeing to share.
+      A consent serves as the authoritative record of the approved consent purposes and their associated consent elements.
+  contact:
+    name: WSO2
+    url: 'https://wso2.com/solutions/financial-services/'
+    email: "architecture@wso2.com"
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://localhost:3000/api/v1
+    variables:
+      km_host:
+        default: localhost
+        description: Hostname of the Consent Management server.
+      km_port:
+        default: "3000"
+        description: Port number for the Consent Management server.
+tags:
+  - name: Consent Elements
+    description: Manage element definitions (reference data for categorizing consents). Elements can be created, retrieved, updated, deleted, and validated.
+  - name: Consent Purpose
+    description: Manage consent purposes. Purposes allow organizing related elements together with mandatory/optional flags for streamlined consent collection.
+  - name: Consent
+    description: Provides RESTful endpoints to handle the full lifecycle of consent resources and their associated authorizations. Supports operations such as initiation, retrieval, update, and revocation.
+paths:
+  /consents:
+    post:
+      summary: Initiate a new consent resource
+      description: |
+        This endpoint is used to initiate a new consent resource.
+
+        Upon success, the system creates a **consent resource** with: A unique `consentId`
+
+        **Purpose Validation:**
+        - Cannot create consent with purposes that contain duplicate consent elements. Each element
+          can only appear once across all purposes in the request.
+
+        **Response Behavior:**
+        - The consent creation response payload includes all elements within each purpose.
+        - If the request contains only a subset of elements for a purpose, any unmentioned elements from
+          that purpose are automatically resolved and returned with `isUserApproved: false`.
+      operationId: consents-POST
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization (e.g., the bank) that this consent belongs to."
+          schema:
+            type: string
+            example: "ORG-001"
+        - in: header
+          name: TPP-client-id
+          required: true
+          description: "The client ID of the Third-Party Provider (TPP) application that is requesting the consent."
+          schema:
+            type: string
+            example: "TPP-CLIENT-001"
+      requestBody:
+        description: The payload containing the consent data.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentCreatePayload"
+            example:
+              type: "marketing"
+              validityTime: 1766383796
+              recurringIndicator: true
+              dataAccessValidityDuration: 0
+              frequency: 0
+              purposes:
+                - name: "marketing_communication_preferences"
+                  elements:
+                    - name: "user_email"
+                      isUserApproved: true
+                      value: {}
+                    - name: "user_mobile"
+                      isUserApproved: true
+                      value: {}
+              attributes:
+                department: "marketing"
+              authorizations:
+                - userId: "user1@example.com"
+                  type: "authorisation"
+                  status: "APPROVED"
+                  resources:
+                    accountIds: ["acc-123", "acc-456"]
+      responses:
+        "201":
+          description: Successfully initiated the consent. The response body contains the details of the newly created consent resource, including its `id`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentCreatedResponse"
+        "400":
+          description: Bad Request. The request was malformed. This could be due to missing required headers or an invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server while trying to create the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+    get:
+      summary: Search for consents
+      description: |
+        Provides a powerful search capability to find consents based on various filter criteria like consent type, status, client ID , user ID and time range. Supports pagination.
+
+      operationId: consents-search-GET
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "Organisation ID."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: consentTypes
+          in: query
+          description: A comma-separated list of consent types to filter by (e.g., 'accounts,payments').
+          schema:
+            type: string
+          example: "accounts,payments"
+        - name: consentStatuses
+          in: query
+          description: "A comma-separated list of consent statuses to filter by (e.g., 'ACTIVE,REVOKED'). Valid values are: CREATED, ACTIVE, REJECTED, REVOKED, EXPIRED."
+          schema:
+            type: string
+          example: "ACTIVE,CREATED"
+        - name: clientIds
+          in: query
+          description: A comma-separated list of TPP client IDs to filter by.
+          schema:
+            type: string
+          example: "TPP-CLIENT-001,TPP-CLIENT-002"
+        - name: userIds
+          in: query
+          description: A comma-separated list of end-user IDs to filter by.
+          schema:
+            type: string
+          example: "user1@example.com,user2@example.com"
+        - name: purposeNames
+          in: query
+          description: A comma-separated list of consent purpose names to filter by. Returns consents that contain ANY of the specified purposes.
+          schema:
+            type: string
+          example: "Account Information,Transaction History"
+        - name: fromTime
+          in: query
+          description: The start of the time window for the search, as a Unix timestamp in seconds (integer).
+          schema:
+            type: integer
+            format: int64
+          example: 1702800000
+        - name: toTime
+          in: query
+          description: The end of the time window for the search, as a Unix timestamp in seconds (integer).
+          schema:
+            type: integer
+            format: int64
+          example: 1734422400
+        - name: limit
+          in: query
+          description: The maximum number of results to return in a single page. Used for pagination.
+          schema:
+            type: integer
+            format: int32
+          example: 10
+        - name: offset
+          in: query
+          description: The number of results to skip. Used for pagination.
+          schema:
+            type: integer
+            format: int32
+          example: 0
+      responses:
+        "200":
+          description: OK. Returns a list of consents matching the search criteria, along with pagination metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentSearchResponse"
+        "400":
+          description: Bad Request. The search parameters provided are invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/attributes:
+    get:
+      summary: Search consents by attribute key and value
+      description: |
+        Searches for consent IDs that have a specific attribute key, optionally filtered by value.
+
+        **Search Modes:**
+        - **By key only** (`?key=department`): Returns all consents with the specified attribute key
+        - **By key and value** (`?key=department&value=sales`): Returns consents with exact key-value match
+
+        Results are organization-scoped and sorted by consent ID.
+      operationId: consents-attributes-GET
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: key
+          in: query
+          required: true
+          description: The attribute key to search for (required).
+          schema:
+            type: string
+          example: "department"
+        - name: value
+          in: query
+          required: false
+          description: The attribute value to search for (optional). If provided, only consents with exact key-value match are returned.
+          schema:
+            type: string
+          example: "sales"
+      responses:
+        "200":
+          description: Successfully retrieved consent IDs matching the search criteria.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentAttributeSearchResponse"
+        "400":
+          description: Bad Request. The key parameter is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/{consentId}:
+    get:
+      summary: Retrieve a consent by its ID
+      description: |
+        Fetches the complete details of a specific consent resource using
+        its unique `consentID`. This is used to check the status and details of a consent.
+
+      operationId: consents-GET
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization (e.g., the bank) that this consent belongs to."
+          schema:
+            type: string
+            example: "ORG-001"
+        - in: path
+          name: consentId
+          required: true
+          description: The unique identifier of the consent to retrieve.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK. The full details of the requested consent are returned in the response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentRetrievalResponse"
+        "400":
+          description: Bad Request. The request was invalid, possibly due to a malformed `consentID` or missing headers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+    put:
+      summary: Update a consent resource by its ID
+      description: |
+        Endpoint to perform a full update on a consent resource, including its authorization resources and attributes, in a single operation.
+
+        **Purpose Validation:**
+        - Cannot update consent with purposes that contain duplicate consent elements. Each purpose
+          can only appear once across all purposes in the request.
+
+        **Response Behavior:**
+        - The consent update response payload includes all purposes within each purpose.
+        - If the request contains only a subset of purposes for a purpose, any unmentioned purposes from
+          that purpose are automatically resolved and returned with `isUserApproved: false`.
+
+      operationId: consents-PUT
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "Organisation ID."
+          schema:
+            type: string
+            example: "ORG-001"
+        - in: header
+          name: TPP-client-id
+          required: true
+          description: "The client ID of the Third-Party Provider (TPP) application that is requesting the consent."
+          schema:
+            type: string
+            example: "TPP-CLIENT-001"
+        - name: consentId
+          in: path
+          description: The unique identifier of the consent to update.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The full consent resource object with the desired updates.
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ConsentUpdateRequest"
+            example:
+              type: "accounts"
+              validityTime: 0
+              recurringIndicator: false
+              dataAccessValidityDuration: 86400
+              frequency: 0
+              purposes:
+                - name: "profile_access"
+                  elements:
+                    - name: "first_name"
+                      isUserApproved: true
+                      value: {}
+                    - name: "last_name"
+                      isUserApproved: true
+                      value: {}
+              attributes:
+                department: "sales"
+                region: "APAC"
+              authorizations:
+                - userId: "user1@example.com"
+                  type: "authorisation"
+                  status: "APPROVED"
+                  resources:
+                    accountIds: ["acc-123", "acc-456"]
+        required: true
+      responses:
+        "200":
+          description: OK. The full details of the requested consent are returned in the response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentUpdateResponse"
+        "400":
+          description: Bad Request. The request was malformed. This could be due to missing required headers or an invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server while trying to update the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/{consentId}/revoke:
+    put:
+      summary: Revoke a consent
+      description: |
+       Allows to revoke a consent. This action typically updates the consent status to a **revoke** type of status.
+
+      operationId: consents-revoke-POST
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization (e.g., the bank) that this consent belongs to."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: consentId
+          in: path
+          description: The unique identifier of the consent to update.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The payload containing the revocation data.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentRevokePayload"
+      responses:
+        "200":
+          description: Successfully revoked the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentRevokedResponse"
+        "400":
+          description: Bad Request. The request was malformed. This could be due to missing required headers or an invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server while trying to create the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/{consentId}/authorizations:
+    post:
+      summary: Add an authorization resource to a consent
+      description: Creates a new authorization resource and links it to the specified consent. This is typically done when a user interacts with the consent (e.g., at the start of the authorization flow).
+      operationId: consents-authorizations-POST
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "Organisation ID."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: consentId
+          in: path
+          description: The unique identifier of the consent.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Details of the authorization resource to be created.
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AuthorizationResourceRequestBody"
+        required: true
+      responses:
+        '200':
+          description: OK. Returns the details of the authorization resource.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ConsentAuthorizationResource"
+        "400":
+          description: Bad Request. The request was malformed. This could be due to missing required headers or an invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server while trying to create the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+    get:
+      summary: Retrieve all authorization resources for a consent
+      description: Retrieves a list of all authorization resources associated with a specific consent.
+      operationId: consentAuthorizationGet
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "Organisation ID."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: consentId
+          in: path
+          description: The unique identifier of the consent.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK. Returns an array of authorization resources.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConsentAuthorizationResource"
+        "400":
+          description: Bad Request. The request was malformed. This could be due to missing required headers or an invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server while trying to create the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/{consentId}/authorizations/{authorizationId}:
+    get:
+      summary: Retrieve a specific authorization resource
+      description: Retrieves the details of a specific authorization resource linked to a given consent.
+      operationId: consentAuthorizationIdGet
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "Organisation ID."
+          schema:
+            type: string
+        - name: consentId
+          in: path
+          description: The unique identifier of the consent.
+          required: true
+          schema:
+            type: string
+        - name: authorizationId
+          in: path
+          description: The unique identifier of the authorization resource.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK. Returns the details of the authorization resource.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ConsentAuthorizationResource"
+        "400":
+          description: Bad Request. The request was malformed. This could be due to missing required headers or an invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server while trying to create the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+    put:
+      summary: Update an authorization resource
+      description: Updates the details (e.g., status) of a specific authorization resource associated with the given consent.
+      operationId: consentAuthorizationIdPut
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "Organisation ID."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: consentId
+          in: path
+          description: The unique identifier of the consent.
+          required: true
+          schema:
+            type: string
+        - name: authorizationId
+          in: path
+          description: The unique identifier of the authorization resource to update.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The updated details for the authorization resource.
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AuthorizationResourceRequestBody"
+        required: true
+      responses:
+        '200':
+          description: OK. Returns the details of the authorization resource.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ConsentAuthorizationResource"
+        "400":
+          description: Bad Request. The request was malformed. This could be due to missing required headers or an invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server while trying to create the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/validate:
+    post:
+      summary: Validate a consent for a specific action
+      description: |
+        Validates whether a consent is valid and active for a specific user action or API request.
+
+        This endpoint checks:
+        - If the consent exists and belongs to the specified user
+        - If the consent status is active (AUTHORIZED, ACTIVE, etc.)
+        - If the consent has not expired based on validityTime
+        - If all mandatory elements within the purposes are approved (isUserApproved: true)
+        - Optionally validates resource parameters against consent scope
+
+        If the consent has expired, the endpoint automatically updates the consent status to EXPIRED.
+        If mandatory elements are not approved, validation returns false.
+
+        **Response includes enriched consent information:**
+        - Complete consent details with all fields
+        - Consent elements enriched with type, description, and properties from element definitions
+
+        **Note:** All responses return HTTP 200. Check the `isValid` field and `httpCode` in the response body to determine the actual validation result.
+      operationId: consents-validate-POST
+      tags:
+        - Consent
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization."
+          schema:
+            type: string
+            example: "ORG-001"
+      requestBody:
+        description: The validation request containing consent details and the action being validated.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateRequest"
+            example:
+              consentId: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "200":
+          description: |
+            Validation completed. Check the `isValid` field in the response body.
+            - If `isValid: true`, the consent is valid for the requested action
+            - If `isValid: false`, check `errorCode`, `errorMessage`, and `httpCode` for details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateResponse"
+              example:
+                isValid: true
+                consentInformation:
+                  id: "123e4567-e89b-12d3-a456-426614174000"
+                  type: "accounts"
+                  clientId: "tpp-client-123"
+                  status: "ACTIVE"
+                  createdTime: 1702800000
+                  updatedTime: 1702800000
+                  validityTime: 1734422400
+                  recurringIndicator: true
+                  frequency: 10
+                  dataAccessValidityDuration: 86400
+                  purposes:
+                    - name: "marketing_communication_preferences"
+                      elements:
+                        - name: "first_name"
+                          value: {}
+                          isUserApproved: true
+                          isMandatory: true
+                          type: "resource-field"
+                          description: "Allows access to the user's first name"
+                          properties:
+                            jsonPath: "$.personal.firstName"
+                            resourcePath: "/user/{nic}"
+                  attributes:
+                    department: "sales"
+                    region: "APAC"
+                  authorizations:
+                    - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      userId: "user1@example.com"
+                      type: "authorisation"
+                      status: "APPROVED"
+                      updatedTime: 1702800000
+                      resources:
+                        accountIds: ["acc-123", "acc-456"]
+        "400":
+          description: Bad Request - Invalid request body or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "BAD_REQUEST"
+                message: "Invalid request"
+                description: "Missing required field: consentId"
+                traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+  /consent-elements:
+    post:
+      summary: Create one or more consent elements
+      description: |
+        Creates one or more consent elements in a single request. Supports batch creation by accepting
+        an array of element definitions.
+
+        **Type Handlers:**
+        Each element has a type that determines which properties are mandatory:
+        - **basic**: No mandatory properties (any properties are optional)
+        - **json-payload**: Requires `validationSchema` property
+        - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
+
+        **Transactional Behavior:**
+        Batch creation is atomic - either all elements in the request are created successfully, or none
+        are created. If any validation fails (e.g., duplicate name, invalid type, missing required attribute),
+        the entire batch is rolled back and no elements are persisted to the database.
+
+        **Validation Rules:**
+        - Name is required and must not exceed 255 characters
+        - Name must be unique within the organization (checked against existing elements and within the batch)
+        - Type is required and must be one of: `basic`, `json-payload`, `resource-field`
+        - Properties validation depends on type (see Type Handlers above)
+        - Description is optional but must not exceed 1024 characters if provided
+        - At least one element must be provided in the request array
+        - Duplicate names within the same batch are not allowed
+      operationId: createConsentPurposes
+      tags:
+        - Consent Elements
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization that owns these elements
+          schema:
+            type: string
+            example: "ORG-001"
+      requestBody:
+        description: Array of consent elements to create
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/ConsentPurposeCreateRequest"
+            examples:
+              stringType:
+                summary: Basic type with optional properties
+                value:
+                  - name: "license_read"
+                    description: "Allows accessing license API"
+                    type: "basic"
+                    properties:
+                      value: "license:read"
+              stringTypeNoAttributes:
+                summary: Basic type without properties (valid)
+                value:
+                  - name: "basic_access"
+                    type: "basic"
+              jsonPayloadType:
+                summary: JSON payload type with validationSchema
+                value:
+                  - name: "account_schema"
+                    description: "Account access schema validation"
+                    type: "json-payload"
+                    properties:
+                      validationSchema: |
+                        {
+                          "type": "object",
+                          "properties": {
+                            "accountId": {"type": "string"},
+                            "permissions": {"type": "array", "items": {"type": "string"}}
+                          },
+                          "required": ["accountId"]
+                        }
+              resourceFieldType:
+                summary: Resource field type with resource and json paths
+                value:
+                  - name: "first_name"
+                    description: "Allows access to the user's first name"
+                    type: "resource-field"
+                    properties:
+                      resourcePath: "/user/{nic}"
+                      jsonPath: "$.personal.firstName"
+              multiplePurposes:
+                summary: Create multiple elements with different types
+                value:
+                  - name: "license_read"
+                    type: "basic"
+                    properties:
+                      value: "license:read"
+                  - name: "tax_schema"
+                    type: "json-payload"
+                    properties:
+                      validationSchema: '{"type":"object"}'
+                  - name: "dynamic_roles"
+                    type: "resource-field"
+                    properties:
+                      resourcePath: "/api/roles"
+                      jsonPath: "$.data.roles"
+      responses:
+        "201":
+          description: Successfully created consent element(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConsentPurposeResponse"
+                  message:
+                    type: string
+                    example: "Consent elements created successfully"
+              examples:
+                stringType:
+                  summary: Basic type element created
+                  value:
+                    data:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        name: "license_read"
+                        description: "Allows accessing license API"
+                        type: "basic"
+                        properties:
+                          value: "license:read"
+                    message: "Consent elements created successfully"
+                jsonPayloadType:
+                  summary: JSON payload type element created
+                  value:
+                    data:
+                      - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                        name: "account_schema"
+                        description: "Account access schema validation"
+                        type: "json-payload"
+                        properties:
+                          validationSchema: '{"type":"object","properties":{"accountId":{"type":"string"}}}'
+                    message: "Consent elements created successfully"
+                resourceFieldType:
+                  summary: Resource field type element created
+                  value:
+                    data:
+                      - id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+                        name: "first_name"
+                        description: "Allows access to the user's first name"
+                        type: "resource-field"
+                        properties:
+                          resourcePath: "/user/{nic}"
+                          jsonPath: "$.personal.firstName"
+                    message: "Consent elements created successfully"
+        "400":
+          description: Bad Request - Invalid input or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              examples:
+                emptyArray:
+                  summary: Empty array provided
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Empty request"
+                    description: "At least one element must be provided"
+                    traceId: "20260107T123456Z-abc123"
+                missingName:
+                  summary: Missing required name field
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request body"
+                    description: "Name field is required"
+                    traceId: "20260107T123456Z-abc123"
+                invalidType:
+                  summary: Invalid type value
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid element type"
+                    description: "Type must be one of: basic, json-payload, resource-field"
+                    traceId: "20260107T123456Z-abc123"
+                jsonSchemaMissingValidationSchema:
+                  summary: JSON payload type missing validationSchema attribute
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Validation failed"
+                    description: "validationSchema is required for json-payload type"
+                    traceId: "20260107T123456Z-abc123"
+                resourceFieldMissingResourcePath:
+                  summary: Resource field type missing resourcePath
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Validation failed"
+                    description: "resourcePath is required for resource-field type"
+                    traceId: "20260107T123456Z-abc123"
+                resourceFieldMissingJsonPath:
+                  summary: Resource field type missing jsonPath
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Validation failed"
+                    description: "jsonPath is required for resource-field type"
+                    traceId: "20260107T123456Z-abc123"
+                duplicateName:
+                  summary: Element name already exists
+                  value:
+                    code: "CONFLICT"
+                    message: "Element already exists"
+                    description: "Element name already exists in organization"
+                    traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+    get:
+      summary: List all consent elements
+      description: |
+        Retrieves a paginated list of all consent elements for the specified organization.
+
+        Results are ordered alphabetically by element name by default. Use the `limit` and `offset`
+        query parameters to control pagination.
+      operationId: listConsentPurposes
+      tags:
+        - Consent Elements
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: name
+          in: query
+          description: Filter elements by name (partial match, case-insensitive search)
+          required: false
+          schema:
+            type: string
+            example: "account"
+        - name: limit
+          in: query
+          description: The maximum number of results to return in a single page. Used for pagination.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 100
+            example: 10
+        - name: offset
+          in: query
+          description: The number of results to skip. Used for pagination.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+            example: 0
+      responses:
+        "200":
+          description: Successfully retrieved consent elements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentPurposeListResponse"
+              example:
+                data:
+                  - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "first_name"
+                    description: "Allows access to the user's first name"
+                    type: "resource-field"
+                    properties:
+                      jsonPath: "$.personal.firstName"
+                      resourcePath: "/user/{nic}"
+                  - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    name: "readAccountBasic"
+                    description: "Allows reading basic account information"
+                    type: "basic"
+                    properties:
+                      value: "account:read:basic"
+                  - id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+                    name: "readTransactions"
+                    description: "Allows reading transaction history"
+                    type: "basic"
+                    properties:
+                      value: "account:read:transactions"
+                metadata:
+                  total: 3
+                  offset: 0
+                  count: 3
+                  limit: 100
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Internal server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+  /consent-elements/validate:
+    post:
+      summary: Validate consent element names
+      description: |
+        Validates a list of consent element names and returns only the valid ones that exist in the database.
+
+        This endpoint is useful for:
+        - Validating element names before creating consents
+        - Filtering out invalid elements from a list
+        - Checking which elements are available in the organization
+
+        **Behavior:**
+        - Accepts an array of element names
+        - Returns an array of names that exist in the organization
+        - If none of the provided names are valid, returns 400 Bad Request
+        - Names are case-sensitive and must match exactly
+        - Empty request array returns 400 Bad Request
+
+        **Response:**
+        - **200 OK**: Returns array of valid element names (subset of input)
+        - **400 Bad Request**: When request is empty or no valid elements found
+      operationId: validateConsentPurposes
+      tags:
+        - Consent Elements
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+      requestBody:
+        description: Array of element names to validate
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items:
+                type: string
+              example:
+                - "utility_read"
+                - "taxes_read"
+                - "profile_read"
+            examples:
+              allValid:
+                summary: All purposes are valid
+                value:
+                  - "utility_read"
+                  - "taxes_read"
+              partialValid:
+                summary: Some valid, some invalid
+                value:
+                  - "utility_read"
+                  - "invalid_purpose"
+                  - "taxes_read"
+      responses:
+        "200":
+          description: Successfully validated elements (returns only valid ones)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              examples:
+                allValid:
+                  summary: All provided elements were valid
+                  value:
+                    - "utility_read"
+                    - "taxes_read"
+                partialValid:
+                  summary: Only valid elements returned
+                  value:
+                    - "utility_read"
+                    - "taxes_read"
+        "400":
+          description: Bad Request - Empty request or no valid elements found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              examples:
+                emptyRequest:
+                  summary: Empty request array
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request"
+                    description: "At least one element name must be provided"
+                    traceId: "20260107T123456Z-abc123"
+                noValidPurposes:
+                  summary: No valid elements found
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request"
+                    description: "No valid elements found"
+                    traceId: "20260107T123456Z-abc124"
+                missingOrgId:
+                  summary: Missing org-id header
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request"
+                    description: "Organization ID header is required"
+                    traceId: "20260107T123456Z-abc125"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+  /consent-elements/{elementId}:
+    get:
+      summary: Get a specific consent element
+      description: Retrieves the details of a specific consent element by its ID
+      operationId: getConsentPurpose
+      tags:
+        - Consent Elements
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: elementId
+          in: path
+          required: true
+          description: The unique identifier of the consent element
+          schema:
+            type: string
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        "200":
+          description: Successfully retrieved consent element
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentPurposeResponse"
+              example:
+                id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                name: "first_name"
+                description: "Allows access to the user's first name"
+                type: "resource-field"
+                properties:
+                  jsonPath: "$.personal.firstName"
+                  resourcePath: "/user/{nic}"
+        "404":
+          description: Consent element not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "NOT_FOUND"
+                message: "Element not found"
+                description: "Consent element does not exist"
+                traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+    put:
+      summary: Update a consent element
+      description: |
+        Updates an existing consent element. **All fields are required** - partial updates are not supported.
+
+        **Type Handlers:**
+        Each element has a type that determines which properties are mandatory:
+        - **basic**: No mandatory properties (any properties are optional)
+        - **json-payload**: Requires `validationSchema` property
+        - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
+
+        **Update Behavior:**
+        - All fields (name, description, type, properties) must be provided in the request
+        - The element type can be changed, but new type's property requirements must be satisfied
+        - Name must remain unique within the organization (or be the same as current name)
+        - The update is transactional - either all fields are updated or none
+
+        **Validation Rules:**
+        - Name is required and must not exceed 255 characters
+        - Name must be unique within the organization (excluding the current element)
+        - Type is required and must be one of: `basic`, `json-payload`, `resource-field`
+        - Properties validation depends on type (see Type Handlers above)
+        - Description is optional but must not exceed 1024 characters if provided
+      operationId: updateConsentPurpose
+      tags:
+        - Consent Elements
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: elementId
+          in: path
+          required: true
+          description: The unique identifier of the consent element to update
+          schema:
+            type: string
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      requestBody:
+        description: Complete element data (all fields required - no partial updates)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentPurposeUpdateRequest"
+            examples:
+              updateToString:
+                summary: Update to basic type (no mandatory properties)
+                value:
+                  name: "license_read_updated"
+                  description: "Updated license access permission"
+                  type: "basic"
+                  properties:
+                    value: "license:read:v2"
+              updateToJsonSchema:
+                summary: Update to JSON Schema type (requires validationSchema)
+                value:
+                  name: "account_schema_v2"
+                  description: "Updated account schema validation"
+                  type: "json-payload"
+                  properties:
+                    validationSchema: |
+                      {
+                        "type": "object",
+                        "properties": {
+                          "accountId": {"type": "string"},
+                          "permissions": {"type": "array"}
+                        },
+                        "required": ["accountId"]
+                      }
+              updateToResourceField:
+                summary: Update to resource-field type (requires resourcePath and jsonPath)
+                value:
+                  name: "first_name"
+                  description: "Allows access to the user's first name"
+                  type: "resource-field"
+                  properties:
+                    resourcePath: "/user/{nic}"
+                    jsonPath: "$.personal.firstName"
+      responses:
+        "200":
+          description: Successfully updated consent element
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentPurposeResponse"
+              examples:
+                stringType:
+                  summary: Updated to basic type
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "license_read_updated"
+                    description: "Updated license access permission"
+                    type: "basic"
+                    properties:
+                      value: "license:read:v2"
+                jsonPayloadType:
+                  summary: Updated to JSON Schema type
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "account_schema_v2"
+                    description: "Updated account schema validation"
+                    type: "json-payload"
+                    properties:
+                      validationSchema: '{"type":"object","properties":{"accountId":{"type":"string"}}}'
+                resourceFieldType:
+                  summary: Updated to resource-field type
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "first_name"
+                    description: "Allows access to the user's first name"
+                    type: "resource-field"
+                    properties:
+                      resourcePath: "/user/{nic}"
+                      jsonPath: "$.personal.firstName"
+        "400":
+          description: Bad Request - Invalid input or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              examples:
+                missingName:
+                  summary: Missing required field (name)
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request"
+                    description: "Element name is required"
+                    traceId: "20260107T123456Z-abc123"
+                invalidType:
+                  summary: Invalid type value
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid element type"
+                    description: "Type must be one of: basic, json-payload, resource-field"
+                    traceId: "20260107T123456Z-abc123"
+                jsonSchemaMissingValidationSchema:
+                  summary: JSON payload type missing validationSchema
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Validation failed"
+                    description: "validationSchema is required for json-payload type"
+                    traceId: "20260107T123456Z-abc123"
+                attributeMissingResourcePath:
+                  summary: Resource field type missing resourcePath
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Validation failed"
+                    description: "resourcePath is required for resource-field type"
+                    traceId: "20260107T123456Z-abc123"
+                duplicateName:
+                  summary: Name already exists in organization
+                  value:
+                    code: "CONFLICT"
+                    message: "Element already exists"
+                    description: "Element name already exists in organization"
+                    traceId: "20260107T123456Z-abc123"
+        "404":
+          description: Consent element not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "NOT_FOUND"
+                message: "Element not found"
+                description: "Consent element does not exist"
+                traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+    delete:
+      summary: Delete a consent element
+      description: |
+        Deletes a consent element. The element must exist and belong to the specified organization.
+
+        **Note:** This operation will not delete any mappings if the element is currently linked to consents.
+      operationId: deleteConsentPurpose
+      tags:
+        - Consent Elements
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: elementId
+          in: path
+          required: true
+          description: The unique identifier of the consent element to delete
+          schema:
+            type: string
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        "204":
+          description: Successfully deleted consent element (no content returned)
+        "404":
+          description: Consent element not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "NOT_FOUND"
+                message: "Element not found"
+                description: "Consent element does not exist"
+                traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+  /consent-purposes:
+    post:
+      summary: Create a consent purpose
+      description: |
+        Creates a new consent purpose that organizes related consent elements together.
+        Each purpose is bound to a specific client ID (specified in TPP-client-id header) and 
+        enables streamlined consent collection by defining which elements are mandatory and which are optional.
+
+        **Validation Rules:**
+        - Purpose name is required and must be unique within the organization and client.
+        - Purpose name must not exceed 255 characters.
+        - Description is optional but must not exceed 1024 characters if provided.
+        - At least one element must be provided in the elements array.
+        - All element names in the purpose must reference existing valid consent elements.
+        - Duplicate element names within the same purpose are not allowed.
+        - Purpose is bound to the client ID specified in the TPP-client-id header.
+
+        **Mandatory Flag:**
+        The `isMandatory` flag on each element indicates whether that element must be
+        approved for the consent to be valid. This provides fine-grained control over
+        which elements are essential vs. optional within the purpose.
+      operationId: createPurposeGroup
+      tags:
+        - Consent Purpose
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization that owns this purpose
+          schema:
+            type: string
+            example: "ORG-001"
+        - in: header
+          name: TPP-client-id
+          required: true
+          description: The client ID of the Third-Party Provider (TPP) application making the request.
+          schema:
+            type: string
+            example: "TPP-CLIENT-001"
+      requestBody:
+        description: Purpose definition
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurposeGroupCreateRequest"
+            examples:
+              marketingPurpose:
+                summary: Marketing communication preferences purpose
+                value:
+                  name: "marketing_communication_preferences_purpose"
+                  description: "User preferences related to marketing communications"
+                  elements:
+                    - name: "user_email"
+                      isMandatory: true
+                    - name: "user_phone"
+                      isMandatory: false
+                    - name: "user_address"
+                      isMandatory: false
+              govDataAccessPurpose:
+                summary: Government data access purpose
+                value:
+                  name: "gov_data_access_purpose_attribute"
+                  description: "User consent to access user data in government portal"
+                  elements:
+                    - name: "first_name"
+                      isMandatory: false
+                    - name: "last_name"
+                      isMandatory: false
+                    - name: "address"
+                      isMandatory: true
+      responses:
+        "201":
+          description: Successfully created purpose
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurposeGroupResponse"
+              examples:
+                marketingPurpose:
+                  summary: Marketing purpose created
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "marketing_communication_preferences_purpose"
+                    description: "User preferences related to marketing communications"
+                    clientId: "CLIENT-456"
+                    elements:
+                      - name: "user_email"
+                        isMandatory: true
+                      - name: "user_phone"
+                        isMandatory: false
+                      - name: "user_address"
+                        isMandatory: false
+                    createdTime: 1704153600
+                    updatedTime: 1704153600
+        "400":
+          description: Bad Request - Invalid input or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              examples:
+                missingName:
+                  summary: Missing required name field
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request body"
+                    description: "Name field is required"
+                    traceId: "20260107T123456Z-abc123"
+                duplicateName:
+                  summary: Purpose name already exists
+                  value:
+                    code: "CONFLICT"
+                    message: "Purpose already exists"
+                    description: "Purpose name already exists"
+                    traceId: "20260107T123456Z-abc123"
+                emptyElements:
+                  summary: No elements provided
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request"
+                    description: "At least one element must be provided"
+                    traceId: "20260107T123456Z-abc123"
+                elementNotFound:
+                  summary: Referenced element doesn't exist
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid element reference"
+                    description: "Element does not exist in organization"
+                    traceId: "20260107T123456Z-abc123"
+                duplicateElementInPurpose:
+                  summary: Duplicate element in purpose
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid request"
+                    description: "Duplicate element in purpose"
+                    traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+    get:
+      summary: List all purposes
+      description: |
+        Retrieves a paginated list of all consent purposes for the specified organization.
+
+        **Filtering Options:**
+        - **name**: Filter by exact purpose name match
+        - **elementNames**: Comma-separated element names - returns purposes containing ALL specified elements
+        - **clientIds**: Filter by client IDs to get purposes bound to specific clients
+
+        **Search Logic for elementNames:**
+        When multiple element names are provided (e.g., "user_email,user_phone"), the API returns only
+        purposes that include ALL of the specified elements (AND operation). This helps find purposes that
+        satisfy a specific set of consent requirements.
+
+        Results are sorted by creation time (newest first) and support pagination via limit/offset.
+      operationId: listPurposeGroups
+      tags:
+        - Consent Purpose
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: clientIds
+          in: query
+          required: false
+          description: Comma-separated list of client IDs to filter purposes by
+          schema:
+            type: string
+          example: "CLIENT-123,CLIENT-456"
+        - name: name
+          in: query
+          required: false
+          description: Filter by purpose name
+          schema:
+            type: string
+          example: "marketing_communication_preferences"
+        - name: elementNames
+          in: query
+          required: false
+          description: |
+            Comma-separated list of element names to filter by.
+            Returns purposes that contain ALL the specified elements (AND logic).
+            Example: "user_email,user_phone" will return purposes containing both elements.
+          schema:
+            type: string
+          example: "user_email,user_phone"
+        - name: limit
+          in: query
+          description: Maximum number of results to return (default 10, max 100)
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            minimum: 1
+            maximum: 100
+          example: 10
+        - name: offset
+          in: query
+          description: Number of results to skip (for pagination)
+          schema:
+            type: integer
+            format: int32
+            default: 0
+            minimum: 0
+          example: 0
+        - name: count
+          in: query
+          description: If true, returns only the total count without the data array
+          schema:
+            type: boolean
+            default: false
+          example: false
+      responses:
+        "200":
+          description: Successfully retrieved purposes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurposeGroupListResponse"
+              examples:
+                withPurposes:
+                  summary: Multiple purposes returned
+                  value:
+                    data:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        name: "marketing_communication_preferences_purpose"
+                        description: "User preferences related to marketing communications"
+                        clientId: "CLIENT-456"
+                        elements:
+                          - name: "user_email"
+                            isMandatory: true
+                          - name: "user_phone"
+                            isMandatory: false
+                        createdTime: 1704153600
+                        updatedTime: 1704153600
+                      - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                        name: "account_access_permissions_purpose"
+                        description: "Permissions for accessing account information"
+                        clientId: "CLIENT-789"
+                        elements:
+                          - name: "account_basic_info"
+                            isMandatory: true
+                          - name: "account_balance"
+                            isMandatory: true
+                        createdTime: 1704067200
+                        updatedTime: 1704067200
+                    metadata:
+                      total: 2
+                      offset: 0
+                      count: 2
+                      limit: 10
+                emptyResult:
+                  summary: No purposes found
+                  value:
+                    data: []
+                    metadata:
+                      total: 0
+                      offset: 0
+                      count: 0
+                      limit: 10
+                filteredByElements:
+                  summary: Filtered by element names
+                  value:
+                    data:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        name: "marketing_communication_preferences_purpose"
+                        description: "User preferences related to marketing communications"
+                        clientId: "CLIENT-456"
+                        elements:
+                          - name: "user_email"
+                            isMandatory: true
+                          - name: "user_phone"
+                            isMandatory: false
+                          - name: "user_address"
+                            isMandatory: false
+                        createdTime: 1704153600
+                        updatedTime: 1704153600
+                    metadata:
+                      total: 1
+                      offset: 0
+                      count: 1
+                      limit: 10
+        "400":
+          description: Bad Request - Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consent-purposes/{purposeId}:
+    get:
+      summary: Get a specific purpose by ID
+      description: |
+        Retrieves a single consent purpose by its unique identifier.
+
+        Returns complete purpose details including all associated elements with their
+        mandatory flags.
+      operationId: getPurposeGroupById
+      tags:
+        - Consent Purpose
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: purposeId
+          in: path
+          required: true
+          description: The unique identifier of the purpose
+          schema:
+            type: string
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        "200":
+          description: Successfully retrieved purpose
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurposeGroupResponse"
+              example:
+                id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                name: "marketing_communication_preferences_purpose"
+                description: "User preferences related to marketing communications"
+                clientId: "CLIENT-456"
+                elements:
+                  - name: "user_email"
+                    isMandatory: true
+                  - name: "user_phone"
+                    isMandatory: false
+                  - name: "user_address"
+                    isMandatory: false
+                createdTime: 1704153600
+                updatedTime: 1704153600
+        "404":
+          description: Purpose not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "NOT_FOUND"
+                message: "Purpose not found"
+                description: "Purpose does not exist"
+                traceId: "20260107T123456Z-abc123"
+        "400":
+          description: Bad Request - Invalid purpose ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "BAD_REQUEST"
+                message: "Invalid request"
+                description: "Invalid purpose ID format"
+                traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+    put:
+      summary: Update a purpose
+      description: |
+        Updates an existing consent purpose. This is a full replacement operation -
+        all fields must be provided in the request.
+
+        **Update Restrictions:**
+        - Updates are only allowed if the purpose is not currently bound to any active consents.
+        - If the purpose is referenced in any consent, the update will be rejected.
+
+        **Element Name Validation:**
+        All element names referenced in the updated `elements` array must already exist
+        in the organization's consent elements.
+
+        **Validation Rules:**
+        - All fields from create request are required (full replacement)
+        - Purpose name must be unique within organization and client (can keep same name)
+        - All element names must reference existing consent elements
+        - At least one element must be provided
+        - Duplicate element names within the purpose are not allowed
+
+        **Note:** This operation replaces the entire elements list - any elements not
+        included in the update will be removed from the purpose.
+      operationId: updatePurposeGroup
+      tags:
+        - Consent Purpose
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - in: header
+          name: TPP-client-id
+          required: true
+          description: The client ID of the Third-Party Provider (TPP) application making the request
+          schema:
+            type: string
+            example: "TPP-CLIENT-001"
+        - name: purposeId
+          in: path
+          required: true
+          description: The unique identifier of the purpose to update
+          schema:
+            type: string
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      requestBody:
+        description: Updated purpose definition
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurposeGroupUpdateRequest"
+            examples:
+              updateDescription:
+                summary: Update purpose description and elements
+                value:
+                  name: "marketing_communication_preferences_purpose"
+                  description: "Updated preferences for all marketing communications"
+                  elements:
+                    - name: "user_email"
+                      isMandatory: true
+                    - name: "user_phone"
+                      isMandatory: true
+                    - name: "user_sms"
+                      isMandatory: false
+              addElement:
+                summary: Add new element to purpose
+                value:
+                  name: "marketing_communication_preferences_purpose"
+                  description: "User preferences related to marketing communications"
+                  elements:
+                    - name: "user_email"
+                      isMandatory: true
+                    - name: "user_phone"
+                      isMandatory: false
+                    - name: "user_address"
+                      isMandatory: false
+                    - name: "user_push_notifications"
+                      isMandatory: false
+      responses:
+        "200":
+          description: Successfully updated purpose
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurposeGroupResponse"
+              example:
+                id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                name: "marketing_communication_preferences_purpose"
+                description: "Updated preferences for all marketing communications"
+                clientId: "CLIENT-456"
+                elements:
+                  - name: "user_email"
+                    isMandatory: true
+                  - name: "user_phone"
+                    isMandatory: true
+                  - name: "user_sms"
+                    isMandatory: false
+                createdTime: 1704153600
+                updatedTime: 1704240000
+        "400":
+          description: Bad Request - Invalid input or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              examples:
+                elementNotFound:
+                  summary: Referenced element doesn't exist
+                  value:
+                    code: "BAD_REQUEST"
+                    message: "Invalid element reference"
+                    description: "Element does not exist in organization"
+                    traceId: "20260107T123456Z-abc123"
+                duplicateName:
+                  summary: Name conflicts with another purpose
+                  value:
+                    code: "CONFLICT"
+                    message: "Purpose name conflict"
+                    description: "Purpose name already exists"
+                    traceId: "20260107T123456Z-abc123"
+        "404":
+          description: Purpose not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "NOT_FOUND"
+                message: "Purpose not found"
+                description: "Purpose does not exist"
+                traceId: "20260107T123456Z-abc123"
+        "409":
+          description: Conflict - Purpose is bound to existing consents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "CONFLICT"
+                message: "Cannot update purpose"
+                description: "Purpose is currently bound to active consents and cannot be updated"
+                traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+    delete:
+      summary: Delete a purpose
+      description: |
+        Deletes a consent purpose. The purpose must exist and belong to the specified organization.
+
+        **Delete Restrictions:**
+        - Deletion is only allowed if the purpose is not currently bound to any active consents.
+        - If the purpose is referenced in any consent, the deletion will be rejected.
+
+        **Cascade Behavior:**
+        Deleting a purpose only removes the purpose definition itself. It does NOT delete
+        the individual consent elements that were part of the purpose - those remain available
+        for use in other purposes or directly in consents.
+      operationId: deletePurposeGroup
+      tags:
+        - Consent Purpose
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: The unique identifier for the organization
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: purposeId
+          in: path
+          required: true
+          description: The unique identifier of the purpose to delete
+          schema:
+            type: string
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        "204":
+          description: Successfully deleted purpose (no content returned)
+        "404":
+          description: Purpose not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "NOT_FOUND"
+                message: "Purpose not found"
+                description: "Purpose does not exist"
+                traceId: "20260107T123456Z-abc123"
+        "409":
+          description: Conflict - Purpose is bound to existing consents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "CONFLICT"
+                message: "Cannot delete purpose"
+                description: "Purpose is currently bound to active consents and cannot be deleted"
+                traceId: "20260107T123456Z-abc123"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+              example:
+                code: "INTERNAL_ERROR"
+                message: "Server error"
+                description: "An unexpected error occurred"
+                traceId: "20260107T123456Z-abc123"
+      security:
+        - basicAuth: []
+components:
+  schemas:
+    ConsentPurposeItem:
+      type: object
+      description: |
+        Represents a purpose within a consent, containing multiple related consent elements
+        with their approval states.
+
+        **Purpose Validation:**
+        The `name` must reference an existing purpose in the organization.
+        All element names within the `elements` array must exist and be part of the referenced purpose.
+
+        **Usage:**
+        Used in consent create/update requests and responses to organize consent elements into
+        logical groupings (e.g., "marketing_communication_preferences_purpose").
+      required:
+        - name
+        - elements
+      properties:
+        name:
+          type: string
+          description: |
+            The name of an existing purpose to include in this consent.
+            Must match the name of a purpose that has been previously created in the organization.
+          example: "marketing_communication_preferences"
+        elements:
+          type: array
+          minItems: 1
+          description: |
+            Array of consent elements within this purpose with their approval states.
+            Each element must be defined in the referenced purpose.
+          items:
+            $ref: "#/components/schemas/ConsentElementApprovalItem"
+    ConsentElementApprovalItem:
+      type: object
+      description: |
+        Represents a single consent element approval within a consent.
+        Contains the element name and whether the user has approved it.
+
+        **Note:** The mandatory flag is defined at the purpose level,
+        not at the individual consent level.
+      required:
+        - name
+        - isUserApproved
+      properties:
+        name:
+          type: string
+          description: |
+            The name of the consent element.
+            Must match an existing element name and must be part of the parent purpose.
+          example: "user_email"
+        isUserApproved:
+          type: boolean
+          description: |
+            Indicates whether the user has approved this specific consent element for this consent.
+
+            - `true`: User has granted consent for this element
+            - `false`: User has declined consent for this element
+
+            **Validation:** If the element is marked as mandatory in the purpose definition,
+            this field should typically be true for the consent to be valid.
+          example: true
+        value:
+          description: |
+            Optional element-specific value - flexible type that can be:
+            - string: Simple text value
+            - object: Structured data
+            - array: List of values
+
+            This field is OPTIONAL and can be used to store additional context or data
+            specific to this element within the consent. Some elements may require a value,
+            while others may not.
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+              items: {}
+          example:
+            scope: "read"
+            permissions: ["email", "profile"]
+    AuthorizationResourceRequestBody:
+      type: object
+      description: |
+        Payload for creating or updating an authorization resource.
+
+        **Authorization Status/State:**
+        The `status` field represents the authorization state which determines the consent status:
+        - `approved` (default if not provided): Authorization is approved → consent will be "active"
+        - `created`: Authorization is created but not yet approved → consent will be "created"
+        - `rejected`: Authorization was rejected → consent will be "rejected"
+        - Custom values: Will be resolved via extension point to one of the known consent statuses
+      required:
+        - type
+      properties:
+        userId:
+          description: The unique ID of the user who performed this authorization.
+          type: string
+          example: "admin@carbon.super"
+        type:
+          description: The type of authorization (e.g., 'authorisation', 're-authorisation').
+          type: string
+          example: "authorisation"
+        status:
+          description: |
+            The current status/state of this specific authorization.
+
+            Defaults to "APPROVED" if not provided. Known states:
+            - `APPROVED`: Authorization approved (default) → consent becomes ACTIVE
+            - `CREATED`: Authorization created but not yet approved → consent becomes CREATED
+            - `REJECTED`: Authorization rejected → consent becomes REJECTED
+            - Custom states: Resolved via extension point
+          type: string
+          example: "APPROVED"
+          enum:
+            - CREATED
+            - APPROVED
+            - REJECTED
+        resources:
+          description: |
+            Flexible resources field that can contain any valid JSON structure.
+
+            This field replaces the deprecated `approvedPurposeDetails` and can be used to store:
+            - Account information
+            - Payment details
+            - Resource identifiers
+            - Any other authorization-specific data
+
+            The API validates that this is valid JSON but does not enforce a specific schema.
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+              items: {}
+          example:
+            accountIds: ["123456", "789012"]
+            permissions: ["read", "write"]
+    ConsentRevokePayload:
+      type: object
+      description: The request body for revoking a consent.
+      required:
+        - actionBy
+      properties:
+        actionBy:
+          description: Identifier of the user or system performing the revoke action.
+          type: string
+          example: "admin@wso2.com"
+        revocationReason:
+          description: The reason for revoking the consent.
+          type: string
+          example: "Admin revoke"
+    ConsentCreatePayload:
+      type: object
+      description: |
+        The request body for initiating a new consent.
+
+        **Status Derivation:**
+        The consent status is NOT provided in the request. Instead, it is automatically derived by the API based on the authorization states:
+        - If any authorization has status REJECTED → consent status = REJECTED
+        - If any authorization has status CREATED → consent status = CREATED
+        - If all authorizations have status APPROVED (or empty/default) → consent status = ACTIVE
+        - For custom authorization states → consent status is resolved via extension point (must return a known status)
+
+        **Known Consent Statuses:**
+        - `CREATED`: Consent is created but not yet approved
+        - `ACTIVE`: Consent is approved and active
+        - `REJECTED`: Consent was rejected
+        - `REVOKED`: Consent was revoked
+        - `EXPIRED`: Consent has expired
+      required:
+        - type
+        - purposes
+      properties:
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments', 'marketing').
+          type: string
+          example: "marketing"
+        validityTime:
+          description: The duration for which the consent is valid, in seconds. '0' may indicate it does not expire automatically.
+          type: integer
+          format: int64
+          example: 1766383796
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for a recurring payment or access.
+          type: boolean
+          example: true
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds. Optional field that specifies how long the consent allows access to user data.
+          type: integer
+          format: int64
+          example: 0
+        frequency:
+          description: For recurring consents, this indicates the frequency (e.g., per day). '0' may indicate no limit.
+          type: integer
+          format: int32
+          example: 0
+        purposes:
+          description: |
+            Array of purposes for this consent (REQUIRED).
+
+            Each purpose contains multiple consent elements with their approval states.
+            At least one purpose must be provided.
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        properties:
+          description: A key-value map of additional, non-standard attributes associated with the consent.
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            department: "sales"
+            region: "APAC"
+        authorizations:
+          description: An array of authorization resources linked to this consent, detailing which users have acted upon it.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreatePayload"
+    ConsentAuthorizationCreatePayload:
+      type: object
+      description: |
+        Represents a detailed authorization object.
+
+        **Authorization State:**
+        The status field represents the authorization state which determines the consent status:
+        - `APPROVED` (default if not provided): Authorization is approved → consent will be ACTIVE
+        - `CREATED`: Authorization is created but not yet approved → consent will be CREATED
+        - `REJECTED`: Authorization was rejected → consent will be REJECTED
+        - Custom states: Will be resolved via extension point to determine final consent status
+      properties:
+        userId:
+          description: The unique ID of the user who performed this authorization.
+          type: string
+          example: "admin@carbon.super"
+        type:
+          description: The type of authorization (e.g., 'authorisation', 're-authorisation').
+          type: string
+          example: "authorisation"
+        status:
+          description: |
+            The authorization state (defaults to APPROVED if not provided).
+            Known states: APPROVED, CREATED, REJECTED.
+            Custom states will be resolved via extension point.
+          type: string
+          example: "APPROVED"
+          enum:
+            - CREATED
+            - APPROVED
+            - REJECTED
+        resources:
+          description: |
+            Flexible resources field that can contain any valid JSON structure.
+
+            Can store account IDs, payment details, resource identifiers, or any
+            other authorization-specific data. Validated as JSON but no schema enforced.
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+              items: {}
+          example:
+            accountIds: ["123456", "789012"]
+    ConsentAuthorizationCreateResponse:
+      type: object
+      description: Represents a detaild authorization object.
+      properties:
+        id:
+          description: Auth Id
+          type: string
+          example: "auth_id"
+        userId:
+          description: The unique ID of the user who performed this authorization.
+          type: string
+          example: "admin@carbon.super"
+        type:
+          description: The type of authorization (e.g., 'authorisation', 're-authorisation').
+          type: string
+          example: "authorisation"
+        status:
+          description: The current status of this specific authorization (e.g., 'created', 'approved', 'rejected').
+          type: string
+          example: "created"
+        updatedTime:
+          type: integer
+          format: int32
+        resources:
+          description: Flexible resources field containing authorization-specific data as JSON.
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+              items: {}
+          example:
+            accountIds: ["123456", "789012"]
+    ConsentErrorCommon:
+      type: object
+      description: A standardized error response object.
+      properties:
+        code:
+          description: Error code.
+          type: string
+        message:
+          description: A short, human-readable summary of the problem.
+          type: string
+        description:
+          description: A detailed explanation of the error.
+          type: string
+        traceId:
+          description: TraceId
+          type: string
+    ConsentSearchResponse:
+      type: object
+      description: The response from a successful consent search query.
+      properties:
+        data:
+          description: An array of detailed consent objects matching the search criteria.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentDetail"
+        metadata:
+          $ref: "#/components/schemas/ConsentSearchMetadata"
+    ConsentUpdateRequest:
+      type: object
+      description: |
+        Request body for updating a consent.
+
+        **Status Derivation:**
+        The consent status is NOT provided in the request. Instead, it is automatically derived by the API based on the authorization states:
+        - If any authorization has status "rejected" → consent status = "rejected"
+        - If any authorization has status "created" → consent status = "created"
+        - If all authorizations have status "approved" (or empty/default) → consent status = "active"
+        - For custom authorization states → consent status is resolved via extension point (must return a known status)
+
+        **Purposes:**
+        The purposes field is REQUIRED and will completely replace existing consent elements.
+        The API always clears existing element mappings and creates new ones from the request.
+      required:
+        - purposes
+      properties:
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments', 'marketing').
+          type: string
+          example: "marketing"
+        validityTime:
+          description: The duration for which the consent is valid, in seconds. '0' may indicate it does not expire automatically.
+          type: integer
+          format: int64
+          example: 1766383796
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for a recurring payment or access.
+          type: boolean
+          example: true
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds. Optional field that specifies how long the consent allows access to user data.
+          type: integer
+          format: int64
+          example: 0
+        frequency:
+          description: For recurring consents, this indicates the frequency (e.g., per day). '0' may indicate no limit.
+          type: integer
+          format: int32
+          example: 0
+        purposes:
+          description: |
+            Array of purposes for this consent (REQUIRED).
+
+            This field completely replaces existing consent elements. All existing element mappings
+            will be cleared and new ones created from this array.
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        attributes:
+          description: A key-value map of additional, non-standard attributes associated with the consent.
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            department: "sales"
+            region: "APAC"
+        authorizations:
+          description: An array of authorization resources linked to this consent, detailing which users have acted upon it.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreatePayload"
+    ConsentUpdateResponse:
+      type: object
+      description: A generic success response for consent management operations that return consent details.
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        purposes:
+          - name: "marketing_communication_preferences"
+            elements:
+              - name: "user_email"
+                isUserApproved: true
+                value: {}
+              - name: "user_mobile"
+                isUserApproved: true
+                value: {}
+        createdTime: 1702800000
+        updatedTime: 1702800000
+        clientId: "tpp-client-123"
+        type: "marketing"
+        status: "ACTIVE"
+        frequency: 0
+        validityTime: 1766383796
+        recurringIndicator: true
+        dataAccessValidityDuration: 0
+        attributes:
+          department: "marketing"
+        authorizations:
+          - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            userId: "user1@example.com"
+            type: "authorisation"
+            status: "APPROVED"
+            updatedTime: 1702800000
+            resources:
+              accountIds: ["acc-123", "acc-456"]
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        purposes:
+          description: Array of purposes for this consent with their purposes and approval states.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        createdTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        updatedTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: "The current status of the consent in its lifecycle. Valid values are: CREATED, ACTIVE, REJECTED, REVOKED, EXPIRED. Status is derived from authorization state - APPROVED authorization yields ACTIVE, CREATED authorization yields CREATED, REJECTED authorization yields REJECTED."
+          type: string
+          example: "ACTIVE"
+        frequency:
+          description: For recurring consents, this indicates the frequency (e.g., per day). '0' may indicate no limit.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds. '0' may indicate it does not expire automatically.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for a recurring payment or access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds. Optional field that specifies how long the consent allows access to user data.
+          type: integer
+          format: int64
+          example: 86400
+        attributes:
+          description: A key-value map of additional, non-standard attributes associated with the consent.
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            department: "sales"
+            region: "APAC"
+        authorizations:
+          description: An array of authorization resources linked to this consent, detailing which users have acted upon it.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+        modifiedResponse:
+          description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
+          type: object
+    ConsentRetrievalResponse:
+      description: The response body returned after successfully initiating a new consent.
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        purposes:
+          - name: "marketing_communication_preferences"
+            elements:
+              - name: "user_email"
+                isUserApproved: true
+                value: {}
+              - name: "user_mobile"
+                isUserApproved: true
+                value: {}
+        createdTime: 1702800000
+        updatedTime: 1702800000
+        clientId: "tpp-client-123"
+        type: "marketing"
+        status: "ACTIVE"
+        frequency: 0
+        validityTime: 1766383796
+        recurringIndicator: true
+        dataAccessValidityDuration: 0
+        attributes:
+          department: "marketing"
+        authorizations:
+          - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            userId: "user1@example.com"
+            type: "authorisation"
+            status: "APPROVED"
+            updatedTime: 1702800000
+            resources:
+              accountIds: ["acc-123", "acc-456"]
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        purposes:
+          description: Array of purposes for this consent with their consent elements and approval states.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        createdTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        updatedTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: The current status of the consent in its lifecycle. Valid values are 'created', 'active', 'rejected', 'revoked', 'expired'. Status is derived from authorization state - approved authorization yields 'active', created authorization yields 'created', rejected authorization yields 'rejected'.
+          type: string
+          example: "active"
+        frequency:
+          description: For recurring consents, this indicates the frequency (e.g., per day). '0' may indicate no limit.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds. '0' may indicate it does not expire automatically.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for a recurring payment or access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds. Optional field that specifies how long the consent allows access to user data.
+          type: integer
+          format: int64
+          example: 86400
+
+        attributes:
+          description: A key-value map of additional, non-standard attributes associated with the consent.
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            department: "sales"
+            region: "APAC"
+        authorizations:
+          description: An array of authorization resources linked to this consent, detailing which users have acted upon it.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+        modifiedResponse:
+          description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
+          type: object
+    ConsentRevokedResponse:
+      type: object
+      description: The response body returned after successfully revoking a consent.
+      properties:
+        actionTime:
+          description: The Unix timestamp (in seconds) when the revocation occurred.
+          type: integer
+          format: int64
+          example: 1758829540
+        actionBy:
+          description: The user or system that performed the revoke action.
+          type: string
+          example: "admin@wso2.com"
+        revocationReason:
+          description: The reason provided for revoking the consent.
+          type: string
+          example: "Admin revoke"
+    ConsentCreatedResponse:
+      type: object
+      description: The response body returned after successfully initiating a new consent.
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        purposes:
+          - name: "marketing_communication_preferences"
+            elements:
+              - name: "user_email"
+                isUserApproved: true
+                value: {}
+              - name: "user_mobile"
+                isUserApproved: true
+                value: {}
+        createdTime: 1702800000
+        updatedTime: 1702800000
+        clientId: "tpp-client-123"
+        type: "marketing"
+        status: "ACTIVE"
+        frequency: 0
+        validityTime: 1766383796
+        recurringIndicator: true
+        dataAccessValidityDuration: 0
+        attributes:
+          department: "marketing"
+        authorizations:
+          - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            userId: "user1@example.com"
+            type: "authorisation"
+            status: "APPROVED"
+            updatedTime: 1702800000
+            resources:
+              accountIds: ["acc-123", "acc-456"]
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        purposes:
+          description: Array of purposes for this consent with their purposes and approval states.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        createdTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        updatedTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments').
+          type: string
+          example: "accounts"
+        status:
+          description: "The current status of the consent in its lifecycle. Valid values are: CREATED, ACTIVE, REJECTED, REVOKED, EXPIRED. Status is derived from authorization state - APPROVED authorization yields ACTIVE, CREATED authorization yields CREATED, REJECTED authorization yields REJECTED."
+          type: string
+          example: "ACTIVE"
+        frequency:
+          description: For recurring consents, this indicates the frequency (e.g., per day). '0' may indicate no limit.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds. '0' may indicate it does not expire automatically.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for a recurring payment or access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds. Optional field that specifies how long the consent allows access to user data.
+          type: integer
+          format: int64
+          example: 86400
+        attributes:
+          description: A key-value map of additional, non-standard attributes associated with the consent.
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            department: "sales"
+            region: "APAC"
+        authorizations:
+          description: An array of authorization resources linked to this consent, detailing which users have acted upon it.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+        modifiedResponse:
+          description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
+          type: object
+    ConsentDetail:
+      type: object
+      description: A comprehensive object representing a single consent and all its associated data.
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        purposes:
+          - name: "marketing_communication_preferences"
+            elements:
+              - name: "user_email"
+                isUserApproved: true
+                value: {}
+              - name: "user_mobile"
+                isUserApproved: true
+                value: {}
+        createdTime: 1702800000
+        updatedTime: 1702800000
+        clientId: "tpp-client-123"
+        type: "marketing"
+        status: "ACTIVE"
+        frequency: 0
+        validityTime: 1766383796
+        recurringIndicator: true
+        dataAccessValidityDuration: 0
+        attributes:
+          department: "marketing"
+        authorizations:
+          - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            userId: "user1@example.com"
+            type: "authorisation"
+            status: "APPROVED"
+            updatedTime: 1702800000
+            resources:
+              accountIds: ["acc-123", "acc-456"]
+      properties:
+        id:
+          description: Consent Id
+          type: string
+          example: "consent_id"
+        purposes:
+          description: Array of purposes for this consent with their purposes and approval states.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentPurposeItem"
+        createdTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        updatedTime:
+          type: integer
+          format: int64
+          example: 1702800000
+        clientId:
+          type: string
+        type:
+          description: The type of consent (e.g., 'accounts', 'payments', 'marketing').
+          type: string
+          example: "accounts"
+        status:
+          description: "The current status of the consent in its lifecycle. Valid values are: CREATED, ACTIVE, REJECTED, REVOKED, EXPIRED. Status is derived from authorization state - APPROVED authorization yields ACTIVE, CREATED authorization yields CREATED, REJECTED authorization yields REJECTED."
+          type: string
+          example: "ACTIVE"
+        frequency:
+          description: For recurring consents, this indicates the frequency (e.g., per day). '0' may indicate no limit.
+          type: integer
+          format: int32
+          example: 0
+        validityTime:
+          description: The duration for which the consent is valid, in seconds. '0' may indicate it does not expire automatically.
+          type: integer
+          format: int64
+          example: 0
+        recurringIndicator:
+          description: A boolean flag indicating if the consent is for a recurring payment or access.
+          type: boolean
+          example: false
+        dataAccessValidityDuration:
+          description: The duration for which data access is valid, in seconds. Optional field that specifies how long the consent allows access to user data.
+          type: integer
+          format: int64
+          example: 86400
+        attributes:
+          description: A key-value map of additional, non-standard attributes associated with the consent.
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            department: "sales"
+            region: "APAC"
+        authorizations:
+          description: An array of authorization resources linked to this consent, detailing which users have acted upon it.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+    ConsentSearchMetadata:
+      type: object
+      description: Pagination metadata returned with search results.
+      properties:
+        total:
+          description: The total number of results available for the query, ignoring pagination.
+          type: integer
+          example: 100
+        offset:
+          description: The starting position of the returned result set.
+          type: integer
+          example: 0
+        count:
+          description: The number of results included in the current response (size of data array).
+          type: integer
+          example: 10
+        limit:
+          description: The maximum number of results requested per page.
+          type: integer
+          example: 10
+    ConsentAuthorizationResource:
+      type: object
+      description: Represents a specific authorization action taken on a consent by a user.
+      properties:
+        id:
+          description: Auth Id
+          type: string
+          example: "auth_id"
+        userId:
+          description: The unique ID of the user who performed this authorization.
+          type: string
+          example: "admin@carbon.super"
+        type:
+          description: The type of authorization (e.g., 'authorisation', 're-authorisation').
+          type: string
+          example: "authorisation"
+        status:
+          description: The current status of this specific authorization (e.g., 'created', 'approved', 'rejected').
+          type: string
+          example: "created"
+        updatedTime:
+          type: integer
+          format: int32
+        resources:
+          description: Flexible resources field containing authorization-specific data as JSON.
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+              items: {}
+          example:
+            accountIds: ["123456", "789012"]
+    ValidateRequest:
+      type: object
+      description: Request payload for validating a consent for a specific action.
+      required:
+        - consentId
+        - resourceParams
+      properties:
+        consentId:
+          description: The unique identifier of the consent to validate.
+          type: string
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        userId:
+          description: The unique identifier of the user performing the action (optional).
+          type: string
+          example: "user123"
+        clientId:
+          description: The client ID of the application making the request (optional).
+          type: string
+          example: "banking-app-001"
+        headers:
+          description: Optional headers from the actual API request being validated.
+          type: object
+          additionalProperties:
+            type: string
+        payload:
+          description: Optional payload from the actual API request being validated.
+          type: object
+        electedResource:
+          description: The resource the user is trying to access (optional).
+          type: string
+        resourceParams:
+          description: Parameters describing the specific action being validated.
+          type: object
+          required:
+            - resource
+            - httpMethod
+          properties:
+            resource:
+              description: The API resource path being accessed.
+              type: string
+              example: "/aisp/accounts/{AccountId}?queryParam=queryParamValue"
+            httpMethod:
+              description: The HTTP method of the request.
+              type: string
+              example: "GET"
+            context:
+              description: Additional context about the request.
+              type: string
+              example: "/open-banking/v3.1/aisp"
+    ValidateResponse:
+      type: object
+      description: Response payload from consent validation.
+      properties:
+        isValid:
+          description: Whether the consent is valid for the requested action.
+          type: boolean
+          example: true
+        modifiedPayload:
+          description: Optional modified payload if the consent requires transformation of the request.
+          type: object
+          nullable: true
+        errorCode:
+          description: HTTP status code if validation failed (e.g., 401, 404, 500).
+          type: integer
+          example: 401
+        errorMessage:
+          description: Error type/code if validation failed (e.g., "invalid_consent_status", "consent_expired", "consent_not_found").
+          type: string
+          example: "consent_expired"
+        errorDescription:
+          description: Human-readable detailed error description if validation failed.
+          type: string
+          example: "Consent has expired. Status updated to: EXPIRED"
+        consentInformation:
+          description: |
+            Complete consent information (excludes modifiedResponse field).
+
+            **Includes enriched consent element details:**
+            - Each consent element includes type, description, and attributes from the purpose definition
+            - This allows clients to understand what each purpose means without additional API calls
+
+            Always present in the response, regardless of validation result.
+          allOf:
+            - $ref: "#/components/schemas/ValidateConsentAPIResponse"
+    ValidateConsentAPIResponse:
+      type: object
+      description: Consent information in validate response (same as ConsentAPIResponse but excludes modifiedResponse field)
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the consent (UUID format)
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        type:
+          type: string
+          description: The consent type (e.g., accounts, payments, etc.)
+          example: "accounts"
+        clientId:
+          type: string
+          description: Client ID of the application that created the consent
+          example: "client-app-123"
+        status:
+          type: string
+          description: Current status of the consent (CREATED, ACTIVE, EXPIRED, REVOKED, REJECTED, etc.)
+          example: "ACTIVE"
+        createdTime:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) when the consent was created
+          example: 1699564800
+        updatedTime:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) when the consent was last updated
+          example: 1699651200
+        validityTime:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp (seconds) until which the consent is valid. If expired, status will be EXPIRED. Omitted from response when null.
+          example: 1707340800
+        recurringIndicator:
+          type: boolean
+          nullable: true
+          description: Indicates if the consent can be used repeatedly. Omitted from response when null.
+          example: true
+        frequency:
+          type: integer
+          nullable: true
+          description: Number of times the consent can be used (if recurringIndicator is true). Omitted from response when null.
+          example: 10
+        dataAccessValidityDuration:
+          type: integer
+          format: int64
+          nullable: true
+          description: Duration in seconds for which data access is valid after each authorization. Omitted from response when null.
+          example: 86400
+        purposes:
+          type: array
+          description: |
+            List of purposes containing consent elements with their approval state, mandatory flag, and **enriched details from element definitions**.
+            Each purpose contains:
+            - name: Name of the purpose
+            - elements: Array of elements in this purpose
+
+            Each element includes:
+            - name: Element identifier
+            - value: User-provided value for this element (if any)
+            - isUserApproved: Whether the user has approved this element (boolean, default false)
+            - isMandatory: Whether this element is mandatory (boolean, default true)
+            - type: Element type from definition (basic, json-payload, or resource-field)
+            - description: Element description from definition
+            - properties: Element properties from definition (e.g., validationSchema, resourcePath, jsonPath)
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Name of the purpose
+                example: "marketing_communication_preferences"
+              elements:
+                type: array
+                description: List of consent elements in this purpose with enriched details
+                items:
+                  allOf:
+                    - $ref: "#/components/schemas/ConsentElementApprovalItem"
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [basic, json-payload, resource-field]
+                          description: Element type from the consent element definition
+                          example: "resource-field"
+                        description:
+                          type: string
+                          description: Element description from the consent element definition
+                          example: "Allows access to the user's first name"
+                        properties:
+                          type: object
+                          additionalProperties:
+                            type: string
+                          description: Element properties from the consent element definition
+                          example:
+                            jsonPath: "$.personal.firstName"
+                            resourcePath: "/user/{nic}"
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom key-value attributes associated with the consent
+          example:
+            channel: "mobile"
+            region: "US"
+        authorizations:
+          type: array
+          description: List of authorizations associated with this consent
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              userId:
+                type: string
+                nullable: true
+                description: User identifier. Omitted from response when null.
+                example: "user-456"
+              type:
+                type: string
+                example: "authorization"
+              status:
+                type: string
+                example: "APPROVED"
+              resources:
+                type: object
+                description: Authorization resources (always present, empty object if not set)
+                example:
+                  accountIds: ["123456", "789012"]
+              updatedTime:
+                type: integer
+                format: int64
+                example: 1699651200
+      required:
+        - id
+        - type
+        - clientId
+        - status
+        - createdTime
+        - updatedTime
+        - purposeGroups
+    ConsentIdsResponse:
+      type: object
+      description: Response payload containing consent IDs matching the attribute search criteria.
+      properties:
+        consentIds:
+          description: Array of consent IDs that match the search criteria, sorted alphabetically.
+          type: array
+          items:
+            type: string
+          example: ["123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174003"]
+        count:
+          description: The number of consent IDs returned.
+          type: integer
+          example: 3
+    ConsentAttributeSearchResponse:
+      $ref: "#/components/schemas/ConsentIdsResponse"
+    ConsentPurposeCreateRequest:
+      type: object
+      required:
+        - name
+        - type
+        - properties
+      description: |
+        Request object for creating a consent element. All fields marked as required must be provided.
+
+        **Type Handler Architecture:**
+        Each element type has specific property requirements:
+        - **basic**: No mandatory properties (any properties are optional)
+        - **json-payload**: Requires `validationSchema` property
+        - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
+
+        **Batch Creation:**
+        When creating multiple purposes in a batch:
+        - Each purpose name must be unique within the batch
+        - Each purpose name must not already exist in the organization
+        - If any validation fails, the entire batch is rolled back (atomic operation)
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: |
+            The name/identifier of the consent element. Must be unique within the organization.
+            Database constraint: UNIQUE KEY unique_name_per_org (NAME, ORG_ID)
+            Batch constraint: Must be unique within the batch request
+          example: "license_read"
+        description:
+          type: string
+          maxLength: 1024
+          description: Optional description providing additional context about the purpose
+          example: "Allows accessing license API"
+        type:
+          type: string
+          enum:
+            - basic
+            - json-payload
+            - resource-field
+          description: |
+            The type of the element determines which properties are mandatory:
+            - 'basic': No mandatory properties (any properties are optional)
+            - 'json-payload': Requires `validationSchema` property
+            - 'resource-field': Requires `resourcePath` and `jsonPath` properties
+          example: "basic"
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Key-value map of properties. Required properties depend on the type:
+            - **basic**: No mandatory properties. Can have any properties (e.g., value: "license:read")
+            - **json-payload**: Must have `validationSchema` property containing JSON schema
+            - **resource-field**: Must have `resourcePath` and `jsonPath`, optionally `validationSchema`
+          example:
+            value: "license:read"
+    ConsentPurposeUpdateRequest:
+      type: object
+      required:
+        - name
+        - type
+        - properties
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Name for the consent element (required, must be unique within organization)
+          example: "license_read_v2"
+        description:
+          type: string
+          maxLength: 1024
+          description: Description for the consent element (optional)
+          example: "Updated description for license API access"
+        type:
+          type: string
+          enum:
+            - basic
+            - json-payload
+            - resource-field
+          description: |
+            Type of the consent element (required). Determines mandatory properties:
+            - 'basic': No mandatory properties
+            - 'json-payload': Requires `validationSchema` property
+            - 'resource-field': Requires `resourcePath` and `jsonPath` properties
+          example: "basic"
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Key-value map of properties (required). Required properties depend on type:
+            - **basic**: No mandatory properties
+            - **json-payload**: Must have `validationSchema` property
+            - **resource-field**: Must have `resourcePath` and `jsonPath` properties
+          example:
+            value: "license:read:v2"
+      description: All fields except description are required - partial updates are not supported
+    ConsentPurposeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the consent element (UUID with  prefix)
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        name:
+          type: string
+          description: The name/identifier of the consent element
+          example: "license_read"
+        description:
+          type: string
+          description: Description of the consent element (optional)
+          example: "Allows accessing license API"
+        type:
+          type: string
+          enum:
+            - basic
+            - json-payload
+            - resource-field
+          description: |
+            The type of the element. Determines which properties are mandatory:
+            - 'basic': No mandatory properties
+            - 'json-payload': Requires `validationSchema` property
+            - 'resource-field': Requires `resourcePath` and `jsonPath` properties
+          example: "basic"
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Key-value map of properties (optional). Content depends on the element type:
+            - **basic**: Can have any properties (e.g., value: "license:read")
+            - **json-payload**: Must have `validationSchema` property
+            - **resource-field**: Must have `resourcePath` and `jsonPath` properties
+          example:
+            value: "license:read"
+      required:
+        - id
+        - name
+        - type
+    ConsentPurposeListResponse:
+      type: object
+      description: The response from a successful consent element list/search query.
+      properties:
+        data:
+          type: array
+          description: Array of consent elements matching the search criteria
+          items:
+            $ref: "#/components/schemas/ConsentPurposeResponse"
+        metadata:
+          $ref: "#/components/schemas/ConsentSearchMetadata"
+      required:
+        - data
+        - metadata
+    PurposeGroupCreateRequest:
+      type: object
+      required:
+        - name
+        - purposes
+      description: |
+        Request object for creating a consent element.
+
+        **Purpose Validation:**
+        All purpose names in the `purposes` array must reference existing consent elements
+        in the organization. The API will validate each purpose name and fail the request
+        if any purpose doesn't exist.
+
+        **Uniqueness:**
+        Group names must be unique within the organization.
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: |
+            The name/identifier of the purpose. Must be unique within the organization.
+            Use descriptive names that indicate the logical grouping (e.g., "marketing_preferences",
+            "account_access_permissions").
+          example: "marketing_communication_preferences"
+        description:
+          type: string
+          maxLength: 1024
+          description: Optional description providing additional context about the purpose
+          example: "User preferences related to marketing communications"
+        purposes:
+          type: array
+          minItems: 1
+          description: |
+            Array of purpose references with mandatory flags. Each purpose must already exist
+            in the organization's consent elements. At least one purpose is required.
+          items:
+            $ref: "#/components/schemas/PurposeGroupPurposeItem"
+          example:
+            - purposeName: "user_email"
+              isMandatory: true
+            - purposeName: "user_phone"
+              isMandatory: false
+    PurposeGroupUpdateRequest:
+      type: object
+      required:
+        - name
+        - purposes
+      description: |
+        Request object for updating a consent element. This is a full replacement
+        operation - all required fields must be provided.
+
+        **Important:** The purposes array replaces the existing purposes completely.
+        Any purposes not included in the update will be removed from the group.
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: |
+            The name/identifier of the purpose (can be changed or kept the same).
+            Must remain unique within the organization.
+          example: "marketing_communication_preferences"
+        description:
+          type: string
+          maxLength: 1024
+          description: Optional description for the purpose
+          example: "Updated preferences for all marketing communications"
+        purposes:
+          type: array
+          minItems: 1
+          description: |
+            Complete array of purpose references with mandatory flags. This replaces
+            all existing purposes in the group. At least one purpose is required.
+          items:
+            $ref: "#/components/schemas/PurposeGroupPurposeItem"
+          example:
+            - purposeName: "user_email"
+              isMandatory: true
+            - purposeName: "user_phone"
+              isMandatory: true
+            - purposeName: "user_sms"
+              isMandatory: false
+    PurposeGroupPurposeItem:
+      type: object
+      required:
+        - purposeName
+        - isMandatory
+      description: |
+        Represents a single purpose within a purpose, including whether it is
+        mandatory for the consent to be valid.
+
+        **Purpose Name Validation:**
+        The `purposeName` must reference an existing consent element in the organization.
+        If the purpose doesn't exist, the API will return a 400 Bad Request error.
+      properties:
+        purposeName:
+          type: string
+          description: |
+            The name of an existing consent element to include in this group.
+            Must match the name of a purpose that has been previously created in the organization.
+          example: "user_email"
+        isMandatory:
+          type: boolean
+          description: |
+            Indicates whether this purpose must be approved for consents using this group.
+
+            - `true`: This purpose is required - user must approve it
+            - `false`: This purpose is optional - user can choose to approve or decline
+
+            This flag allows fine-grained control over which purposes are essential vs.
+            optional within the logical grouping.
+          example: true
+    PurposeGroupResponse:
+      type: object
+      required:
+        - id
+        - name
+        - purposes
+        - createdTime
+        - updatedTime
+      description: Response object containing complete purpose information
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the purpose (UUID with GROUP- prefix)
+          example: "GROUP-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        name:
+          type: string
+          description: The name/identifier of the purpose
+          example: "marketing_communication_preferences"
+        description:
+          type: string
+          description: Description of the purpose (optional)
+          example: "User preferences related to marketing communications"
+        clientId:
+          type: string
+          description: The client ID of the Third-Party Provider (TPP) that created this purpose
+          example: "TPP-CLIENT-001"
+        purposes:
+          type: array
+          description: Array of purposes included in this group with their mandatory flags
+          items:
+            $ref: "#/components/schemas/PurposeGroupPurposeItem"
+          example:
+            - purposeName: "user_email"
+              isMandatory: true
+            - purposeName: "user_phone"
+              isMandatory: false
+            - purposeName: "user_address"
+              isMandatory: false
+        createdTime:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) when the purpose was created
+          example: 1704153600
+        updatedTime:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) when the purpose was last updated
+          example: 1704153600
+    PurposeGroupListResponse:
+      type: object
+      required:
+        - data
+        - metadata
+      description: Response object for purpose list/search operations
+      properties:
+        data:
+          type: array
+          description: Array of purposes matching the search criteria
+          items:
+            $ref: "#/components/schemas/PurposeGroupResponse"
+        metadata:
+          $ref: "#/components/schemas/ConsentSearchMetadata"
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Basic Authentication using username and password.

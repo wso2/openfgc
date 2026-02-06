@@ -1,0 +1,80 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/consent-server/cmd/server",
+            "cwd": "${workspaceFolder}/consent-server",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Launch Server (Verbose)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/server",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "GIN_MODE": "debug"
+            },
+            "console": "integratedTerminal",
+            "showLog": true
+        },
+        {
+            "name": "Attach to Remote Consent Server",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "remotePath": "${workspaceFolder}",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "showLog": true,
+            "trace": "verbose"
+        },
+        {
+            "name": "Debug Binary (Launch)",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "program": "${workspaceFolder}/bin/consent-server",
+            "cwd": "${workspaceFolder}/bin",
+            "env": {
+                "CONFIG_PATH": "${workspaceFolder}/bin/repository/conf/deployment.yaml"
+            },
+            "showLog": true
+        },
+        {
+            "name": "Debug Current Go File",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${file}",
+            "showLog": true
+        },
+        {
+            "name": "Debug Unit Tests",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}/internal",
+            "args": [
+                "-v"
+            ],
+            "showLog": true
+        },
+        {
+            "name": "Debug Integration Tests",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}/integration-tests",
+            "args": [
+                "-v"
+            ],
+            "showLog": true
+        }
+    ]
+}

@@ -1,0 +1,46 @@
+server:
+  hostname: localhost
+  port: 3000
+  readTimeout: 30s
+  writeTimeout: 30s
+  idleTimeout: 120s
+
+database:
+  consent:
+    type: mysql
+    hostname: localhost
+    port: 3306
+    database: AAconsent-mgt-v3
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: 5m
+    user: root
+    password: password
+
+logging:
+  level: info
+
+# Consent status configuration
+consent:
+  status_mappings:
+    # Status representing an active/authorized consent
+    active_status: ACTIVE
+    # Status representing an expired consent
+    expired_status: EXPIRED
+    # Status representing a revoked consent
+    revoked_status: REVOKED
+    # Status representing a created consent
+    created_status: CREATED
+    # Status representing a rejected consent
+    rejected_status: REJECTED
+  auth_status_mappings:
+    # Authorization state indicating approval
+    approved_state: APPROVED
+    # Authorization state indicating rejection
+    rejected_state: REJECTED
+    # Authorization state indicating creation
+    created_state: CREATED
+    # Authorization state indicating authorization was system-expired due to consent expiry
+    system_expired_state: SYS_EXPIRED
+    # Authorization state indicating authorization was system-revoked due to consent revocation
+    system_revoked_state: SYS_REVOKED

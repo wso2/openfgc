@@ -1,24 +1,65 @@
-# Compiled class file
-*.class
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# Log file
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+*.coverage
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Go workspace file
+go.work
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# MacOS files
+.DS_Store
+
+# Build output
+/bin/
+/consent-server/bin/
+/build/
+/target/
+/dist/
+
+# Logs
 *.log
+logs/
 
-# BlueJ files
-*.ctxt
+# Temporary files
+/tmp/
+*.tmp
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# Database files
+*.db
+*.sqlite
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+# Configuration overrides (keep examples)
+configs/config.local.yaml
+consent-api-server
+main
+consent-mgt-v1.code-workspace
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
