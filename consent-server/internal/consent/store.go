@@ -727,16 +727,49 @@ func getBoolPointer(row map[string]interface{}, key string) *bool {
 }
 
 func getInt64Pointer(row map[string]interface{}, key string) *int64 {
-	if val, ok := row[key].(int64); ok {
-		return &val
+	val, exists := row[key]
+	if !exists || val == nil {
+		return nil
+	}
+
+	switch v := val.(type) {
+	case int64:
+		return &v
+	case []byte: // Also handles []uint8 since they're the same type
+		// Handle MySQL driver []byte/[]uint8 results
+		if len(v) == 0 {
+			return nil
+		}
+		str := string(v)
+		if parsed, err := strconv.ParseInt(str, 10, 64); err == nil {
+			return &parsed
+		}
+		return nil
 	}
 	return nil
 }
 
 func getIntPointer(row map[string]interface{}, key string) *int {
-	if val, ok := row[key].(int64); ok {
-		result := int(val)
+	val, exists := row[key]
+	if !exists || val == nil {
+		return nil
+	}
+
+	switch v := val.(type) {
+	case int64:
+		result := int(v)
 		return &result
+	case []byte: // Also handles []uint8 since they're the same type
+		// Handle MySQL driver []byte/[]uint8 results
+		if len(v) == 0 {
+			return nil
+		}
+		str := string(v)
+		if parsed, err := strconv.ParseInt(str, 10, 64); err == nil {
+			result := int(parsed)
+			return &result
+		}
+		return nil
 	}
 	return nil
 }

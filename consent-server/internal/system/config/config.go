@@ -231,12 +231,14 @@ func Load(configPath string) (*Config, error) {
 func substituteEnvironmentVariables(data []byte) ([]byte, error) {
 	content := string(data)
 
-	// Find all ${...} patterns
-	for {
-		start := strings.Index(content, "${")
+	// Find all ${...} patterns using a moving index
+	pos := 0
+	for pos < len(content) {
+		start := strings.Index(content[pos:], "${")
 		if start == -1 {
 			break
 		}
+		start += pos
 		end := strings.Index(content[start:], "}")
 		if end == -1 {
 			return nil, fmt.Errorf("unclosed environment variable substitution at position %d", start)
@@ -251,6 +253,9 @@ func substituteEnvironmentVariables(data []byte) ([]byte, error) {
 
 		// Replace the pattern with the value
 		content = content[:start] + varValue + content[end+1:]
+
+		// Move position past the replaced value to avoid re-expansion
+		pos = start + len(varValue)
 	}
 
 	return []byte(content), nil

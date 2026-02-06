@@ -20,6 +20,7 @@ package consentpurpose
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -27,6 +28,11 @@ import (
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
 	"github.com/wso2/openfgc/internal/system/database/provider"
 	"github.com/wso2/openfgc/internal/system/stores/interfaces"
+)
+
+// Sentinel errors
+var (
+	ErrPurposeNotFound = errors.New("purpose not found")
 )
 
 // DBQuery objects for all purpose operations
@@ -214,7 +220,7 @@ func (s *store) GetPurposeByID(ctx context.Context, purposeID, orgID string) (*m
 	}
 
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("purpose not found")
+		return nil, ErrPurposeNotFound
 	}
 
 	// Map database row to purpose model

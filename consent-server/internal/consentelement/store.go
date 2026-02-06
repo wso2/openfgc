@@ -22,6 +22,7 @@ package consentelement
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/wso2/openfgc/internal/consentelement/model"
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
@@ -169,8 +170,11 @@ func (elementStore *store) List(ctx context.Context, orgID string, limit, offset
 
 	// Use different queries based on whether name filter is provided
 	if name != "" {
+		// Escape SQL wildcard characters to prevent unintended matches
+		escaper := strings.NewReplacer("%", "\\%", "_", "\\_")
+		escapedName := escaper.Replace(name)
 		// Add wildcards for partial match (case-insensitive search)
-		namePattern := "%" + name + "%"
+		namePattern := "%" + escapedName + "%"
 
 		// Get total count with name filter
 		countRows, err = dbClient.Query(QueryCountElementsWithName, orgID, namePattern)

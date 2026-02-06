@@ -22,6 +22,7 @@ package consentelement
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/wso2/openfgc/internal/consentelement/model"
 	"github.com/wso2/openfgc/internal/consentelement/validators"
@@ -138,6 +139,12 @@ func (service *consentElementService) CreateElementsInBatch(ctx context.Context,
 
 	// Execute all operations in a single transaction
 	if err := service.stores.ExecuteTransaction(queries); err != nil {
+		// Check if error is due to duplicate name constraint violation
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "Duplicate entry") || strings.Contains(errMsg, "unique constraint") || strings.Contains(errMsg, "already exists") {
+			// Extract element name from error if possible, otherwise use generic message
+			return nil, serviceerror.CustomServiceError(ErrorElementNameExists, "one or more element names already exist for this organization")
+		}
 		return nil, serviceerror.CustomServiceError(ErrorCreateElement, fmt.Sprintf("failed to create elements in batch: %v", err))
 	}
 

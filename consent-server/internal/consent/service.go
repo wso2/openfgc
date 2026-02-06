@@ -1033,6 +1033,10 @@ func (consentService *consentService) ValidateConsent(ctx context.Context, req m
 			if consent.CurrentStatus != expiredStatusName {
 				if err := consentService.expireConsent(ctx, consent, orgID); err != nil {
 					// Log error but continue with validation
+					logger.Warn("Failed to expire consent, continuing with validation",
+						log.Error(err),
+						log.String("consent_id", consent.ConsentID),
+						log.String("org_id", orgID))
 				} else {
 					// Re-fetch consent after expiring to get latest state
 					if updatedConsent, fetchErr := consentStore.GetByID(ctx, req.ConsentID, orgID); fetchErr == nil && updatedConsent != nil {
@@ -1181,16 +1185,18 @@ func (consentService *consentService) expireConsent(ctx context.Context, consent
 // EnrichedValidateConsentAPIResponse builds ValidateConsentAPIResponse with enriched purpose details (type, description, attributes, isMandatory)
 func (consentService *consentService) EnrichedValidateConsentAPIResponse(ctx context.Context, consent *model.ConsentResponse, orgID string) *model.ValidateConsentAPIResponse {
 	logger := log.GetLogger().WithContext(ctx)
+
+	// Check for nil consent first before dereferencing
+	if consent == nil {
+		logger.Debug("Consent is nil, returning nil", log.String("org_id", orgID))
+		return nil
+	}
+
 	logger.Debug("Building enriched validate response with purpose details",
 		log.String("consent_id", consent.ConsentID),
 		log.String("org_id", orgID))
 
 	consentElementStore := consentService.stores.ConsentElement
-
-	if consent == nil {
-		logger.Debug("Consent is nil, returning nil")
-		return nil
-	}
 
 	// Build base response
 	validateResponse := &model.ValidateConsentAPIResponse{

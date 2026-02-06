@@ -20,6 +20,7 @@ package consentpurpose
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -151,7 +152,7 @@ func (s *consentPurposeService) GetPurpose(ctx context.Context, purposeID, orgID
 	if err != nil {
 		logger.Error("Failed to retrieve consent purpose", log.Error(err), log.String("purpose_id", purposeID))
 		// Check if purpose was not found
-		if err.Error() == "purpose not found" {
+		if errors.Is(err, ErrPurposeNotFound) {
 			return nil, &ErrorPurposeNotFound
 		}
 		return nil, &ErrorRetrievePurpose
@@ -201,7 +202,7 @@ func (s *consentPurposeService) UpdatePurpose(ctx context.Context, purposeID str
 	if err != nil {
 		logger.Error("Failed to retrieve consent purpose", log.Error(err), log.String("purpose_id", purposeID))
 		// Check if purpose was not found
-		if err.Error() == "purpose not found" {
+		if errors.Is(err, ErrPurposeNotFound) {
 			return nil, &ErrorPurposeNotFound
 		}
 		return nil, &ErrorRetrievePurpose
@@ -312,7 +313,7 @@ func (s *consentPurposeService) DeletePurpose(ctx context.Context, purposeID, or
 	if err != nil {
 		logger.Error("Failed to retrieve consent purpose", log.Error(err))
 		// Check if purpose was not found
-		if err.Error() == "purpose not found" {
+		if errors.Is(err, ErrPurposeNotFound) {
 			return &ErrorPurposeNotFound
 		}
 		return &ErrorRetrievePurpose
@@ -341,7 +342,7 @@ func (s *consentPurposeService) DeletePurpose(ctx context.Context, purposeID, or
 		return &ErrorInternalServerError
 	}
 
-	logger.Info("Purpose purpose deleted successfully", log.String("purpose_id", purposeID))
+	logger.Info("Purpose deleted successfully", log.String("purpose_id", purposeID))
 	return nil
 }
 
