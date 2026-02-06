@@ -200,6 +200,7 @@ func (d *dbProvider) Close() error {
 	}
 
 	d.consentClient = nil
+	d.consentTransactioner = nil
 	logger.Debug("Database connections closed")
 
 	return nil
@@ -231,6 +232,9 @@ func initializeDB(cfg *config.DatabaseConfig) (*model.DB, error) {
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			logger.Error("Failed to close database after ping failure", log.Error(closeErr))
+		}
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 

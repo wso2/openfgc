@@ -18,10 +18,14 @@
 
 package validators
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 // ElementTypeHandlerRegistry holds all registered type handlers
 type ElementTypeHandlerRegistry struct {
+	mu       sync.RWMutex
 	handlers map[string]ElementTypeHandler
 }
 
@@ -51,6 +55,10 @@ func NewElementTypeHandlerRegistry() *ElementTypeHandlerRegistry {
 // Returns error if a handler for this type is already registered
 func (registry *ElementTypeHandlerRegistry) Register(handler ElementTypeHandler) error {
 	typeStr := handler.GetType()
+
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+
 	if _, exists := registry.handlers[typeStr]; exists {
 		return fmt.Errorf("handler for type %q already registered", typeStr)
 	}
@@ -61,6 +69,9 @@ func (registry *ElementTypeHandlerRegistry) Register(handler ElementTypeHandler)
 // Get retrieves a handler by type string
 // Returns error if no handler is registered for the type
 func (registry *ElementTypeHandlerRegistry) Get(typeStr string) (ElementTypeHandler, error) {
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+
 	handler, exists := registry.handlers[typeStr]
 	if !exists {
 		return nil, fmt.Errorf("no handler registered for the element type %q", typeStr)
@@ -70,6 +81,9 @@ func (registry *ElementTypeHandlerRegistry) Get(typeStr string) (ElementTypeHand
 
 // GetAllTypes returns a list of all registered element types
 func (registry *ElementTypeHandlerRegistry) GetAllTypes() []string {
+	registry.mu.RLock()
+	defer registry.mu.RUnlock()
+
 	types := make([]string, 0, len(registry.handlers))
 	for typeStr := range registry.handlers {
 		types = append(types, typeStr)

@@ -220,7 +220,7 @@ function package() {
     (cd "$DIST_DIR" && zip -r "$PRODUCT_FOLDER.zip" "$PRODUCT_FOLDER")
     
     # Clean up unzipped folder
-    rm -rf "$DIST_DIR/$PRODUCT_FOLDER"
+    rm -rf "${DIST_DIR:?DIST_DIR not set}/${PRODUCT_FOLDER:?PRODUCT_FOLDER not set}"
     
     echo ""
     echo "✓ Distribution package created successfully!"

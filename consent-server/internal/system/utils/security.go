@@ -36,7 +36,33 @@ func SanitizeString(input string) string {
 	return html.EscapeString(cleaned)
 }
 
+// IsValidURI validates a URI with a safe allowlist of schemes (http, https).
+// Returns true only if the URI parses successfully, has a scheme in the allowlist,
+// and has a non-empty host.
 func IsValidURI(uri string) bool {
+	return IsValidURIWithSchemes(uri, []string{"http", "https"})
+}
+
+// IsValidURIWithSchemes validates a URI against an explicit list of allowed schemes.
+// Returns true only if the URI parses successfully, has a scheme in the allowlist,
+// and has a non-empty host for network URIs.
+func IsValidURIWithSchemes(uri string, allowedSchemes []string) bool {
 	parsed, err := url.Parse(uri)
-	return err == nil && parsed.Scheme != "" && parsed.Host != ""
+	if err != nil {
+		return false
+	}
+
+	// Require non-empty scheme and host
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return false
+	}
+
+	// Check if scheme is in the allowlist
+	for _, allowed := range allowedSchemes {
+		if strings.EqualFold(parsed.Scheme, allowed) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -103,6 +103,7 @@ type ConsentListResponse struct {
 		Total  int `json:"total"`
 		Offset int `json:"offset"`
 		Limit  int `json:"limit"`
+		Count  int `json:"count"`
 	} `json:"meta"`
 }
 
