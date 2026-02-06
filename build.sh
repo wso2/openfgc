@@ -63,11 +63,11 @@ fi
 
 # Configuration
 BINARY_NAME="consent-server"
-OUTPUT_DIR="bin"
+TARGET_DIR="target"
+OUTPUT_DIR="$TARGET_DIR/server"
+DIST_DIR="$TARGET_DIR/dist"
 SOURCE_DIR="consent-server/cmd/server"
 CONFIG_SOURCE="consent-server/cmd/server/repository/conf/deployment.yaml"
-TARGET_DIR="target"
-DIST_DIR="$TARGET_DIR/dist"
 
 # Package naming
 PACKAGE_OS=$GO_OS
@@ -94,17 +94,12 @@ function clean_all() {
     echo "================================================================"
     echo "Cleaning all build artifacts..."
     rm -rf "$TARGET_DIR"
-    rm -rf "$OUTPUT_DIR"
     echo "✓ All build artifacts cleaned"
     echo "================================================================"
 }
 
 function clean() {
-    echo "================================================================"
-    echo "Cleaning build artifacts..."
-    rm -rf "$OUTPUT_DIR"
-    echo "✓ Build artifacts cleaned"
-    echo "================================================================"
+    clean_all
 }
 
 function build_binary() {
@@ -156,6 +151,12 @@ function build_binary() {
         echo "Copying API specifications..."
         mkdir -p "$OUTPUT_DIR/api"
         cp api/*.yaml "$OUTPUT_DIR/api/" 2>/dev/null || true
+    fi
+
+    # Copy README
+    if [ -f "README.md" ]; then
+        echo "Copying README..."
+        cp "README.md" "$OUTPUT_DIR/"
     fi
     
     # Make binary executable (not needed for Windows)
