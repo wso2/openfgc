@@ -154,14 +154,14 @@ func (s *store) buildListPurposesQuery(orgID, name string, clientIDs []string, e
 
 	// Filter by name (partial match using LIKE)
 	if name != "" {
-		// Escape SQL wildcard characters to prevent unintended matches
-		escaper := strings.NewReplacer("%", "\\%", "_", "\\_")
+		// Escape SQL wildcard characters and backslashes to prevent unintended matches
+		escaper := strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_")
 		escapedName := escaper.Replace(name)
-		// Add wildcards for partial match (case-insensitive search)
+		// Add wildcards for partial match (collation determines case sensitivity)
 		namePattern := "%" + escapedName + "%"
 
-		baseQuery += ` AND NAME LIKE ?`
-		countQuery += ` AND NAME LIKE ?`
+		baseQuery += ` AND NAME LIKE ? ESCAPE '\\'`
+		countQuery += ` AND NAME LIKE ? ESCAPE '\\'`
 		args = append(args, namePattern)
 		countArgs = append(countArgs, namePattern)
 	}

@@ -7,7 +7,7 @@ This document provides an overview of the OpenFGC (Open Fine-Grained Consent) ar
 
 OpenFGC follows a **layered architecture** with clear separation of concerns:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                         HTTP Layer                              │
 │                   (Handlers - Routing & Validation)             │
@@ -139,14 +139,7 @@ The system manages four core entities:
 
 **Database**: `AUTH_RESOURCE` table
 
-## Key Architectural Patterns
-
-### 1. Transaction Management
-**Pattern**: Service-controlled transactions with store participation
-
-```go
-// Service Layer
-tx := sDesign Principles
+## Key Design Principles
 
 ### 1. Status Derivation
 **Why**: Consent status is automatically synchronized with authorization decisions
@@ -169,33 +162,4 @@ The system automatically updates consent status based on authorization events:
 ### 3. Multi-Tenancy
 **Why**: Isolate data between different organizations and clients
 
-All entities are scoped by organization ID. Additionally, purposes are scoped by client ID to allow different clients within the same organization to define their own consent purposes.QUE KEY unique_name_per_org (NAME, ORG_ID)
-```
-
-### Flexible JSON Storage
-```sql
--- Element properties (type-specific)
-PROPERTIES TEXT  -- JSON
-
--- Authorization resources
-RESOURCES TEXT  -- JSON
-
--- Element-specific values in consent
-VALUE TEXT  -- JSON
-```
-
-## Configuration
-
-### Deployment Configuration (`repository/conf/deployment.yaml`)
-```yaml
-server:
-  port: 3000
-  host: "0.0.0.0"
-
-database:
-  host: "localhost"
-  port: 3306
-  username: "root"
-  password: "${DB_PASSWORD}"  # Env substitution supported
-  database: "consent_mgt"
-  max_open_connections: 25
+All entities are scoped by organization ID. Additionally, purposes are scoped by client ID to allow different clients within the same organization to define their own consent purposes.
