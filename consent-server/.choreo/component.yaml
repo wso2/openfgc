@@ -19,7 +19,7 @@ endpoints:
     - name: open-fgc-service
       displayName: Open FGC Service
       service:
-        basePath: /
+        basePath: /api/v1/
         port: 3000
       type: REST
       networkVisibilities:
