@@ -175,10 +175,10 @@ func (consentService *consentService) CreateConsent(ctx context.Context, req mod
 	})
 
 	// Add authorization resources if provided
-	if len(req.Authorizations) > 0 {
-		logger.Debug("Adding authorization resources", log.Int("authorization_count", len(req.Authorizations)))
+	if len(createReq.AuthResources) > 0 {
+		logger.Debug("Adding authorization resources", log.Int("authorization_count", len(createReq.AuthResources)))
 	}
-	for _, authReq := range req.Authorizations {
+	for _, authReq := range createReq.AuthResources {
 		authID := utils.GenerateUUID()
 
 		// Marshal resources to JSON if present
@@ -197,16 +197,16 @@ func (consentService *consentService) CreateConsent(ctx context.Context, req mod
 
 		// Convert to internal format
 		var userIDPtr *string
-		if authReq.UserID != "" {
-			userIDPtr = &authReq.UserID
+		if authReq.UserID != nil && *authReq.UserID != "" {
+			userIDPtr = authReq.UserID
 		}
 
 		authResource := &authmodel.AuthResource{
 			AuthID:      authID,
 			ConsentID:   consentID,
-			AuthType:    authReq.Type,
+			AuthType:    authReq.AuthType,
 			UserID:      userIDPtr,
-			AuthStatus:  authReq.Status,
+			AuthStatus:  authReq.AuthStatus,
 			UpdatedTime: currentTime,
 			Resources:   resourcesJSON,
 			OrgID:       orgID,

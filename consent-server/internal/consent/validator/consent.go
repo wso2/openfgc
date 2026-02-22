@@ -147,9 +147,6 @@ func EvaluateConsentStatusFromAuthStatuses(authStatuses []string) string {
 		return "created" // safe fallback
 	}
 	consentConfig := cfg.Consent
-
-	if len(authStatuses) == 0 {
-
 	if len(authStatuses) == 0 {
 		// No auth resources - default to created status
 		return string(consentConfig.GetCreatedConsentStatus())
