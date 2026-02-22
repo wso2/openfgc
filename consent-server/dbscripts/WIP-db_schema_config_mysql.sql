@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS CONFIG_RESOURCE (
   INDEX idx_org_id (ORG_ID),
   INDEX idx_created_time (CREATED_TIME),
   INDEX idx_last_modified (LAST_MODIFIED)
-) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================================
 -- Configuration attributes table
