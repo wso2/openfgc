@@ -28,6 +28,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/wso2/openfgc/internal/system/config"
 	"github.com/wso2/openfgc/internal/system/database/constants"
 	"github.com/wso2/openfgc/internal/system/database/model"

@@ -28,76 +28,90 @@ import (
 	dbconst "github.com/wso2/openfgc/internal/system/database/constants"
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
 	"github.com/wso2/openfgc/internal/system/database/provider"
+	dbutils "github.com/wso2/openfgc/internal/system/database/utils"
 	"github.com/wso2/openfgc/internal/system/stores/interfaces"
 )
 
 // DBQuery objects for all consent element operations
 var (
 	QueryCreateElement = dbmodel.DBQuery{
-		ID:    "CREATE_CONSENT_ELEMENT",
-		Query: "INSERT INTO CONSENT_ELEMENT (ID, NAME, DESCRIPTION, TYPE, ORG_ID) VALUES (?, ?, ?, ?, ?)",
+		ID:            "CREATE_CONSENT_ELEMENT",
+		Query:         "INSERT INTO CONSENT_ELEMENT (ID, NAME, DESCRIPTION, TYPE, ORG_ID) VALUES (?, ?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_ELEMENT (ID, NAME, DESCRIPTION, TYPE, ORG_ID) VALUES ($1, $2, $3, $4, $5)",
 	}
 
 	QueryGetElementByID = dbmodel.DBQuery{
-		ID:    "GET_CONSENT_ELEMENT_BY_ID",
-		Query: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ID = ? AND ORG_ID = ?",
+		ID:            "GET_CONSENT_ELEMENT_BY_ID",
+		Query:         "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryGetElementByName = dbmodel.DBQuery{
-		ID:    "GET_CONSENT_ELEMENT_BY_NAME",
-		Query: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE NAME = ? AND ORG_ID = ?",
+		ID:            "GET_CONSENT_ELEMENT_BY_NAME",
+		Query:         "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE NAME = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE NAME = $1 AND ORG_ID = $2",
 	}
 
 	QueryListElements = dbmodel.DBQuery{
-		ID:    "LIST_CONSENT_ELEMENTS",
-		Query: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = ? ORDER BY NAME LIMIT ? OFFSET ?",
+		ID:            "LIST_CONSENT_ELEMENTS",
+		Query:         "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = ? ORDER BY NAME LIMIT ? OFFSET ?",
+		PostgresQuery: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = $1 ORDER BY NAME LIMIT $2 OFFSET $3",
 	}
 
 	QueryListElementsWithName = dbmodel.DBQuery{
-		ID:          "LIST_CONSENT_ELEMENTS_WITH_NAME",
-		Query:       "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ? ORDER BY NAME LIMIT ? OFFSET ?",
-		SQLiteQuery: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ? ESCAPE '|' ORDER BY NAME LIMIT ? OFFSET ?",
+		ID:            "LIST_CONSENT_ELEMENTS_WITH_NAME",
+		Query:         "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ? ORDER BY NAME LIMIT ? OFFSET ?",
+		PostgresQuery: "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = $1 AND NAME LIKE $2 ESCAPE '|' ORDER BY NAME LIMIT $3 OFFSET $4",
+		SQLiteQuery:   "SELECT ID, NAME, DESCRIPTION, TYPE, ORG_ID FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ? ESCAPE '|' ORDER BY NAME LIMIT ? OFFSET ?",
 	}
 
 	QueryCountElements = dbmodel.DBQuery{
-		ID:    "COUNT_CONSENT_ELEMENTS",
-		Query: "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = ?",
+		ID:            "COUNT_CONSENT_ELEMENTS",
+		Query:         "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = ?",
+		PostgresQuery: "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = $1",
 	}
 
 	QueryCountElementsWithName = dbmodel.DBQuery{
-		ID:          "COUNT_CONSENT_ELEMENTS_WITH_NAME",
-		Query:       "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ?",
-		SQLiteQuery: "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ? ESCAPE '|'",
+		ID:            "COUNT_CONSENT_ELEMENTS_WITH_NAME",
+		Query:         "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ?",
+		PostgresQuery: "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = $1 AND NAME LIKE $2 ESCAPE '|'",
+		SQLiteQuery:   "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE ORG_ID = ? AND NAME LIKE ? ESCAPE '|'",
 	}
 
 	QueryUpdateElement = dbmodel.DBQuery{
-		ID:    "UPDATE_CONSENT_ELEMENT",
-		Query: "UPDATE CONSENT_ELEMENT SET NAME = ?, DESCRIPTION = ?, TYPE = ? WHERE ID = ? AND ORG_ID = ?",
+		ID:            "UPDATE_CONSENT_ELEMENT",
+		Query:         "UPDATE CONSENT_ELEMENT SET NAME = ?, DESCRIPTION = ?, TYPE = ? WHERE ID = ? AND ORG_ID = ?",
+		PostgresQuery: "UPDATE CONSENT_ELEMENT SET NAME = $1, DESCRIPTION = $2, TYPE = $3 WHERE ID = $4 AND ORG_ID = $5",
 	}
 
 	QueryDeleteElement = dbmodel.DBQuery{
-		ID:    "DELETE_CONSENT_ELEMENT",
-		Query: "DELETE FROM CONSENT_ELEMENT WHERE ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_CONSENT_ELEMENT",
+		Query:         "DELETE FROM CONSENT_ELEMENT WHERE ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM CONSENT_ELEMENT WHERE ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryCheckElementNameExists = dbmodel.DBQuery{
-		ID:    "CHECK_ELEMENT_NAME_EXISTS",
-		Query: "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE NAME = ? AND ORG_ID = ?",
+		ID:            "CHECK_ELEMENT_NAME_EXISTS",
+		Query:         "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE NAME = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT COUNT(*) as count FROM CONSENT_ELEMENT WHERE NAME = $1 AND ORG_ID = $2",
 	}
 
 	QueryCreateProperty = dbmodel.DBQuery{
-		ID:    "CREATE_ELEMENT_PROPERTY",
-		Query: "INSERT INTO CONSENT_ELEMENT_PROPERTY (ELEMENT_ID, ATT_KEY, ATT_VALUE, ORG_ID) VALUES (?, ?, ?, ?)",
+		ID:            "CREATE_ELEMENT_PROPERTY",
+		Query:         "INSERT INTO CONSENT_ELEMENT_PROPERTY (ELEMENT_ID, ATT_KEY, ATT_VALUE, ORG_ID) VALUES (?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_ELEMENT_PROPERTY (ELEMENT_ID, ATT_KEY, ATT_VALUE, ORG_ID) VALUES ($1, $2, $3, $4)",
 	}
 
 	QueryGetPropertiesByElementID = dbmodel.DBQuery{
-		ID:    "GET_PROPERTIES_BY_ELEMENT_ID",
-		Query: "SELECT ELEMENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ELEMENT_PROPERTY WHERE ELEMENT_ID = ? AND ORG_ID = ?",
+		ID:            "GET_PROPERTIES_BY_ELEMENT_ID",
+		Query:         "SELECT ELEMENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ELEMENT_PROPERTY WHERE ELEMENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT ELEMENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ELEMENT_PROPERTY WHERE ELEMENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryDeletePropertiesByElementID = dbmodel.DBQuery{
-		ID:    "DELETE_PROPERTIES_BY_ELEMENT_ID",
-		Query: "DELETE FROM CONSENT_ELEMENT_PROPERTY WHERE ELEMENT_ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_PROPERTIES_BY_ELEMENT_ID",
+		Query:         "DELETE FROM CONSENT_ELEMENT_PROPERTY WHERE ELEMENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM CONSENT_ELEMENT_PROPERTY WHERE ELEMENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryGetIDsByNames = dbmodel.DBQuery{
@@ -175,8 +189,8 @@ func (elementStore *store) List(ctx context.Context, orgID string, limit, offset
 	if name != "" {
 		// Escape SQL wildcard characters to prevent unintended matches
 		var escaper *strings.Replacer
-		if dbClient.GetDBType() == dbconst.DatabaseTypeSQLite {
-			// SQLite: use '|' as the escape character (single char, no quoting issues)
+		if dbClient.GetDBType() == dbconst.DatabaseTypeSQLite || dbClient.GetDBType() == dbconst.DatabaseTypePostgres {
+			// SQLite/PostgreSQL: use '|' as escape char (single char, no quoting issues)
 			escaper = strings.NewReplacer("|", "||", "%", "|%", "_", "|_")
 		} else {
 			// MySQL: use '\' as the escape character (MySQL default)
@@ -373,12 +387,13 @@ func (elementStore *store) GetIDsByNames(ctx context.Context, names []string, or
 	}
 
 	// Format query with placeholders
-	query := fmt.Sprintf(QueryGetIDsByNames.Query, placeholders)
+	queryStr := fmt.Sprintf(QueryGetIDsByNames.Query, placeholders)
 
 	// Create query object with formatted SQL
 	formattedQuery := dbmodel.DBQuery{
-		ID:    "GET_IDS_BY_NAMES_DYNAMIC",
-		Query: query,
+		ID:            "GET_IDS_BY_NAMES_DYNAMIC",
+		Query:         queryStr,
+		PostgresQuery: dbutils.ConvertToPostgresParams(queryStr),
 	}
 
 	dbClient, err := elementStore.getDBClient()

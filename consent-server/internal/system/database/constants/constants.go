@@ -22,6 +22,8 @@ package constants
 const (
 	// DatabaseTypeMySQL is the identifier for MySQL database connections
 	DatabaseTypeMySQL = "mysql"
+	// DatabaseTypePostgres is the identifier for PostgreSQL database connections
+	DatabaseTypePostgres = "postgres"
 	// DatabaseTypeSQLite is the identifier for SQLite database connections
 	DatabaseTypeSQLite = "sqlite"
 )
