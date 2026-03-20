@@ -28,6 +28,7 @@ import (
 	dbconst "github.com/wso2/openfgc/internal/system/database/constants"
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
 	"github.com/wso2/openfgc/internal/system/database/provider"
+	dbutils "github.com/wso2/openfgc/internal/system/database/utils"
 	"github.com/wso2/openfgc/internal/system/stores/interfaces"
 )
 
@@ -39,38 +40,45 @@ var (
 // DBQuery objects for all purpose operations
 var (
 	QueryCreatePurpose = dbmodel.DBQuery{
-		ID:    "CREATE_PURPOSE",
-		Query: "INSERT INTO CONSENT_PURPOSE (ID, NAME, DESCRIPTION, CLIENT_ID, CREATED_TIME, UPDATED_TIME, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		ID:            "CREATE_PURPOSE",
+		Query:         "INSERT INTO CONSENT_PURPOSE (ID, NAME, DESCRIPTION, CLIENT_ID, CREATED_TIME, UPDATED_TIME, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_PURPOSE (ID, NAME, DESCRIPTION, CLIENT_ID, CREATED_TIME, UPDATED_TIME, ORG_ID) VALUES ($1, $2, $3, $4, $5, $6, $7)",
 	}
 
 	QueryGetPurposeByID = dbmodel.DBQuery{
-		ID:    "GET_PURPOSE_BY_ID",
-		Query: "SELECT ID, NAME, DESCRIPTION, CLIENT_ID, CREATED_TIME, UPDATED_TIME, ORG_ID FROM CONSENT_PURPOSE WHERE ID = ? AND ORG_ID = ?",
+		ID:            "GET_PURPOSE_BY_ID",
+		Query:         "SELECT ID, NAME, DESCRIPTION, CLIENT_ID, CREATED_TIME, UPDATED_TIME, ORG_ID FROM CONSENT_PURPOSE WHERE ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT ID, NAME, DESCRIPTION, CLIENT_ID, CREATED_TIME, UPDATED_TIME, ORG_ID FROM CONSENT_PURPOSE WHERE ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryUpdatePurpose = dbmodel.DBQuery{
-		ID:    "UPDATE_PURPOSE",
-		Query: "UPDATE CONSENT_PURPOSE SET NAME = ?, DESCRIPTION = ?, UPDATED_TIME = ? WHERE ID = ? AND ORG_ID = ?",
+		ID:            "UPDATE_PURPOSE",
+		Query:         "UPDATE CONSENT_PURPOSE SET NAME = ?, DESCRIPTION = ?, UPDATED_TIME = ? WHERE ID = ? AND ORG_ID = ?",
+		PostgresQuery: "UPDATE CONSENT_PURPOSE SET NAME = $1, DESCRIPTION = $2, UPDATED_TIME = $3 WHERE ID = $4 AND ORG_ID = $5",
 	}
 
 	QueryDeletePurpose = dbmodel.DBQuery{
-		ID:    "DELETE_PURPOSE",
-		Query: "DELETE FROM CONSENT_PURPOSE WHERE ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_PURPOSE",
+		Query:         "DELETE FROM CONSENT_PURPOSE WHERE ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM CONSENT_PURPOSE WHERE ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryCheckPurposeNameExists = dbmodel.DBQuery{
-		ID:    "CHECK_PURPOSE_NAME_EXISTS",
-		Query: "SELECT COUNT(*) as count FROM CONSENT_PURPOSE WHERE NAME = ? AND CLIENT_ID = ? AND ORG_ID = ?",
+		ID:            "CHECK_PURPOSE_NAME_EXISTS",
+		Query:         "SELECT COUNT(*) as count FROM CONSENT_PURPOSE WHERE NAME = ? AND CLIENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT COUNT(*) as count FROM CONSENT_PURPOSE WHERE NAME = $1 AND CLIENT_ID = $2 AND ORG_ID = $3",
 	}
 
 	QueryCheckPurposeNameExistsExcluding = dbmodel.DBQuery{
-		ID:    "CHECK_PURPOSE_NAME_EXISTS_EXCLUDING",
-		Query: "SELECT COUNT(*) as count FROM CONSENT_PURPOSE WHERE NAME = ? AND CLIENT_ID = ? AND ORG_ID = ? AND ID != ?",
+		ID:            "CHECK_PURPOSE_NAME_EXISTS_EXCLUDING",
+		Query:         "SELECT COUNT(*) as count FROM CONSENT_PURPOSE WHERE NAME = ? AND CLIENT_ID = ? AND ORG_ID = ? AND ID != ?",
+		PostgresQuery: "SELECT COUNT(*) as count FROM CONSENT_PURPOSE WHERE NAME = $1 AND CLIENT_ID = $2 AND ORG_ID = $3 AND ID != $4",
 	}
 
 	QueryLinkElementToPurpose = dbmodel.DBQuery{
-		ID:    "LINK_ELEMENT_TO_PURPOSE",
-		Query: "INSERT INTO PURPOSE_ELEMENT_MAPPING (PURPOSE_ID, ELEMENT_ID, IS_MANDATORY, ORG_ID) VALUES (?, ?, ?, ?)",
+		ID:            "LINK_ELEMENT_TO_PURPOSE",
+		Query:         "INSERT INTO PURPOSE_ELEMENT_MAPPING (PURPOSE_ID, ELEMENT_ID, IS_MANDATORY, ORG_ID) VALUES (?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO PURPOSE_ELEMENT_MAPPING (PURPOSE_ID, ELEMENT_ID, IS_MANDATORY, ORG_ID) VALUES ($1, $2, $3, $4)",
 	}
 
 	QueryGetPurposeElements = dbmodel.DBQuery{
@@ -79,16 +87,22 @@ var (
 				FROM PURPOSE_ELEMENT_MAPPING m 
 				JOIN CONSENT_ELEMENT e ON m.ELEMENT_ID = e.ID AND m.ORG_ID = e.ORG_ID 
 				WHERE m.PURPOSE_ID = ? AND m.ORG_ID = ?`,
+		PostgresQuery: `SELECT m.ELEMENT_ID, e.NAME as ELEMENT_NAME, m.IS_MANDATORY 
+				FROM PURPOSE_ELEMENT_MAPPING m 
+				JOIN CONSENT_ELEMENT e ON m.ELEMENT_ID = e.ID AND m.ORG_ID = e.ORG_ID 
+				WHERE m.PURPOSE_ID = $1 AND m.ORG_ID = $2`,
 	}
 
 	QueryDeletePurposeElements = dbmodel.DBQuery{
-		ID:    "DELETE_PURPOSE_ELEMENTS",
-		Query: "DELETE FROM PURPOSE_ELEMENT_MAPPING WHERE PURPOSE_ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_PURPOSE_ELEMENTS",
+		Query:         "DELETE FROM PURPOSE_ELEMENT_MAPPING WHERE PURPOSE_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM PURPOSE_ELEMENT_MAPPING WHERE PURPOSE_ID = $1 AND ORG_ID = $2",
 	}
 
 	queryCheckElementInPurposes = dbmodel.DBQuery{
-		ID:    "CHECK_ELEMENT_IN_PURPOSES",
-		Query: "SELECT COUNT(*) as count FROM PURPOSE_ELEMENT_MAPPING WHERE ELEMENT_ID = ? AND ORG_ID = ?",
+		ID:            "CHECK_ELEMENT_IN_PURPOSES",
+		Query:         "SELECT COUNT(*) as count FROM PURPOSE_ELEMENT_MAPPING WHERE ELEMENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT COUNT(*) as count FROM PURPOSE_ELEMENT_MAPPING WHERE ELEMENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	// Base queries for list purposes (used for dynamic query building)
@@ -148,8 +162,8 @@ func (s *store) buildListPurposesQuery(dbType, orgID, name string, clientIDs []s
 	if name != "" {
 		var escaper *strings.Replacer
 		var escapeClause string
-		if dbType == dbconst.DatabaseTypeSQLite {
-			// SQLite: use '|' as the escape character (single char, no quoting issues)
+		if dbType == dbconst.DatabaseTypeSQLite || dbType == dbconst.DatabaseTypePostgres {
+			// SQLite/PostgreSQL: use '|' as escape char (single char, no quoting issues)
 			escaper = strings.NewReplacer("|", "||", "%", "|%", "_", "|_")
 			escapeClause = ` AND NAME LIKE ? ESCAPE '|'`
 		} else {
@@ -256,8 +270,9 @@ func (s *store) ListPurposes(ctx context.Context, orgID, name string, clientIDs 
 	// Get total count
 	var total int
 	countQueryDB := dbmodel.DBQuery{
-		ID:    "COUNT_FILTERED_PURPOSES",
-		Query: countQuery,
+		ID:            "COUNT_FILTERED_PURPOSES",
+		Query:         countQuery,
+		PostgresQuery: dbutils.ConvertToPostgresParams(countQuery),
 	}
 	rows, err := dbClient.Query(countQueryDB, countArgs...)
 	if err != nil {
@@ -277,8 +292,9 @@ func (s *store) ListPurposes(ctx context.Context, orgID, name string, clientIDs 
 	// Execute query
 	var purposes []model.ConsentPurpose
 	listQueryDB := dbmodel.DBQuery{
-		ID:    "LIST_FILTERED_PURPOSES",
-		Query: query,
+		ID:            "LIST_FILTERED_PURPOSES",
+		Query:         query,
+		PostgresQuery: dbutils.ConvertToPostgresParams(query),
 	}
 	rows, err = dbClient.Query(listQueryDB, args...)
 	if err != nil {

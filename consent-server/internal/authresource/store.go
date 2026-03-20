@@ -25,39 +25,46 @@ import (
 	"github.com/wso2/openfgc/internal/authresource/model"
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
 	"github.com/wso2/openfgc/internal/system/database/provider"
+	dbutils "github.com/wso2/openfgc/internal/system/database/utils"
 	"github.com/wso2/openfgc/internal/system/stores/interfaces"
 )
 
 // DBQuery objects for all auth resource operations
 var (
 	QueryCreateAuthResource = dbmodel.DBQuery{
-		ID:    "CREATE_AUTH_RESOURCE",
-		Query: "INSERT INTO CONSENT_AUTH_RESOURCE (AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		ID:            "CREATE_AUTH_RESOURCE",
+		Query:         "INSERT INTO CONSENT_AUTH_RESOURCE (AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_AUTH_RESOURCE (AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
 	}
 
 	QueryGetAuthResourceByID = dbmodel.DBQuery{
-		ID:    "GET_AUTH_RESOURCE_BY_ID",
-		Query: "SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE AUTH_ID = ? AND ORG_ID = ?",
+		ID:            "GET_AUTH_RESOURCE_BY_ID",
+		Query:         "SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE AUTH_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE AUTH_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryGetAuthResourcesByConsentID = dbmodel.DBQuery{
-		ID:    "GET_AUTH_RESOURCES_BY_CONSENT_ID",
-		Query: "SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "GET_AUTH_RESOURCES_BY_CONSENT_ID",
+		Query:         "SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryUpdateAuthResource = dbmodel.DBQuery{
-		ID:    "UPDATE_AUTH_RESOURCE",
-		Query: "UPDATE CONSENT_AUTH_RESOURCE SET AUTH_STATUS = ?, USER_ID = ?, RESOURCES = ?, UPDATED_TIME = ? WHERE AUTH_ID = ? AND ORG_ID = ?",
+		ID:            "UPDATE_AUTH_RESOURCE",
+		Query:         "UPDATE CONSENT_AUTH_RESOURCE SET AUTH_STATUS = ?, USER_ID = ?, RESOURCES = ?, UPDATED_TIME = ? WHERE AUTH_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "UPDATE CONSENT_AUTH_RESOURCE SET AUTH_STATUS = $1, USER_ID = $2, RESOURCES = $3, UPDATED_TIME = $4 WHERE AUTH_ID = $5 AND ORG_ID = $6",
 	}
 
 	QueryDeleteAuthResourcesByConsentID = dbmodel.DBQuery{
-		ID:    "DELETE_AUTH_RESOURCES_BY_CONSENT_ID",
-		Query: "DELETE FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_AUTH_RESOURCES_BY_CONSENT_ID",
+		Query:         "DELETE FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryUpdateAllStatusByConsentID = dbmodel.DBQuery{
-		ID:    "UPDATE_ALL_STATUS_BY_CONSENT_ID",
-		Query: "UPDATE CONSENT_AUTH_RESOURCE SET AUTH_STATUS = ?, UPDATED_TIME = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "UPDATE_ALL_STATUS_BY_CONSENT_ID",
+		Query:         "UPDATE CONSENT_AUTH_RESOURCE SET AUTH_STATUS = ?, UPDATED_TIME = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "UPDATE CONSENT_AUTH_RESOURCE SET AUTH_STATUS = $1, UPDATED_TIME = $2 WHERE CONSENT_ID = $3 AND ORG_ID = $4",
 	}
 
 	QueryGetAuthResourcesByConsentIDs = dbmodel.DBQuery{
@@ -175,9 +182,11 @@ func (s *store) GetByConsentIDs(ctx context.Context, consentIDs []string, orgID 
 	args = append(args, orgID)
 
 	// Build dynamic query
+	mysqlQuery := fmt.Sprintf("SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID IN (%s) AND ORG_ID = ?", placeholders)
 	query := dbmodel.DBQuery{
-		ID:    QueryGetAuthResourcesByConsentIDs.ID,
-		Query: fmt.Sprintf("SELECT AUTH_ID, CONSENT_ID, AUTH_TYPE, USER_ID, AUTH_STATUS, UPDATED_TIME, RESOURCES, ORG_ID FROM CONSENT_AUTH_RESOURCE WHERE CONSENT_ID IN (%s) AND ORG_ID = ?", placeholders),
+		ID:            QueryGetAuthResourcesByConsentIDs.ID,
+		Query:         mysqlQuery,
+		PostgresQuery: dbutils.ConvertToPostgresParams(mysqlQuery),
 	}
 
 	dbClient, err := s.getDBClient()

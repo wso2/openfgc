@@ -27,61 +27,72 @@ import (
 	"github.com/wso2/openfgc/internal/consent/model"
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
 	"github.com/wso2/openfgc/internal/system/database/provider"
+	dbutils "github.com/wso2/openfgc/internal/system/database/utils"
 	"github.com/wso2/openfgc/internal/system/stores/interfaces"
 )
 
 // DBQuery objects for consent operations
 var (
 	QueryCreateConsent = dbmodel.DBQuery{
-		ID:    "CREATE_CONSENT",
-		Query: "INSERT INTO CONSENT (CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		ID:            "CREATE_CONSENT",
+		Query:         "INSERT INTO CONSENT (CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT (CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
 	}
 
 	QueryGetConsentByID = dbmodel.DBQuery{
-		ID:    "GET_CONSENT_BY_ID",
-		Query: "SELECT CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID FROM CONSENT WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "GET_CONSENT_BY_ID",
+		Query:         "SELECT CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID FROM CONSENT WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT CONSENT_ID, CREATED_TIME, UPDATED_TIME, CLIENT_ID, CONSENT_TYPE, CURRENT_STATUS, CONSENT_FREQUENCY, VALIDITY_TIME, RECURRING_INDICATOR, DATA_ACCESS_VALIDITY_DURATION, ORG_ID FROM CONSENT WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryUpdateConsent = dbmodel.DBQuery{
-		ID:    "UPDATE_CONSENT",
-		Query: "UPDATE CONSENT SET UPDATED_TIME = ?, CONSENT_TYPE = ?, CONSENT_FREQUENCY = ?, VALIDITY_TIME = ?, RECURRING_INDICATOR = ?, DATA_ACCESS_VALIDITY_DURATION = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "UPDATE_CONSENT",
+		Query:         "UPDATE CONSENT SET UPDATED_TIME = ?, CONSENT_TYPE = ?, CONSENT_FREQUENCY = ?, VALIDITY_TIME = ?, RECURRING_INDICATOR = ?, DATA_ACCESS_VALIDITY_DURATION = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "UPDATE CONSENT SET UPDATED_TIME = $1, CONSENT_TYPE = $2, CONSENT_FREQUENCY = $3, VALIDITY_TIME = $4, RECURRING_INDICATOR = $5, DATA_ACCESS_VALIDITY_DURATION = $6 WHERE CONSENT_ID = $7 AND ORG_ID = $8",
 	}
 
 	QueryUpdateConsentStatus = dbmodel.DBQuery{
-		ID:    "UPDATE_CONSENT_STATUS",
-		Query: "UPDATE CONSENT SET CURRENT_STATUS = ?, UPDATED_TIME = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "UPDATE_CONSENT_STATUS",
+		Query:         "UPDATE CONSENT SET CURRENT_STATUS = ?, UPDATED_TIME = ? WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "UPDATE CONSENT SET CURRENT_STATUS = $1, UPDATED_TIME = $2 WHERE CONSENT_ID = $3 AND ORG_ID = $4",
 	}
 
 	// Attribute queries
 	QueryCreateAttribute = dbmodel.DBQuery{
-		ID:    "CREATE_CONSENT_ATTRIBUTE",
-		Query: "INSERT INTO CONSENT_ATTRIBUTE (CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID) VALUES (?, ?, ?, ?)",
+		ID:            "CREATE_CONSENT_ATTRIBUTE",
+		Query:         "INSERT INTO CONSENT_ATTRIBUTE (CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID) VALUES (?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_ATTRIBUTE (CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID) VALUES ($1, $2, $3, $4)",
 	}
 
 	QueryGetAttributesByConsentID = dbmodel.DBQuery{
-		ID:    "GET_ATTRIBUTES_BY_CONSENT_ID",
-		Query: "SELECT CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "GET_ATTRIBUTES_BY_CONSENT_ID",
+		Query:         "SELECT CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryDeleteAttributesByConsentID = dbmodel.DBQuery{
-		ID:    "DELETE_ATTRIBUTES_BY_CONSENT_ID",
-		Query: "DELETE FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_ATTRIBUTES_BY_CONSENT_ID",
+		Query:         "DELETE FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryFindConsentIDsByAttributeKey = dbmodel.DBQuery{
-		ID:    "FIND_CONSENT_IDS_BY_ATTRIBUTE_KEY",
-		Query: "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = ? AND ORG_ID = ? ORDER BY CONSENT_ID",
+		ID:            "FIND_CONSENT_IDS_BY_ATTRIBUTE_KEY",
+		Query:         "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = ? AND ORG_ID = ? ORDER BY CONSENT_ID",
+		PostgresQuery: "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = $1 AND ORG_ID = $2 ORDER BY CONSENT_ID",
 	}
 
 	QueryFindConsentIDsByAttribute = dbmodel.DBQuery{
-		ID:    "FIND_CONSENT_IDS_BY_ATTRIBUTE",
-		Query: "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = ? AND ATT_VALUE = ? AND ORG_ID = ? ORDER BY CONSENT_ID",
+		ID:            "FIND_CONSENT_IDS_BY_ATTRIBUTE",
+		Query:         "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = ? AND ATT_VALUE = ? AND ORG_ID = ? ORDER BY CONSENT_ID",
+		PostgresQuery: "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = $1 AND ATT_VALUE = $2 AND ORG_ID = $3 ORDER BY CONSENT_ID",
 	}
 
 	// Status audit queries
 	QueryCreateStatusAudit = dbmodel.DBQuery{
-		ID:    "CREATE_STATUS_AUDIT",
-		Query: "INSERT INTO CONSENT_STATUS_AUDIT (STATUS_AUDIT_ID, CONSENT_ID, CURRENT_STATUS, ACTION_TIME, REASON, ACTION_BY, PREVIOUS_STATUS, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		ID:            "CREATE_STATUS_AUDIT",
+		Query:         "INSERT INTO CONSENT_STATUS_AUDIT (STATUS_AUDIT_ID, CONSENT_ID, CURRENT_STATUS, ACTION_TIME, REASON, ACTION_BY, PREVIOUS_STATUS, ORG_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_STATUS_AUDIT (STATUS_AUDIT_ID, CONSENT_ID, CURRENT_STATUS, ACTION_TIME, REASON, ACTION_BY, PREVIOUS_STATUS, ORG_ID) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
 	}
 
 	QueryGetAttributesByConsentIDs = dbmodel.DBQuery{
@@ -91,8 +102,9 @@ var (
 
 	// Purpose Consent queries
 	QueryCreateConsentPurposeMapping = dbmodel.DBQuery{
-		ID:    "CREATE_CONSENT_PURPOSE_MAPPING",
-		Query: "INSERT INTO PURPOSE_CONSENT_MAPPING (CONSENT_ID, PURPOSE_ID, ORG_ID) VALUES (?, ?, ?)",
+		ID:            "CREATE_CONSENT_PURPOSE_MAPPING",
+		Query:         "INSERT INTO PURPOSE_CONSENT_MAPPING (CONSENT_ID, PURPOSE_ID, ORG_ID) VALUES (?, ?, ?)",
+		PostgresQuery: "INSERT INTO PURPOSE_CONSENT_MAPPING (CONSENT_ID, PURPOSE_ID, ORG_ID) VALUES ($1, $2, $3)",
 	}
 
 	QueryGetConsentPurposesByConsentID = dbmodel.DBQuery{
@@ -107,16 +119,28 @@ var (
 			WHERE pgc.CONSENT_ID = ? AND pgc.ORG_ID = ?
 			ORDER BY pg.NAME
 		`,
+		PostgresQuery: `
+			SELECT 
+				pgc.CONSENT_ID,
+				pgc.PURPOSE_ID,
+				pg.NAME as PURPOSE_NAME
+			FROM PURPOSE_CONSENT_MAPPING pgc
+			JOIN CONSENT_PURPOSE pg ON pgc.PURPOSE_ID = pg.ID AND pgc.ORG_ID = pg.ORG_ID
+			WHERE pgc.CONSENT_ID = $1 AND pgc.ORG_ID = $2
+			ORDER BY pg.NAME
+		`,
 	}
 
 	QueryCheckPurposeUsedInConsents = dbmodel.DBQuery{
-		ID:    "CHECK_PURPOSE_USED_IN_CONSENTS",
-		Query: "SELECT COUNT(*) as count FROM PURPOSE_CONSENT_MAPPING WHERE PURPOSE_ID = ? AND ORG_ID = ?",
+		ID:            "CHECK_PURPOSE_USED_IN_CONSENTS",
+		Query:         "SELECT COUNT(*) as count FROM PURPOSE_CONSENT_MAPPING WHERE PURPOSE_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT COUNT(*) as count FROM PURPOSE_CONSENT_MAPPING WHERE PURPOSE_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryCreateElementApproval = dbmodel.DBQuery{
-		ID:    "CREATE_ELEMENT_APPROVAL",
-		Query: "INSERT INTO CONSENT_ELEMENT_APPROVAL (CONSENT_ID, PURPOSE_ID, ELEMENT_ID, IS_USER_APPROVED, VALUE, ORG_ID) VALUES (?, ?, ?, ?, ?, ?)",
+		ID:            "CREATE_ELEMENT_APPROVAL",
+		Query:         "INSERT INTO CONSENT_ELEMENT_APPROVAL (CONSENT_ID, PURPOSE_ID, ELEMENT_ID, IS_USER_APPROVED, VALUE, ORG_ID) VALUES (?, ?, ?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_ELEMENT_APPROVAL (CONSENT_ID, PURPOSE_ID, ELEMENT_ID, IS_USER_APPROVED, VALUE, ORG_ID) VALUES ($1, $2, $3, $4, $5, $6)",
 	}
 
 	QueryGetElementApprovalsByConsentID = dbmodel.DBQuery{
@@ -139,16 +163,36 @@ var (
 			WHERE pa.CONSENT_ID = ? AND pa.ORG_ID = ?
 			ORDER BY pg.NAME, p.NAME
 		`,
+		PostgresQuery: `
+			SELECT 
+				pa.CONSENT_ID,
+				pa.PURPOSE_ID,
+				pg.NAME as PURPOSE_NAME,
+				pa.ELEMENT_ID,
+				p.NAME as ELEMENT_NAME,
+				pa.IS_USER_APPROVED,
+				pa.VALUE,
+				gm.IS_MANDATORY
+			FROM CONSENT_ELEMENT_APPROVAL pa
+		JOIN CONSENT_ELEMENT p ON pa.ELEMENT_ID = p.ID AND pa.ORG_ID = p.ORG_ID
+		JOIN CONSENT_PURPOSE pg ON pa.PURPOSE_ID = pg.ID AND pa.ORG_ID = pg.ORG_ID
+		JOIN PURPOSE_ELEMENT_MAPPING gm ON pa.PURPOSE_ID = gm.PURPOSE_ID 
+			AND pa.ELEMENT_ID = gm.ELEMENT_ID AND pa.ORG_ID = gm.ORG_ID
+			WHERE pa.CONSENT_ID = $1 AND pa.ORG_ID = $2
+			ORDER BY pg.NAME, p.NAME
+		`,
 	}
 
 	QueryDeleteConsentPurposesByConsentID = dbmodel.DBQuery{
-		ID:    "DELETE_PURPOSES_BY_CONSENT_ID",
-		Query: "DELETE FROM PURPOSE_CONSENT_MAPPING WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_PURPOSES_BY_CONSENT_ID",
+		Query:         "DELETE FROM PURPOSE_CONSENT_MAPPING WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM PURPOSE_CONSENT_MAPPING WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
 
 	QueryDeleteElementApprovalsByConsentID = dbmodel.DBQuery{
-		ID:    "DELETE_ELEMENT_APPROVALS_BY_CONSENT_ID",
-		Query: "DELETE FROM CONSENT_ELEMENT_APPROVAL WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		ID:            "DELETE_ELEMENT_APPROVALS_BY_CONSENT_ID",
+		Query:         "DELETE FROM CONSENT_ELEMENT_APPROVAL WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "DELETE FROM CONSENT_ELEMENT_APPROVAL WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
 )
 
@@ -285,7 +329,11 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilters) 
 		joinClause, whereClause)
 
 	// Execute count query
-	countRows, err := dbClient.Query(dbmodel.DBQuery{ID: "COUNT_SEARCH_RESULTS", Query: countQuery}, countArgs...)
+	countRows, err := dbClient.Query(dbmodel.DBQuery{
+		ID:            "COUNT_SEARCH_RESULTS",
+		Query:         countQuery,
+		PostgresQuery: dbutils.ConvertToPostgresParams(countQuery),
+	}, countArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -313,7 +361,11 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilters) 
 	args = append(args, filters.Limit, filters.Offset)
 
 	// Execute search query
-	rows, err := dbClient.Query(dbmodel.DBQuery{ID: "SEARCH_CONSENTS", Query: selectQuery}, args...)
+	rows, err := dbClient.Query(dbmodel.DBQuery{
+		ID:            "SEARCH_CONSENTS",
+		Query:         selectQuery,
+		PostgresQuery: dbutils.ConvertToPostgresParams(selectQuery),
+	}, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -416,9 +468,11 @@ func (s *store) GetAttributesByConsentIDs(ctx context.Context, consentIDs []stri
 	args = append(args, orgID)
 
 	// Build dynamic query
+	mysqlQuery := fmt.Sprintf("SELECT CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID IN (%s) AND ORG_ID = ?", placeholders)
 	query := dbmodel.DBQuery{
-		ID:    QueryGetAttributesByConsentIDs.ID,
-		Query: fmt.Sprintf("SELECT CONSENT_ID, ATT_KEY, ATT_VALUE, ORG_ID FROM CONSENT_ATTRIBUTE WHERE CONSENT_ID IN (%s) AND ORG_ID = ?", placeholders),
+		ID:            QueryGetAttributesByConsentIDs.ID,
+		Query:         mysqlQuery,
+		PostgresQuery: dbutils.ConvertToPostgresParams(mysqlQuery),
 	}
 
 	rows, err := dbClient.Query(query, args...)

@@ -64,6 +64,7 @@ type DatabaseConfig struct {
 	Password        string        `yaml:"password"`
 	Database        string        `yaml:"database"`
 	Path            string        `yaml:"path"`
+	SSLMode         string        `yaml:"sslmode"`
 	Options         string        `yaml:"options"`
 	MaxOpenConns    int           `yaml:"max_open_conns"`
 	MaxIdleConns    int           `yaml:"max_idle_conns"`
@@ -274,7 +275,14 @@ func validateConfig(config *Config) error {
 		if config.Database.Consent.Path == "" {
 			return fmt.Errorf("database path is required for SQLite")
 		}
-	default: // mysql (default) and any other relational DB
+	case "postgres":
+		if config.Database.Consent.Hostname == "" {
+			return fmt.Errorf("database hostname is required")
+		}
+		if config.Database.Consent.Database == "" {
+			return fmt.Errorf("database name is required")
+		}
+	default: // mysql and empty (defaults to mysql)
 		if config.Database.Consent.Hostname == "" {
 			return fmt.Errorf("database hostname is required")
 		}
@@ -341,6 +349,21 @@ func (d *DatabaseConfig) GetDSN() string {
 			options = "?" + options
 		}
 		return d.Path + options
+	case "postgres":
+		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
+			d.Hostname,
+			d.Port,
+			d.User,
+			d.Password,
+			d.Database,
+		)
+		if d.SSLMode != "" {
+			dsn += " sslmode=" + d.SSLMode
+		}
+		if d.Options != "" {
+			dsn += " " + d.Options
+		}
+		return dsn
 	default: // mysql
 		return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&multiStatements=true",
 			d.User,

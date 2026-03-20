@@ -48,7 +48,7 @@ func (d *DBQuery) GetID() string {
 // If a database-specific query is not available, it falls back to the default query.
 func (d *DBQuery) GetQuery(dbType string) string {
 	switch dbType {
-	case "postgres", "postgresql":
+	case "postgres":
 		if d.PostgresQuery != "" {
 			return d.PostgresQuery
 		}
