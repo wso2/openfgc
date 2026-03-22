@@ -1,6 +1,6 @@
 server:
-  hostname: localhost
-  port: 3000
+  hostname: 0.0.0.0
+  port: 8080
   readTimeout: 30s
   writeTimeout: 30s
   idleTimeout: 120s
@@ -8,14 +8,14 @@ server:
 database:
   consent:
     type: mysql
-    hostname: localhost
-    port: 3306
-    database: consent_mgt
+    hostname: ${OPENFGC_DB_HOSTNAME}
+    port: ${OPENFGC_DB_PORT}
+    database: ${OPENFGC_DB_NAME}
     max_open_conns: 25
     max_idle_conns: 5
     conn_max_lifetime: 5m
-    user: root
-    password: password
+    user: ${OPENFGC_DB_USER}
+    password: ${OPENFGC_DB_PASSWORD}
 
 logging:
   level: info
