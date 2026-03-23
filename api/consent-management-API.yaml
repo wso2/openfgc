@@ -31,7 +31,7 @@ tags:
     description: Manage Consent Elements
   - name: Consent Purposes
     description: Manage Consent Purposes
-  - name: Consent
+  - name: Consents
     description: Manage Consents
 paths:
   /consents:
@@ -52,7 +52,7 @@ paths:
           that purpose are automatically resolved and returned with `isUserApproved: false`.
       operationId: consents-POST
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -126,7 +126,7 @@ paths:
 
       operationId: consents-search-GET
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -227,7 +227,7 @@ paths:
         Results are organization-scoped and sorted by consent ID.
       operationId: consents-attributes-GET
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -280,7 +280,7 @@ paths:
 
       operationId: consents-GET
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -332,7 +332,7 @@ paths:
 
       operationId: consents-PUT
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -414,7 +414,7 @@ paths:
 
       operationId: consents-revoke-POST
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -463,7 +463,7 @@ paths:
       description: Creates a new authorization resource and links it to the specified consent. This is typically done when a user interacts with the consent (e.g., at the start of the authorization flow).
       operationId: consents-authorizations-POST
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -511,7 +511,7 @@ paths:
       description: Retrieves a list of all authorization resources associated with a specific consent.
       operationId: consentAuthorizationGet
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -555,7 +555,7 @@ paths:
       description: Retrieves the details of a specific authorization resource linked to a given consent.
       operationId: consentAuthorizationIdGet
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -601,7 +601,7 @@ paths:
       description: Updates the details (e.g., status) of a specific authorization resource associated with the given consent.
       operationId: consentAuthorizationIdPut
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -673,7 +673,7 @@ paths:
         **Note:** All responses return HTTP 200. Check the `isValid` field and `httpCode` in the response body to determine the actual validation result.
       operationId: consents-validate-POST
       tags:
-        - Consent
+        - Consents
       parameters:
         - in: header
           name: org-id
@@ -1507,7 +1507,7 @@ paths:
         which elements are essential vs. optional within the purpose.
       operationId: createPurpose
       tags:
-        - Consent Purpose
+        - Consent Purposes
       parameters:
         - in: header
           name: org-id
@@ -1652,7 +1652,7 @@ paths:
         Results are sorted by creation time (newest first) and support pagination via limit/offset.
       operationId: listPurposes
       tags:
-        - Consent Purpose
+        - Consent Purposes
       parameters:
         - in: header
           name: org-id
@@ -1805,7 +1805,7 @@ paths:
         mandatory flags.
       operationId: getPurposeById
       tags:
-        - Consent Purpose
+        - Consent Purposes
       parameters:
         - in: header
           name: org-id
@@ -1902,7 +1902,7 @@ paths:
         included in the update will be removed from the purpose.
       operationId: updatePurpose
       tags:
-        - Consent Purpose
+        - Consent Purposes
       parameters:
         - in: header
           name: org-id
@@ -2051,7 +2051,7 @@ paths:
         for use in other purposes or directly in consents.
       operationId: deletePurpose
       tags:
-        - Consent Purpose
+        - Consent Purposes
       parameters:
         - in: header
           name: org-id
