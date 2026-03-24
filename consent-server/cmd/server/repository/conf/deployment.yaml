@@ -7,7 +7,7 @@ server:
 
 database:
   consent:
-    type: mysql
+    type: ${OPENFGC_DB_TYPE}
     hostname: ${OPENFGC_DB_HOSTNAME}
     port: ${OPENFGC_DB_PORT}
     database: ${OPENFGC_DB_NAME}

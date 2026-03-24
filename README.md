@@ -194,7 +194,7 @@ Update configuration file at `target/server/repository/conf/deployment.yaml`:
 
     database:
       consent:
-        type: mysql
+        type: ${OPENFGC_DB_TYPE}
         hostname: ${OPENFGC_DB_HOSTNAME}
         port: ${OPENFGC_DB_PORT}
         database: ${OPENFGC_DB_NAME}
@@ -208,12 +208,12 @@ Update configuration file at `target/server/repository/conf/deployment.yaml`:
       level: info
 ```
 
-For PostgreSQL, set `type: postgres` and use port `5432`:
+For PostgreSQL, set `type: postgres` and use the default port `5432`:
 
 ```yaml
     database:
       consent:
-        type: postgres
+        type: ${OPENFGC_DB_TYPE}
         hostname: ${OPENFGC_DB_HOSTNAME}
         port: ${OPENFGC_DB_PORT}
         database: ${OPENFGC_DB_NAME}
@@ -226,15 +226,16 @@ For PostgreSQL, set `type: postgres` and use port `5432`:
         options: ""             # e.g. sslrootcert=/path/to/ca.crt for production TLS
 ```
 
-Set the following environment variables before starting the server:
+Either change the configuration file directly in `deployment.yaml` or set the following environment variables before starting the server:
 
-| Variable | Description |
-|----------|-------------|
-| `OPENFGC_DB_HOSTNAME` | Database hostname |
-| `OPENFGC_DB_PORT` | Database port (e.g. `3306` for MySQL, `5432` for PostgreSQL) |
-| `OPENFGC_DB_NAME` | Database name (e.g. `consent_mgt`) |
-| `OPENFGC_DB_USER` | Database user |
-| `OPENFGC_DB_PASSWORD` | Database password |
+| Variable | Description | Example Values |
+|----------|-------------|---------|
+| `OPENFGC_DB_TYPE` | Database type | `mysql`, `sqlite`, `postgres` |
+| `OPENFGC_DB_HOSTNAME` | Database hostname | `localhost` |
+| `OPENFGC_DB_PORT` | Database port | `3306` for MySQL, `5432` for PostgreSQL |
+| `OPENFGC_DB_NAME` | Database name |  |
+| `OPENFGC_DB_USER` | Database user |  |
+| `OPENFGC_DB_PASSWORD` | Database password |  |
 
 
 ### 4. Run
