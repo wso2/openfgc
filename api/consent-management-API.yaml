@@ -186,6 +186,17 @@ paths:
             type: integer
             format: int32
           example: 0
+        - name: dataPrincipalId
+          in: query
+          required: false
+          description: |
+            Filter consents by data subject (the person whose data is being processed).
+            Used when a delegate (e.g., parent) queries consents on behalf of another person (e.g., child).
+            The caller must be a registered delegate for the specified principal.
+            Requires the X-User-ID header to be present for authorization verification.
+          schema:
+            type: string
+          example: "child-user-id-123"
       responses:
         "200":
           description: OK. Returns a list of consents matching the search criteria, along with pagination metadata.
@@ -201,6 +212,57 @@ paths:
                 $ref: "#/components/schemas/ConsentErrorCommon"
         "500":
           description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/{consentId}/delegates:
+    get:
+      summary: Get delegates for a consent
+      description: |
+        Returns all registered delegates for a delegated consent, along with the delegation
+        metadata (principal_id, revocation policy, expiry timestamp).
+        Covers all delegation scenarios: parent→child, carer→disabled adult, power of attorney, etc.
+      operationId: consents-delegates-GET
+      tags:
+        - Consents
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          schema:
+            type: string
+          example: "ORG-001"
+        - name: consentId
+          in: path
+          required: true
+          description: The unique identifier of the consent.
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "200":
+          description: OK. Returns the delegate list for this consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelegateListResponse"
+        "400":
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "403":
+          description: Forbidden. Caller is not authorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "404":
+          description: Consent not found.
           content:
             application/json:
               schema:
@@ -2425,7 +2487,7 @@ components:
         Request body for updating a consent.
 
         **Status Derivation:**
-        The consent status is NOT provided in the request. Instead, it is automatically derived by the API based on the authorization states:
+        The consent status is NOT provided in the request. Instead, it is automatically derived by the API based on the API based on the authorization states:
         - If any authorization has status "rejected" → consent status = "rejected"
         - If any authorization has status "created" → consent status = "created"
         - If all authorizations have status "approved" (or empty/default) → consent status = "active"
@@ -3507,6 +3569,60 @@ components:
             $ref: "#/components/schemas/PurposeResponse"
         metadata:
           $ref: "#/components/schemas/ConsentSearchMetadata"
+    DelegateListResponse:
+      type: object
+      description: Response for GET /consents/{consentId}/delegates
+      properties:
+        consentId:
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        dataPrincipalId:
+          type: string
+          description: userId of the actual data subject (e.g., the child)
+          example: "child-user-id-123"
+        revocationPolicy:
+          type: string
+          enum: [ANY, SUBJECT_ONLY]
+          example: "ANY"
+        validUntil:
+          type: integer
+          format: int64
+          description: Unix timestamp when delegation expires. Absent for permanent delegations.
+          example: 1764547200
+        isDelegationExpired:
+          type: boolean
+          description: True when the current time is past validUntil
+          example: false
+        delegateCount:
+          type: integer
+          example: 2
+        delegates:
+          type: array
+          items:
+            type: object
+            properties:
+              authId:
+                type: string
+              userId:
+                type: string
+                description: The delegate's userId (e.g., the parent's account ID)
+              delegationType:
+                type: string
+                description: Free-form delegation type string
+                example: "parental_biological"
+              status:
+                type: string
+                example: "APPROVED"
+              canRevoke:
+                type: boolean
+              canModify:
+                type: boolean
+              onBehalfOf:
+                type: string
+                description: The principalId this delegate is acting for
+              updatedTime:
+                type: integer
+                format: int64
   securitySchemes:
     basicAuth:
       type: http

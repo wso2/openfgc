@@ -59,4 +59,7 @@ func registerRoutes(mux *http.ServeMux, handler *consentHandler) {
 
 	// GET /api/v1/consents/attributes - Search consents by attribute
 	mux.HandleFunc("GET "+constants.APIBasePath+"/consents/attributes", handler.searchConsentsByAttribute)
+
+	// GET /api/v1/consents/{consentId}/delegates - Get consent delegates
+	mux.HandleFunc("GET "+constants.APIBasePath+"/consents/{consentId}/delegates", handler.getDelegates)
 }

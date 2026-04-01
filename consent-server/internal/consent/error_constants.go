@@ -63,3 +63,53 @@ var (
 		Description: "An unexpected internal error occurred",
 	}
 )
+
+// Delegation errors — used when consent is given on behalf of another person.
+// Covers parent→child, carer→disabled adult, power-of-attorney, etc.
+var (
+	// ErrorInvalidDelegation is returned when a delegated consent request is
+	// missing required attributes such as principal_id or valid_until.
+	ErrorInvalidDelegation = serviceerror.ServiceError{
+		Type:        serviceerror.ClientErrorType,
+		Code:        "CS-4050",
+		Message:     "Invalid delegation",
+		Description: "Delegated consent is missing required attributes",
+	}
+
+	// ErrorNotAuthorizedForPrincipal is returned when the caller tries to read
+	// another person's consents without being a registered delegate .
+	ErrorNotAuthorizedForPrincipal = serviceerror.ServiceError{
+		Type:        serviceerror.ClientErrorType,
+		Code:        "CS-4051",
+		Message:     "Not authorized for principal",
+		Description: "Caller is not a registered delegate for the requested data principal",
+	}
+
+	// ErrorRevocationNotPermitted is returned when the caller does not have
+	// permission to revoke a delegated consent .
+	ErrorRevocationNotPermitted = serviceerror.ServiceError{
+		Type:        serviceerror.ClientErrorType,
+		Code:        "CS-4052",
+		Message:     "Revocation not permitted",
+		Description: "Caller does not have permission to revoke this consent",
+	}
+
+	// ErrorDelegationExpired is returned when a delegate tries to act after
+	// guardian.valid_until has passed — only the principal may act now .
+	ErrorDelegationExpired = serviceerror.ServiceError{
+		Type:        serviceerror.ClientErrorType,
+		Code:        "CS-4053",
+		Message:     "Delegation expired",
+		Description: "The delegation period has ended; only the data principal may act on this consent",
+	}
+
+	// ErrorUnauthorized is returned when the caller is not permitted to perform
+	// the requested operation (e.g., accessing another principal's consents without
+	// being a registered delegate). Used by handler_test.go .
+	ErrorUnauthorized = serviceerror.ServiceError{
+		Type:        serviceerror.ClientErrorType,
+		Code:        "CS-4054",
+		Message:     "Unauthorized",
+		Description: "Caller is not authorized to perform this operation",
+	}
+)

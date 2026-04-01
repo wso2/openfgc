@@ -20,11 +20,14 @@ package consent
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/wso2/openfgc/internal/consent/model"
+	"github.com/wso2/openfgc/internal/consent/validator"
 )
 
 func TestValidateConsentTypeLength(t *testing.T) {
@@ -490,4 +493,86 @@ func TestEmptyAttributesMap(t *testing.T) {
 
 	require.NotNil(t, req.Attributes)
 	require.Empty(t, req.Attributes)
+}
+
+// guardian consent missing principal_id → expect error
+func TestValidateDelegation_MissingPrincipalID(t *testing.T) {
+	attrs := map[string]string{
+		"delegation.type":            "parental_biological",
+		"guardian.valid_until":       strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10),
+		"guardian.revocation_policy": "ANY",
+	}
+
+	err := validator.ValidateDelegationAttributes(attrs, []model.AuthorizationAPIRequest{}, "caller-001")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "delegation.principal_id is required")
+}
+
+// caller equals principal_id → expect error
+func TestValidateDelegation_CallerIsPrincipal(t *testing.T) {
+	attrs := map[string]string{
+		"delegation.type":            "parental_biological",
+		"delegation.principal_id":    "user-123",
+		"guardian.valid_until":       strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10),
+		"guardian.revocation_policy": "ANY",
+	}
+
+	auths := []model.AuthorizationAPIRequest{
+		{Type: "delegate", Resources: map[string]interface{}{"onBehalfOf": "user-123"}},
+	}
+
+	err := validator.ValidateDelegationAttributes(attrs, auths, "user-123")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot be both the delegator and the data principal")
+}
+
+// valid delegation → expect no error
+func TestValidateDelegation_ValidRequest(t *testing.T) {
+	attrs := map[string]string{
+		"delegation.type":            "carer",
+		"delegation.principal_id":    "user-child",
+		"guardian.valid_until":       strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10),
+		"guardian.revocation_policy": "ANY",
+	}
+
+	auths := []model.AuthorizationAPIRequest{
+		{Type: "delegate", Resources: map[string]interface{}{"onBehalfOf": "user-child"}},
+	}
+
+	err := validator.ValidateDelegationAttributes(attrs, auths, "parent-001")
+	require.NoError(t, err)
+}
+
+// permanent delegation without valid_until → expect no error
+func TestValidateDelegation_PermanentDelegation(t *testing.T) {
+	attrs := map[string]string{
+		"delegation.type":            "power_of_attorney",
+		"delegation.principal_id":    "patient-001",
+		"guardian.revocation_policy": "ANY",
+	}
+
+	auths := []model.AuthorizationAPIRequest{
+		{Type: "delegate", Resources: map[string]interface{}{"onBehalfOf": "patient-001"}},
+	}
+
+	err := validator.ValidateDelegationAttributes(attrs, auths, "attorney-001")
+	require.NoError(t, err)
+}
+
+// delegation expired, delegate tries to revoke → expect error
+func TestValidateDelegation_ExpiredTimestamp(t *testing.T) {
+	attrs := map[string]string{
+		"delegation.type":            "guardian",
+		"delegation.principal_id":    "user-child",
+		"guardian.valid_until":       strconv.FormatInt(time.Now().Add(-1*time.Hour).Unix(), 10),
+		"guardian.revocation_policy": "ANY",
+	}
+
+	auths := []model.AuthorizationAPIRequest{
+		{Type: "delegate", Resources: map[string]interface{}{"onBehalfOf": "user-child"}},
+	}
+
+	err := validator.ValidateDelegationAttributes(attrs, auths, "parent-001")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "must be a future timestamp")
 }

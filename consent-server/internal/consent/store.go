@@ -110,25 +110,25 @@ var (
 	QueryGetConsentPurposesByConsentID = dbmodel.DBQuery{
 		ID: "GET_PURPOSES_BY_CONSENT_ID",
 		Query: `
-			SELECT 
-				pgc.CONSENT_ID,
-				pgc.PURPOSE_ID,
-				pg.NAME as PURPOSE_NAME
-			FROM PURPOSE_CONSENT_MAPPING pgc
-			JOIN CONSENT_PURPOSE pg ON pgc.PURPOSE_ID = pg.ID AND pgc.ORG_ID = pg.ORG_ID
-			WHERE pgc.CONSENT_ID = ? AND pgc.ORG_ID = ?
-			ORDER BY pg.NAME
-		`,
+            SELECT 
+                pgc.CONSENT_ID,
+                pgc.PURPOSE_ID,
+                pg.NAME as PURPOSE_NAME
+            FROM PURPOSE_CONSENT_MAPPING pgc
+            JOIN CONSENT_PURPOSE pg ON pgc.PURPOSE_ID = pg.ID AND pgc.ORG_ID = pg.ORG_ID
+            WHERE pgc.CONSENT_ID = ? AND pgc.ORG_ID = ?
+            ORDER BY pg.NAME
+        `,
 		PostgresQuery: `
-			SELECT 
-				pgc.CONSENT_ID,
-				pgc.PURPOSE_ID,
-				pg.NAME as PURPOSE_NAME
-			FROM PURPOSE_CONSENT_MAPPING pgc
-			JOIN CONSENT_PURPOSE pg ON pgc.PURPOSE_ID = pg.ID AND pgc.ORG_ID = pg.ORG_ID
-			WHERE pgc.CONSENT_ID = $1 AND pgc.ORG_ID = $2
-			ORDER BY pg.NAME
-		`,
+            SELECT 
+                pgc.CONSENT_ID,
+                pgc.PURPOSE_ID,
+                pg.NAME as PURPOSE_NAME
+            FROM PURPOSE_CONSENT_MAPPING pgc
+            JOIN CONSENT_PURPOSE pg ON pgc.PURPOSE_ID = pg.ID AND pgc.ORG_ID = pg.ORG_ID
+            WHERE pgc.CONSENT_ID = $1 AND pgc.ORG_ID = $2
+            ORDER BY pg.NAME
+        `,
 	}
 
 	QueryCheckPurposeUsedInConsents = dbmodel.DBQuery{
@@ -146,41 +146,41 @@ var (
 	QueryGetElementApprovalsByConsentID = dbmodel.DBQuery{
 		ID: "GET_ELEMENT_APPROVALS_BY_CONSENT_ID",
 		Query: `
-			SELECT 
-				pa.CONSENT_ID,
-				pa.PURPOSE_ID,
-				pg.NAME as PURPOSE_NAME,
-				pa.ELEMENT_ID,
-				p.NAME as ELEMENT_NAME,
-				pa.IS_USER_APPROVED,
-				pa.VALUE,
-				gm.IS_MANDATORY
-			FROM CONSENT_ELEMENT_APPROVAL pa
-		JOIN CONSENT_ELEMENT p ON pa.ELEMENT_ID = p.ID AND pa.ORG_ID = p.ORG_ID
-		JOIN CONSENT_PURPOSE pg ON pa.PURPOSE_ID = pg.ID AND pa.ORG_ID = pg.ORG_ID
-		JOIN PURPOSE_ELEMENT_MAPPING gm ON pa.PURPOSE_ID = gm.PURPOSE_ID 
-			AND pa.ELEMENT_ID = gm.ELEMENT_ID AND pa.ORG_ID = gm.ORG_ID
-			WHERE pa.CONSENT_ID = ? AND pa.ORG_ID = ?
-			ORDER BY pg.NAME, p.NAME
-		`,
+            SELECT 
+                pa.CONSENT_ID,
+                pa.PURPOSE_ID,
+                pg.NAME as PURPOSE_NAME,
+                pa.ELEMENT_ID,
+                p.NAME as ELEMENT_NAME,
+                pa.IS_USER_APPROVED,
+                pa.VALUE,
+                gm.IS_MANDATORY
+            FROM CONSENT_ELEMENT_APPROVAL pa
+        JOIN CONSENT_ELEMENT p ON pa.ELEMENT_ID = p.ID AND pa.ORG_ID = p.ORG_ID
+        JOIN CONSENT_PURPOSE pg ON pa.PURPOSE_ID = pg.ID AND pa.ORG_ID = pg.ORG_ID
+        JOIN PURPOSE_ELEMENT_MAPPING gm ON pa.PURPOSE_ID = gm.PURPOSE_ID 
+            AND pa.ELEMENT_ID = gm.ELEMENT_ID AND pa.ORG_ID = gm.ORG_ID
+            WHERE pa.CONSENT_ID = ? AND pa.ORG_ID = ?
+            ORDER BY pg.NAME, p.NAME
+        `,
 		PostgresQuery: `
-			SELECT 
-				pa.CONSENT_ID,
-				pa.PURPOSE_ID,
-				pg.NAME as PURPOSE_NAME,
-				pa.ELEMENT_ID,
-				p.NAME as ELEMENT_NAME,
-				pa.IS_USER_APPROVED,
-				pa.VALUE,
-				gm.IS_MANDATORY
-			FROM CONSENT_ELEMENT_APPROVAL pa
-		JOIN CONSENT_ELEMENT p ON pa.ELEMENT_ID = p.ID AND pa.ORG_ID = p.ORG_ID
-		JOIN CONSENT_PURPOSE pg ON pa.PURPOSE_ID = pg.ID AND pa.ORG_ID = pg.ORG_ID
-		JOIN PURPOSE_ELEMENT_MAPPING gm ON pa.PURPOSE_ID = gm.PURPOSE_ID 
-			AND pa.ELEMENT_ID = gm.ELEMENT_ID AND pa.ORG_ID = gm.ORG_ID
-			WHERE pa.CONSENT_ID = $1 AND pa.ORG_ID = $2
-			ORDER BY pg.NAME, p.NAME
-		`,
+            SELECT 
+                pa.CONSENT_ID,
+                pa.PURPOSE_ID,
+                pg.NAME as PURPOSE_NAME,
+                pa.ELEMENT_ID,
+                p.NAME as ELEMENT_NAME,
+                pa.IS_USER_APPROVED,
+                pa.VALUE,
+                gm.IS_MANDATORY
+            FROM CONSENT_ELEMENT_APPROVAL pa
+        JOIN CONSENT_ELEMENT p ON pa.ELEMENT_ID = p.ID AND pa.ORG_ID = p.ORG_ID
+        JOIN CONSENT_PURPOSE pg ON pa.PURPOSE_ID = pg.ID AND pa.ORG_ID = pg.ORG_ID
+        JOIN PURPOSE_ELEMENT_MAPPING gm ON pa.PURPOSE_ID = gm.PURPOSE_ID 
+            AND pa.ELEMENT_ID = gm.ELEMENT_ID AND pa.ORG_ID = gm.ORG_ID
+            WHERE pa.CONSENT_ID = $1 AND pa.ORG_ID = $2
+            ORDER BY pg.NAME, p.NAME
+        `,
 	}
 
 	QueryDeleteConsentPurposesByConsentID = dbmodel.DBQuery{
@@ -320,6 +320,19 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilters) 
 		whereConditions = append(whereConditions, "CONSENT.UPDATED_TIME <= ?")
 		args = append(args, *filters.ToTime)
 		countArgs = append(countArgs, *filters.ToTime)
+	}
+
+	// Add dataPrincipalId filter (via JOIN with CONSENT_ATTRIBUTE)
+	if filters.DataPrincipalID != "" {
+		joinClause += " INNER JOIN CONSENT_ATTRIBUTE ca_dp" +
+			" ON CONSENT.CONSENT_ID = ca_dp.CONSENT_ID" +
+			" AND CONSENT.ORG_ID = ca_dp.ORG_ID"
+		whereConditions = append(whereConditions,
+			"ca_dp.ATT_KEY = 'delegation.principal_id'")
+		whereConditions = append(whereConditions,
+			"ca_dp.ATT_VALUE = ?")
+		args = append(args, filters.DataPrincipalID)
+		countArgs = append(countArgs, filters.DataPrincipalID)
 	}
 
 	whereClause := strings.Join(whereConditions, " AND ")

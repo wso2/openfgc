@@ -240,6 +240,38 @@ func (_m *MockConsentService) ValidateConsent(ctx context.Context, req model.Val
 	return r0, r1
 }
 
+// GetConsentDelegates provides a mock function with given fields: ctx, consentID, orgID
+func (_m *MockConsentService) GetConsentDelegates(ctx context.Context, consentID string, orgID string) (*model.DelegateListResponse, *serviceerror.ServiceError) {
+	ret := _m.Called(ctx, consentID, orgID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConsentDelegates")
+	}
+
+	var r0 *model.DelegateListResponse
+	var r1 *serviceerror.ServiceError
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*model.DelegateListResponse, *serviceerror.ServiceError)); ok {
+		return rf(ctx, consentID, orgID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *model.DelegateListResponse); ok {
+		r0 = rf(ctx, consentID, orgID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.DelegateListResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) *serviceerror.ServiceError); ok {
+		r1 = rf(ctx, consentID, orgID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*serviceerror.ServiceError)
+		}
+	}
+
+	return r0, r1
+}
+
 // NewMockConsentService creates a new instance of MockConsentService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockConsentService(t interface {
