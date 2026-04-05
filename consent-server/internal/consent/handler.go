@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/wso2/openfgc/internal/consent/model"
+	"github.com/wso2/openfgc/internal/consent/validator"
 	"github.com/wso2/openfgc/internal/system/constants"
 	"github.com/wso2/openfgc/internal/system/error/serviceerror"
 	"github.com/wso2/openfgc/internal/system/utils"
@@ -54,6 +55,19 @@ func (h *consentHandler) createConsent(w http.ResponseWriter, r *http.Request) {
 	var req model.ConsentAPIRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidRequestBody, "Invalid request body"))
+		return
+	}
+
+	// Set CallerID from X-User-ID header so delegation validation in the service
+	// can enforce that a person cannot create a delegated consent for themselves.
+	// This field is NOT read from JSON (tagged json:"-")
+	req.CallerID = r.Header.Get("X-User-ID")
+
+	// Validate delegation attributes here in the handler so the check runs even
+	// when the service is mocked in tests. ValidateDelegationAttributes is a no-op
+	// when delegation.type is not present in Attributes.
+	if err := validator.ValidateDelegationAttributes(req.Attributes, req.Authorizations, req.CallerID); err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorInvalidDelegation, err.Error()))
 		return
 	}
 
@@ -132,6 +146,19 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 		OrgID:  orgID,
 		Limit:  limit,
 		Offset: offset,
+	}
+
+	// CallerID from X-User-ID header — used to verify the caller is an authorised
+	// delegate when dataPrincipalId is also provided
+	filters.CallerID = r.Header.Get("X-User-ID")
+
+	// dataPrincipalId filters consents by data subject (the person whose data was
+	// consented to), not by who gave the consent.
+	// Example: parent logs in → GET /consents?dataPrincipalId=child-user-id
+	// The service checks the caller is a registered delegate before returning results.
+
+	if dpID := r.URL.Query().Get("dataPrincipalId"); dpID != "" {
+		filters.DataPrincipalID = strings.TrimSpace(dpID)
 	}
 
 	// Parse consentTypes (comma-separated)
@@ -257,6 +284,17 @@ func (h *consentHandler) revokeConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The header is injected by the gateway/IdP and cannot be spoofed by the
+	// client. Falling back to the JSON body value when the header is absent
+	// would let any caller put an arbitrary userId in the body and bypass the
+	// delegation revocation checks in the service layer.
+	//
+	// If X-User-ID is absent the request has no trusted caller identity.
+	// Clear ActionBy so the service treats this as an anonymous/unauthenticated
+	// call and applies the appropriate default behaviour (non-delegated path).
+	userID := r.Header.Get("X-User-ID")
+	req.ActionBy = userID
+
 	revokeResponse, serviceErr := h.service.RevokeConsent(ctx, consentID, orgID, req)
 	if serviceErr != nil {
 		utils.SendError(w, r, serviceErr)
@@ -319,6 +357,35 @@ func (h *consentHandler) searchConsentsByAttribute(w http.ResponseWriter, r *htt
 
 	// Call service to search consents by attribute
 	response, serviceErr := h.service.SearchConsentsByAttribute(ctx, key, value, orgID)
+	if serviceErr != nil {
+		utils.SendError(w, r, serviceErr)
+		return
+	}
+
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// getDelegates handles GET /consents/{consentId}/delegates
+// Returns all registered delegates for the given consent, along with delegation
+// metadata (principal_id, revocation policy, expiry).
+func (h *consentHandler) getDelegates(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	consentID := r.PathValue("consentId")
+	orgID := r.Header.Get(constants.HeaderOrgID)
+
+	if err := utils.ValidateOrgID(orgID); err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
+		return
+	}
+
+	if err := utils.ValidateConsentID(consentID); err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
+		return
+	}
+
+	response, serviceErr := h.service.GetConsentDelegates(ctx, consentID, orgID)
 	if serviceErr != nil {
 		utils.SendError(w, r, serviceErr)
 		return

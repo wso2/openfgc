@@ -20,6 +20,7 @@ package validator
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -224,4 +225,111 @@ func IsConsentExpired(validityTime int64) bool {
 
 	currentTimeMillis := time.Now().UnixNano() / int64(time.Millisecond)
 	return currentTimeMillis > validityTimeMillis
+}
+
+// ValidateDelegationAttributes validates the delegation-specific attributes on a
+// consent creation request when delegation.type is present in the request attributes.
+//
+// This is called from CreateConsent in service.go. It is a no-op when no
+// delegation.type attribute is set (normal self-consented request).
+//
+// Rules enforced:
+//  1. delegation.principal_id must be provided
+//  2. The caller (X-User-ID) must NOT equal the principal_id — cannot self-delegate
+//  3. guardian.valid_until — OPTIONAL. When provided it must be a future Unix timestamp.
+//     Omit for permanent delegations (power of attorney, permanent disability carer, etc.)
+//     where there is no natural expiry date.
+//  4. guardian.revocation_policy must be set to a valid value
+//  5. At least one authorization must have onBehalfOf = principal_id
+func ValidateDelegationAttributes(
+	attributes map[string]string,
+	authorizations []model.AuthorizationAPIRequest,
+	callerID string,
+) error {
+	// Not a delegated consent — skip all delegation checks.
+	delegationType := attributes[model.AttrDelegationType]
+	if strings.TrimSpace(delegationType) == "" {
+		return nil
+	}
+
+	principalID := strings.TrimSpace(attributes[model.AttrDelegationPrincipalID])
+	if principalID == "" {
+		return fmt.Errorf(
+			"delegation.principal_id is required when delegation.type is set")
+	}
+
+	// Without it we cannot enforce the self-delegation check below, so we must
+	// reject the request rather than silently skip the guard.
+	callerID = strings.TrimSpace(callerID)
+	if callerID == "" {
+		return fmt.Errorf(
+			"caller identity (X-User-ID) is required when delegation.type is set")
+	}
+
+	// The person giving consent must not be the same as the data subject.
+	// Applies to all delegation types: parental, carer, power-of-attorney, etc.
+	if callerID == principalID {
+		return fmt.Errorf(
+			"caller '%s' cannot be both the delegator and the data principal", callerID)
+	}
+
+	// When does this delegation expire
+	// guardian.valid_until is OPTIONAL — permanent delegations (e.g., power of attorney
+	// for a permanently disabled adult, court-ordered guardianship with no end date)
+	// may legitimately omit this field. When provided it must be a valid future timestamp.
+	validUntilStr := strings.TrimSpace(attributes[model.AttrGuardianValidUntil])
+	if validUntilStr != "" {
+		validUntil, err := strconv.ParseInt(validUntilStr, 10, 64)
+		if err != nil || validUntil <= 0 {
+			return fmt.Errorf(
+				"guardian.valid_until must be a valid positive Unix timestamp in seconds")
+		}
+
+		// Unix seconds will not exceed 1e11 until the year 5138, so any value
+		// larger than that is almost certainly a millisecond value by mistake,
+		// which would create a delegation ~1000x longer than intended.
+		const maxUnixSeconds = int64(100_000_000_000)
+		if validUntil > maxUnixSeconds {
+			return fmt.Errorf(
+				"guardian.valid_until appears to be in milliseconds; provide a Unix timestamp in seconds")
+		}
+		if time.Now().Unix() >= validUntil {
+			return fmt.Errorf(
+				"guardian.valid_until must be a future timestamp; " +
+					"the delegation would be expired immediately")
+		}
+	}
+
+	// Who is allowed to revoke this consent?
+	policy := strings.TrimSpace(attributes[model.AttrGuardianRevocationPolicy])
+	if policy == "" {
+		return fmt.Errorf(
+			"guardian.revocation_policy is required for delegated consents; " +
+				"valid values: ANY, SUBJECT_ONLY")
+	}
+	switch model.RevocationPolicy(policy) {
+	case model.RevocationPolicyAny, model.RevocationPolicySubjectOnly:
+		// valid — continue
+	default:
+		return fmt.Errorf(
+			"guardian.revocation_policy must be ANY or SUBJECT_ONLY, got: %s", policy)
+	}
+
+	// At least one authorization must register a delegate for the principal.
+	found := false
+	for _, auth := range authorizations {
+		if resources, ok := auth.Resources.(map[string]interface{}); ok {
+			if onBehalfOf, _ := resources["onBehalfOf"].(string); onBehalfOf == principalID {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return fmt.Errorf(
+			"at least one authorization must include {\"onBehalfOf\": \"%s\"} "+
+				"to register a delegate for the data principal", principalID)
+	}
+
+	return nil
 }
