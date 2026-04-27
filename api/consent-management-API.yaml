@@ -1619,13 +1619,13 @@ paths:
                     category: "marketing"
                     region: "global"
                   elements:
-                    - name: "user_email"
+                    - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                       version: "v1"
                       isMandatory: true
-                    - name: "user_mobile"
+                    - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                       version: "v2"
                       isMandatory: false
-                    - name: "user_address"
+                    - elementId: "c3d4e5f6-a7b8-9012-cdef-123456789012"
                       version: "v1"
                       isMandatory: false
               govDataAccessPurpose:
@@ -1637,13 +1637,13 @@ paths:
                   properties:
                     sector: "government"
                   elements:
-                    - name: "tax_id"
+                    - elementId: "d4e5f6a7-b8c9-0123-defa-234567890123"
                       version: "v1"
                       isMandatory: false
-                    - name: "national_id"
+                    - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
                       version: "v1"
                       isMandatory: false
-                    - name: "government_records"
+                    - elementId: "f6a7b8c9-d0e1-2345-fabc-456789012345"
                       version: "v1"
                       isMandatory: true
       responses:
@@ -1667,11 +1667,13 @@ paths:
                       category: "marketing"
                       region: "global"
                     elements:
-                      - name: "user_email"
+                      - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        name: "user_email"
                         namespace: "personal"
                         version: "v1"
                         isMandatory: true
-                      - name: "user_mobile"
+                      - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                        name: "user_mobile"
                         namespace: "personal"
                         version: "v2"
                         isMandatory: false
@@ -1862,11 +1864,13 @@ paths:
                           category: "marketing"
                           region: "global"
                         elements:
-                          - name: "user_email"
+                          - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                            name: "user_email"
                             namespace: "personal"
                             version: "v1"
                             isMandatory: true
-                          - name: "user_mobile"
+                          - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                            name: "user_mobile"
                             namespace: "personal"
                             version: "v2"
                             isMandatory: false
@@ -1946,15 +1950,18 @@ paths:
                   category: "marketing"
                   region: "global"
                 elements:
-                  - name: "user_email"
+                  - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "user_email"
                     namespace: "personal"
                     version: "v1"
                     isMandatory: true
-                  - name: "user_mobile"
+                  - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    name: "user_mobile"
                     namespace: "personal"
                     version: "v2"
                     isMandatory: false
-                  - name: "user_address"
+                  - elementId: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+                    name: "user_address"
                     namespace: "personal"
                     version: "v1"
                     isMandatory: false
@@ -2025,15 +2032,18 @@ paths:
                       category: "marketing"
                       region: "global"
                     elements:
-                      - name: "user_email"
+                      - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        name: "user_email"
                         namespace: "personal"
                         version: "v1"
                         isMandatory: true
-                      - name: "user_mobile"
+                      - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                        name: "user_mobile"
                         namespace: "personal"
                         version: "v2"
                         isMandatory: false
-                      - name: "user_address"
+                      - elementId: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+                        name: "user_address"
                         namespace: "personal"
                         version: "v1"
                         isMandatory: false
@@ -2045,11 +2055,13 @@ paths:
                       category: "marketing"
                       region: "APAC"
                     elements:
-                      - name: "user_email"
+                      - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        name: "user_email"
                         namespace: "personal"
                         version: "v1"
                         isMandatory: true
-                      - name: "user_mobile"
+                      - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                        name: "user_mobile"
                         namespace: "personal"
                         version: "v1"
                         isMandatory: false
@@ -2129,10 +2141,10 @@ paths:
               properties:
                 specialization: "general"
               elements:
-                - name: "patient_name"
+                - elementId: "d4e5f6a7-b8c9-0123-defa-234567890123"
                   version: "v1"
                   isMandatory: true
-                - name: "medical_history"
+                - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
                   version: "v2"
                   isMandatory: false
       responses:
@@ -2152,11 +2164,13 @@ paths:
                 properties:
                   specialization: "general"
                 elements:
-                  - name: "patient_name"
+                  - elementId: "d4e5f6a7-b8c9-0123-defa-234567890123"
+                    name: "patient_name"
                     namespace: "medical"
                     version: "v1"
                     isMandatory: true
-                  - name: "medical_history"
+                  - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
+                    name: "medical_history"
                     namespace: "medical"
                     version: "v2"
                     isMandatory: false
@@ -2252,11 +2266,13 @@ paths:
                 properties:
                   specialization: "general"
                 elements:
-                  - name: "patient_name"
+                  - elementId: "d4e5f6a7-b8c9-0123-defa-234567890123"
+                    name: "patient_name"
                     namespace: "medical"
                     version: "v1"
                     isMandatory: true
-                  - name: "medical_history"
+                  - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
+                    name: "medical_history"
                     namespace: "medical"
                     version: "v1"
                     isMandatory: false
@@ -3860,15 +3876,14 @@ components:
           type: array
           minItems: 1
           description: |
-            Array of element version references with mandatory flags. Each reference must specify
-            an existing element by `name` (and optionally `namespace` and `version`). At least one element is required.
+            Array of element references with mandatory flags. Each reference must specify an existing element by `elementId`. At least one element is required.
           items:
             $ref: "#/components/schemas/PurposeVersionElementItem"
           example:
-            - name: "user_email"
+            - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
               version: "v1"
               isMandatory: true
-            - name: "user_mobile"
+            - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
               version: "v1"
               isMandatory: false
     PurposeUpdateRequest:
@@ -4448,23 +4463,26 @@ components:
     PurposeVersionElementResponse:
       type: object
       required:
+        - elementId
         - name
         - namespace
         - version
         - isMandatory
       description: |
         A resolved element reference within a purpose version response.
-        All fields are fully resolved by the server — `namespace` and `version` are always
-        present (the server substitutes `default` for namespace and the latest version
-        if they were omitted at request time).
+        The server always returns elementId, name, namespace, and the resolved version.
       properties:
+        elementId:
+          type: string
+          description: The unique identifier of the consent element
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         name:
           type: string
           description: The name/identifier of the consent element
           example: "user_email"
         namespace:
           type: string
-          description: The namespace of the consent element (resolved to `default` if not specified at creation)
+          description: The namespace of the consent element
           example: "personal"
         version:
           type: string
@@ -4480,18 +4498,14 @@ components:
     PurposeVersionElementItem:
       type: object
       required:
-        - name
+        - elementId
         - isMandatory
-      description: A reference to a consent element within a purpose version, identified by name and namespace. If `namespace` is not provided, the `default` namespace is used. If `version` is not specified, the latest version of the element will be used.
+      description: A reference to a consent element within a purpose version, identified by elementId. If `version` is not specified, the latest version of the element is used.
       properties:
-        name:
+        elementId:
           type: string
-          description: The name/identifier of the consent element
-          example: "user_email"
-        namespace:
-          type: string
-          description: The namespace of the consent element. If not provided, the `default` namespace is used.
-          example: "personal"
+          description: The unique identifier of the consent element
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         version:
           type: string
           description: The specific version of the element to reference (e.g., v1, v2). If omitted, the latest version is used.
