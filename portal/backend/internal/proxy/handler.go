@@ -320,14 +320,7 @@ func (h *Handler) writeProxyError(w http.ResponseWriter, err error) {
 }
 
 func (h *Handler) writeUpstreamResponse(w http.ResponseWriter, resp *UpstreamResponse) {
-	for key, values := range resp.Headers {
-		if strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
-			continue
-		}
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
+	h.svc.copyResponseHeaders(w.Header(), resp.Headers)
 	w.WriteHeader(resp.StatusCode)
 	if len(resp.Body) > 0 {
 		_, _ = w.Write(resp.Body)

@@ -203,6 +203,43 @@ func TestMeConsentsForcesUserIDs(t *testing.T) {
 	}
 }
 
+func TestMeConsentByIDStripsHopByHopHeadersFromUpstreamError(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Connection", "keep-alive, X-Upstream-Hop")
+		w.Header().Set("Keep-Alive", "timeout=5")
+		w.Header().Set("TE", "trailers")
+		w.Header().Set("Upgrade", "websocket")
+		w.Header().Set("X-Upstream-Hop", "1")
+		w.Header().Set("X-Upstream-End", "response-ok")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"code":"NOT_FOUND"}`))
+	}))
+	defer upstream.Close()
+
+	bff := newPhase2Server(t, upstream.URL)
+	defer bff.Close()
+
+	resp, err := http.Get(bff.URL + "/me/consents/missing")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resp.StatusCode)
+	}
+	for _, name := range []string{"Connection", "Keep-Alive", "TE", "Upgrade", "X-Upstream-Hop"} {
+		if got := resp.Header.Get(name); got != "" {
+			t.Fatalf("expected %s to be stripped, got %q", name, got)
+		}
+	}
+	if got := resp.Header.Get("X-Upstream-End"); got != "response-ok" {
+		t.Fatalf("expected end-to-end header to be forwarded, got %q", got)
+	}
+}
+
 func TestApproveAndRevokeMappings(t *testing.T) {
 	t.Run("approve fetches consent and builds put payload", func(t *testing.T) {
 		var gotMethod string
