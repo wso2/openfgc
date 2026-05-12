@@ -23,6 +23,15 @@ import (
 	"testing"
 )
 
+func TestIsValidCorrelationID_RejectsNonASCIICharacters(t *testing.T) {
+	if isValidCorrelationID("request-１２３") {
+		t.Fatal("expected full-width digits to be rejected")
+	}
+	if isValidCorrelationID("request-αβγ") {
+		t.Fatal("expected non-ASCII letters to be rejected")
+	}
+}
+
 func TestNewCorrelationID_UsesUniqueFallbackWhenRandomFails(t *testing.T) {
 	originalRandomRead := randomRead
 	randomRead = func(_ []byte) (int, error) {

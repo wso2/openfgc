@@ -1,6 +1,6 @@
 module github.com/wso2/openfgc/portal/backend
 
-go 1.23.0
+go 1.26.3
 
 require (
 	github.com/knadh/koanf/parsers/yaml v1.1.0

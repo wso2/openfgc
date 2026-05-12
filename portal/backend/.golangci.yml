@@ -1,3 +1,5 @@
+version: "2"
+
 run:
   timeout: 3m
   tests: true
@@ -6,8 +8,8 @@ linters:
   enable:
     - govet
     - staticcheck
-    - gofmt
     - revive
 
-issues:
-  exclude-use-default: false
+formatters:
+  enable:
+    - gofmt

@@ -28,7 +28,6 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
-	"unicode"
 )
 
 const correlationHeader = "X-Correlation-ID"
@@ -58,7 +57,9 @@ func isValidCorrelationID(id string) bool {
 	}
 
 	for _, r := range id {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		if (r >= 'a' && r <= 'z') ||
+			(r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') {
 			continue
 		}
 
