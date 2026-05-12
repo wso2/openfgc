@@ -149,12 +149,16 @@ func TestForwardStripsHeadersNamedByConnection(t *testing.T) {
 		if got := r.Header.Get("Connection"); got != "" {
 			t.Fatalf("expected Connection to be stripped, got %q", got)
 		}
+		if got := r.Header.Get("TE"); got != "" {
+			t.Fatalf("expected TE to be stripped, got %q", got)
+		}
 		if got := r.Header.Get("X-End-To-End"); got != "request-ok" {
 			t.Fatalf("expected X-End-To-End to be forwarded, got %q", got)
 		}
 
 		w.Header().Set("Connection", "keep-alive, X-Upstream-Hop")
 		w.Header().Set("Keep-Alive", "timeout=5")
+		w.Header().Set("TE", "trailers")
 		w.Header().Set("X-Upstream-Hop", "1")
 		w.Header().Set("X-Upstream-End", "response-ok")
 		w.WriteHeader(http.StatusOK)
@@ -175,6 +179,7 @@ func TestForwardStripsHeadersNamedByConnection(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
 	req.Header.Set("Connection", "keep-alive, X-Hop-Debug")
 	req.Header.Set("Keep-Alive", "timeout=5")
+	req.Header.Set("TE", "trailers")
 	req.Header.Set("X-Hop-Debug", "1")
 	req.Header.Set("X-End-To-End", "request-ok")
 
@@ -189,6 +194,9 @@ func TestForwardStripsHeadersNamedByConnection(t *testing.T) {
 	}
 	if got := rr.Header().Get("Connection"); got != "" {
 		t.Fatalf("expected Connection to be stripped from response, got %q", got)
+	}
+	if got := rr.Header().Get("TE"); got != "" {
+		t.Fatalf("expected TE to be stripped from response, got %q", got)
 	}
 	if got := rr.Header().Get("X-Upstream-End"); got != "response-ok" {
 		t.Fatalf("expected X-Upstream-End to be forwarded, got %q", got)

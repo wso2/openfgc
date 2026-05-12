@@ -36,16 +36,16 @@ import (
 	"github.com/wso2/openfgc/portal/backend/internal/config"
 )
 
-var hopByHopHeaders = map[string]struct{}{
-	"Connection":          {},
-	"Keep-Alive":          {},
-	"Proxy-Authenticate":  {},
-	"Proxy-Authorization": {},
-	"TE":                  {},
-	"Trailer":             {},
-	"Transfer-Encoding":   {},
-	"Upgrade":             {},
-}
+var hopByHopHeaders = toCanonicalHeaderSet(
+	"Connection",
+	"Keep-Alive",
+	"Proxy-Authenticate",
+	"Proxy-Authorization",
+	"TE",
+	"Trailer",
+	"Transfer-Encoding",
+	"Upgrade",
+)
 
 var (
 	// ErrUpstreamTimeout is returned when upstream request times out.
@@ -225,6 +225,14 @@ func toMethodSet(methods ...string) map[string]struct{} {
 	set := make(map[string]struct{}, len(methods))
 	for _, m := range methods {
 		set[strings.ToUpper(m)] = struct{}{}
+	}
+	return set
+}
+
+func toCanonicalHeaderSet(names ...string) map[string]struct{} {
+	set := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		set[http.CanonicalHeaderKey(name)] = struct{}{}
 	}
 	return set
 }
