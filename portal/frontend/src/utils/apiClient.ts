@@ -52,7 +52,12 @@ function buildHeaders(headers?: HeadersInit): Headers {
  * Builds an absolute request URL from the configured API base URL and query params.
  */
 function buildURL(path: string, query?: RequestOptions['query']): string {
-  const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+
+  if (!baseURL) {
+    throw new Error('VITE_API_BASE_URL is required to send API requests.')
+  }
+
   const normalizedBase = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const url = new URL(`${normalizedBase}${normalizedPath}`)
