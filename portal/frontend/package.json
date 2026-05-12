@@ -1,7 +1,7 @@
 {
   "name": "openfgc-portal",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.0",
   "packageManager": "pnpm@10.6.5",
   "type": "module",
   "scripts": {
@@ -18,7 +18,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.96.2",
     "@wso2/oxygen-ui": "^0.8.0",
     "@wso2/oxygen-ui-icons-react": "^0.8.0",
     "i18next": "^25.10.5",
