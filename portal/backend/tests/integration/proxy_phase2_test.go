@@ -513,6 +513,23 @@ func TestAPIDenyByDefault(t *testing.T) {
 		}
 	})
 
+	t.Run("unknown path with disallowed method returns 404", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodTrace, bff.URL+"/api/unknown/resource", nil)
+		if err != nil {
+			t.Fatalf("request creation failed: %v", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d", resp.StatusCode)
+		}
+	})
+
 	t.Run("known path wrong method returns 405", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodDelete, bff.URL+"/api/consents", nil)
 		if err != nil {

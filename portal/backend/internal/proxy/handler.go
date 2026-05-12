@@ -148,16 +148,12 @@ func NewHandler(cfg config.ProxyConfig) (*Handler, error) {
 
 // API proxies passthrough /api/* routes to /api/v1/* after allowlist checks.
 func (h *Handler) API(w http.ResponseWriter, r *http.Request) {
-	if !h.svc.IsAllowedPassthroughMethod(r.Method) {
-		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
-		return
-	}
 	knownPath, methodAllowed := h.svc.CheckAPIAccess(r.Method, r.URL.Path)
 	if !knownPath {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "route not found")
 		return
 	}
-	if !methodAllowed {
+	if !h.svc.IsAllowedPassthroughMethod(r.Method) || !methodAllowed {
 		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
