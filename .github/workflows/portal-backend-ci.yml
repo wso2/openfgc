@@ -41,4 +41,4 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           working-directory: portal/backend
-          version: latest
+          version: v1.64.8
