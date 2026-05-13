@@ -17,6 +17,7 @@
 package consent
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -37,7 +38,7 @@ func TestRunExpirationJob_NoExpiredConsents(t *testing.T) {
 		statuses.ExpirableConsentStatuses,
 	).Return([]model.Consent{}, nil)
 
-	RunExpirationJob(svc, statuses)
+	RunExpirationJob(context.Background(), svc, statuses)
 
 	svc.AssertNotCalled(t, "ExpireConsent")
 }
@@ -54,7 +55,7 @@ func TestRunExpirationJob_GetExpiredConsentsFails(t *testing.T) {
 		statuses.ExpirableConsentStatuses,
 	).Return(nil, errors.New("db connection failed"))
 
-	RunExpirationJob(svc, statuses)
+	RunExpirationJob(context.Background(), svc, statuses)
 
 	svc.AssertNotCalled(t, "ExpireConsent")
 }
@@ -89,7 +90,7 @@ func TestRunExpirationJob_ExpiresAllConsents(t *testing.T) {
 		"org-2",
 	).Return(nil)
 
-	RunExpirationJob(svc, statuses)
+	RunExpirationJob(context.Background(), svc, statuses)
 
 	svc.AssertNumberOfCalls(t, "ExpireConsent", 2)
 }
@@ -123,7 +124,7 @@ func TestRunExpirationJob_ContinuesOnExpireError(t *testing.T) {
 		"org-2",
 	).Return(nil)
 
-	RunExpirationJob(svc, statuses)
+	RunExpirationJob(context.Background(), svc, statuses)
 
 	// Both consents must have been attempted despite the first failure.
 	svc.AssertNumberOfCalls(t, "ExpireConsent", 2)
@@ -144,6 +145,6 @@ func TestRunExpirationJob_PanicRecovery(t *testing.T) {
 	}).Return(nil, nil)
 
 	require.NotPanics(t, func() {
-		RunExpirationJob(svc, statuses)
+		RunExpirationJob(context.Background(), svc, statuses)
 	})
 }

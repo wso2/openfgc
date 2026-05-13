@@ -35,6 +35,12 @@ type ExpirationStatuses struct {
 func StartScheduler(ctx context.Context, svc ConsentService, interval time.Duration, statuses ExpirationStatuses) {
 	logger := log.GetLogger().With(log.String(log.LoggerKeyComponentName, "ConsentScheduler"))
 
+	// Validate interval before creating ticker — time.NewTicker panics on zero or negative duration.
+	if interval <= 0 {
+		logger.Error("Invalid scheduler interval — must be greater than zero", log.String("interval", interval.String()))
+		return
+	}
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -48,7 +54,7 @@ func StartScheduler(ctx context.Context, svc ConsentService, interval time.Durat
 			// until the job completes, ensuring only one job runs at a time.
 			// Ticks that occur during job execution are discarded by the ticker.
 			logger.Debug("Scheduler tick — running expiration job")
-			RunExpirationJob(svc, statuses)
+			RunExpirationJob(ctx, svc, statuses)
 			logger.Debug("Expiration job completed")
 		}
 	}

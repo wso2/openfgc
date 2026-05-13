@@ -28,7 +28,7 @@ import (
 // RunExpirationJob finds all consents whose VALIDITY_TIME has passed and marks them
 // as expired, along with all their auth resources.
 // Panics are recovered so a single job failure does not stop the scheduler.
-func RunExpirationJob(consentService ConsentService, statuses ExpirationStatuses) {
+func RunExpirationJob(ctx context.Context, consentService ConsentService, statuses ExpirationStatuses) {
 	logger := log.GetLogger().With(log.String(log.LoggerKeyComponentName, "ConsentExpirationJob"))
 
 	defer func() {
@@ -39,7 +39,6 @@ func RunExpirationJob(consentService ConsentService, statuses ExpirationStatuses
 
 	logger.Debug("Running consent expiration job")
 
-	ctx := context.Background()
 	nowMs := time.Now().UnixMilli()
 
 	consents, err := consentService.GetExpiredConsents(ctx, nowMs, statuses.ExpirableConsentStatuses)
