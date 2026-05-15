@@ -42,7 +42,11 @@ import type {
   ConsentRecord,
   ConsentRegistryFilters,
 } from '../../../types/consent'
-import { toEpochMilliseconds } from '../../../utils/dateTime'
+import {
+  toEndOfDayEpochMilliseconds,
+  toEpochMilliseconds,
+  toStartOfDayEpochMilliseconds,
+} from '../../../utils/dateTime'
 
 interface ConsentListResult {
   rows: ConsentRecord[]
@@ -52,34 +56,6 @@ interface ConsentListResult {
 interface ApproveConsentVariables {
   consentID: string
   selectedOptionalElements: ConsentApprovalSelection[]
-}
-
-function toUnixStartOfDay(dateText: string): number | undefined {
-  if (!dateText) {
-    return undefined
-  }
-
-  const unixMilliseconds = new Date(`${dateText}T00:00:00`).getTime()
-
-  if (Number.isNaN(unixMilliseconds)) {
-    return undefined
-  }
-
-  return Math.floor(unixMilliseconds / 1000)
-}
-
-function toUnixEndOfDay(dateText: string): number | undefined {
-  if (!dateText) {
-    return undefined
-  }
-
-  const unixMilliseconds = new Date(`${dateText}T23:59:59`).getTime()
-
-  if (Number.isNaN(unixMilliseconds)) {
-    return undefined
-  }
-
-  return Math.floor(unixMilliseconds / 1000)
 }
 
 function toListParams(
@@ -98,8 +74,8 @@ function toListParams(
   return {
     consentStatuses: filters.status === 'All' ? undefined : statusFilterMap[filters.status],
     consentTypes: filters.consentType.trim() || undefined,
-    fromTime: toUnixStartOfDay(filters.startDate),
-    toTime: toUnixEndOfDay(filters.endDate),
+    fromTime: toStartOfDayEpochMilliseconds(filters.startDate),
+    toTime: toEndOfDayEpochMilliseconds(filters.endDate),
     limit: rowsPerPage,
     offset: page * rowsPerPage,
   }
