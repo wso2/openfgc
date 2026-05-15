@@ -17,17 +17,28 @@
  */
 
 const EMPTY_DATE_PLACEHOLDER = '-'
+const EPOCH_MILLISECONDS_CUTOFF = 100000000000
 
-export function formatEpochSeconds(
-  epochInSeconds: number | null | undefined,
+export function toEpochMilliseconds(epochTimestamp: number | null | undefined): number | null {
+  if (epochTimestamp == null || !Number.isFinite(epochTimestamp)) {
+    return null
+  }
+
+  return epochTimestamp < EPOCH_MILLISECONDS_CUTOFF ? epochTimestamp * 1000 : epochTimestamp
+}
+
+export function formatEpochTimestamp(
+  epochTimestamp: number | null | undefined,
   options?: Intl.DateTimeFormatOptions,
   locales?: Intl.LocalesArgument,
 ): string {
-  if (epochInSeconds == null || !Number.isFinite(epochInSeconds)) {
+  const epochMilliseconds = toEpochMilliseconds(epochTimestamp)
+
+  if (epochMilliseconds == null) {
     return EMPTY_DATE_PLACEHOLDER
   }
 
-  return new Date(epochInSeconds * 1000).toLocaleString(locales, options)
+  return new Date(epochMilliseconds).toLocaleString(locales, options)
 }
 
 export function formatIsoDateTime(

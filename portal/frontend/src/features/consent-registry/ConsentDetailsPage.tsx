@@ -48,7 +48,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
-import { formatEpochSeconds, formatIsoDateTime } from '../../utils/dateTime'
+import { formatEpochTimestamp, formatIsoDateTime } from '../../utils/dateTime'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
 import {
@@ -419,7 +419,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                 {t('consentRegistry.details.created', 'Created')}
               </Typography>
               <Typography variant="body2" fontWeight={500}>
-                {formatEpochSeconds(detail.createdTime)}
+                {formatEpochTimestamp(detail.createdTime)}
               </Typography>
             </Box>
             <Box>
@@ -432,7 +432,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                 {t('consentRegistry.details.updated', 'Updated')}
               </Typography>
               <Typography variant="body2" fontWeight={500}>
-                {formatEpochSeconds(detail.updatedTime)}
+                {formatEpochTimestamp(detail.updatedTime)}
               </Typography>
             </Box>
             <Box>
@@ -450,7 +450,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                   sx={{ color: hasValidityTime ? 'text.primary' : 'text.disabled' }}
                 >
                   {hasValidityTime
-                    ? formatEpochSeconds(detail.validityTime)
+                    ? formatEpochTimestamp(detail.validityTime)
                     : t('consentRegistry.table.notApplicable', 'Not applicable')}
                 </Box>
               </Typography>
@@ -790,7 +790,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {formatEpochSeconds(authorization.updatedTime)}
+                        {formatEpochTimestamp(authorization.updatedTime)}
                       </Typography>
                     </TableCell>
                     <TableCell>

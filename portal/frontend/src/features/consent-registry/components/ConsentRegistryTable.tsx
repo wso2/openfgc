@@ -32,7 +32,7 @@ import { Fragment, type MouseEvent, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
-import { formatEpochSeconds, formatIsoDateTime } from '../../../utils/dateTime'
+import { formatEpochTimestamp, formatIsoDateTime } from '../../../utils/dateTime'
 import { getConsentStatusChipColor, getConsentStatusLabelKey } from '../utils/statusChip'
 
 interface ConsentRegistryTableProps {
@@ -350,7 +350,7 @@ function ConsentRegistryTable({
                         >
                           {row.expirationTime === 0
                             ? t('consentRegistry.table.notApplicable')
-                            : formatEpochSeconds(row.expirationTime, DATE_TIME_FORMAT_OPTIONS)}
+                            : formatEpochTimestamp(row.expirationTime, DATE_TIME_FORMAT_OPTIONS)}
                         </ListingTable.Cell>
                         <ListingTable.Cell
                           align="center"

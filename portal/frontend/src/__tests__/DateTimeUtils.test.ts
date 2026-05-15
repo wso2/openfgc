@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { formatEpochSeconds, formatIsoDateTime } from '../utils/dateTime'
+import { formatEpochTimestamp, formatIsoDateTime, toEpochMilliseconds } from '../utils/dateTime'
 
 const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   year: 'numeric',
@@ -30,28 +30,48 @@ const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   timeZone: 'UTC',
 }
 
-describe('formatEpochSeconds', () => {
+describe('toEpochMilliseconds', () => {
+  it('returns null for undefined, null, and non-finite values', () => {
+    expect(toEpochMilliseconds(undefined)).toBeNull()
+    expect(toEpochMilliseconds(null)).toBeNull()
+    expect(toEpochMilliseconds(Number.NaN)).toBeNull()
+    expect(toEpochMilliseconds(Number.POSITIVE_INFINITY)).toBeNull()
+  })
+
+  it('converts epoch seconds to milliseconds', () => {
+    expect(toEpochMilliseconds(1710000000)).toBe(1710000000000)
+  })
+
+  it('leaves epoch milliseconds unchanged', () => {
+    expect(toEpochMilliseconds(1710000000000)).toBe(1710000000000)
+  })
+})
+
+describe('formatEpochTimestamp', () => {
   it('returns placeholder for undefined, null, and non-finite values', () => {
-    expect(formatEpochSeconds(undefined)).toBe('-')
-    expect(formatEpochSeconds(null)).toBe('-')
-    expect(formatEpochSeconds(Number.NaN)).toBe('-')
-    expect(formatEpochSeconds(Number.POSITIVE_INFINITY)).toBe('-')
+    expect(formatEpochTimestamp(undefined)).toBe('-')
+    expect(formatEpochTimestamp(null)).toBe('-')
+    expect(formatEpochTimestamp(Number.NaN)).toBe('-')
+    expect(formatEpochTimestamp(Number.POSITIVE_INFINITY)).toBe('-')
   })
 
-  it('formats epoch zero as a valid date instead of placeholder', () => {
-    const expected = new Date(0).toLocaleString('en-US', DATE_TIME_FORMAT_OPTIONS)
-
-    expect(formatEpochSeconds(0, DATE_TIME_FORMAT_OPTIONS, 'en-US')).toBe(expected)
-  })
-
-  it('formats a valid epoch value using locale and options', () => {
+  it('formats epoch seconds using locale and options', () => {
     const epochInSeconds = 1710000000
     const expected = new Date(epochInSeconds * 1000).toLocaleString(
       'en-US',
       DATE_TIME_FORMAT_OPTIONS,
     )
 
-    expect(formatEpochSeconds(epochInSeconds, DATE_TIME_FORMAT_OPTIONS, 'en-US')).toBe(expected)
+    expect(formatEpochTimestamp(epochInSeconds, DATE_TIME_FORMAT_OPTIONS, 'en-US')).toBe(expected)
+  })
+
+  it('formats epoch milliseconds using locale and options', () => {
+    const epochInMilliseconds = 1710000000000
+    const expected = new Date(epochInMilliseconds).toLocaleString('en-US', DATE_TIME_FORMAT_OPTIONS)
+
+    expect(formatEpochTimestamp(epochInMilliseconds, DATE_TIME_FORMAT_OPTIONS, 'en-US')).toBe(
+      expected,
+    )
   })
 })
 

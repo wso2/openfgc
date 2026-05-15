@@ -42,6 +42,7 @@ import type {
   ConsentRecord,
   ConsentRegistryFilters,
 } from '../../../types/consent'
+import { toEpochMilliseconds } from '../../../utils/dateTime'
 
 interface ConsentListResult {
   rows: ConsentRecord[]
@@ -113,7 +114,7 @@ function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
     type: consent.type,
     status: normalizedStatus,
     purposes: consent.purposes.map((purpose) => purpose.name),
-    updatedAt: new Date(consent.updatedTime * 1000).toISOString(),
+    updatedAt: new Date(toEpochMilliseconds(consent.updatedTime) ?? 0).toISOString(),
     expirationTime: consent.validityTime,
     canRevoke: isConsentRevokableStatus(normalizedStatus),
     canApprove: isConsentApprovableStatus(normalizedStatus),
