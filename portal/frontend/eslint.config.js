@@ -33,7 +33,7 @@ const compat = new FlatCompat({
 })
 
 export default defineConfig([
-  globalIgnores(['dist', 'eslint.config.js', 'vitest.setup.ts']),
+  globalIgnores(['dist', 'eslint.config.js']),
   ...compat.extends('airbnb', 'airbnb/hooks', 'plugin:prettier/recommended'),
   {
     files: ['**/*.{ts,tsx}'],
