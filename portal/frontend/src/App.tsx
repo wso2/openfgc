@@ -24,9 +24,8 @@ import DashboardPage from './features/dashboard/DashboardPage'
 
 function ConsentRegistryRoute(): React.JSX.Element {
   const location = useLocation()
-  const status = new URLSearchParams(location.search).get('status') ?? 'All'
 
-  return <ConsentRegistryPage key={status} />
+  return <ConsentRegistryPage key={location.search} />
 }
 
 function App(): React.JSX.Element {
