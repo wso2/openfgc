@@ -42,7 +42,7 @@ export function toEndOfDayEpochMilliseconds(dateText: string): number | undefine
     return undefined
   }
 
-  const epochMilliseconds = new Date(`${dateText}T23:59:59`).getTime()
+  const epochMilliseconds = new Date(`${dateText}T23:59:59.999`).getTime()
 
   return Number.isNaN(epochMilliseconds) ? undefined : epochMilliseconds
 }

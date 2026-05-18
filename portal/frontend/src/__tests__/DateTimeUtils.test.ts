@@ -103,7 +103,7 @@ describe('toEndOfDayEpochMilliseconds', () => {
 
   it('returns epoch milliseconds for the end of the selected day', () => {
     const dateText = '2026-05-15'
-    const expected = new Date(`${dateText}T23:59:59`).getTime()
+    const expected = new Date(`${dateText}T23:59:59.999`).getTime()
 
     expect(toEndOfDayEpochMilliseconds(dateText)).toBe(expected)
   })

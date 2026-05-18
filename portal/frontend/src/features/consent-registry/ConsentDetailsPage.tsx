@@ -144,7 +144,7 @@ function truncateElementName(elementName: string, maxLength: number): string {
     return elementName
   }
 
-  return `${elementName.slice(0, Math.max(maxLength - 1, 1))}...`
+  return `${elementName.slice(0, Math.max(maxLength - 3, 1))}...`
 }
 
 function isEmptyAuthorizationResources(resources: unknown): boolean {
