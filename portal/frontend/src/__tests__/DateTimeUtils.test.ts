@@ -89,7 +89,7 @@ describe('toStartOfDayEpochMilliseconds', () => {
 
   it('returns epoch milliseconds for the start of the selected day', () => {
     const dateText = '2026-05-15'
-    const expected = new Date(`${dateText}T00:00:00`).getTime()
+    const expected = Date.UTC(2026, 4, 15, 0, 0, 0, 0)
 
     expect(toStartOfDayEpochMilliseconds(dateText)).toBe(expected)
   })
@@ -103,7 +103,7 @@ describe('toEndOfDayEpochMilliseconds', () => {
 
   it('returns epoch milliseconds for the end of the selected day', () => {
     const dateText = '2026-05-15'
-    const expected = new Date(`${dateText}T23:59:59.999`).getTime()
+    const expected = Date.UTC(2026, 4, 15, 23, 59, 59, 999)
 
     expect(toEndOfDayEpochMilliseconds(dateText)).toBe(expected)
   })

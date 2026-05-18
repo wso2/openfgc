@@ -37,13 +37,13 @@ describe('approveMyConsent', () => {
 
     const selectedOptionalElements = [{ purposeName: 'profile_access', elementName: 'last_name' }]
 
-    await approveMyConsent('consent-123', selectedOptionalElements)
+    await approveMyConsent('consent/123?draft', selectedOptionalElements)
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [requestUrl, requestInit] = fetchMock.mock.calls[0] ?? []
     const requestHeaders = new Headers((requestInit?.headers as HeadersInit | undefined) ?? {})
 
-    expect(String(requestUrl)).toContain('/me/consents/consent-123/approve')
+    expect(String(requestUrl)).toContain('/me/consents/consent%2F123%3Fdraft/approve')
     expect(requestInit).toMatchObject({
       method: 'POST',
       credentials: 'include',

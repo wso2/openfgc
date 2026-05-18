@@ -32,7 +32,7 @@ export function toStartOfDayEpochMilliseconds(dateText: string): number | undefi
     return undefined
   }
 
-  const epochMilliseconds = new Date(`${dateText}T00:00:00`).getTime()
+  const epochMilliseconds = new Date(`${dateText}T00:00:00.000Z`).getTime()
 
   return Number.isNaN(epochMilliseconds) ? undefined : epochMilliseconds
 }
@@ -42,7 +42,7 @@ export function toEndOfDayEpochMilliseconds(dateText: string): number | undefine
     return undefined
   }
 
-  const epochMilliseconds = new Date(`${dateText}T23:59:59.999`).getTime()
+  const epochMilliseconds = new Date(`${dateText}T23:59:59.999Z`).getTime()
 
   return Number.isNaN(epochMilliseconds) ? undefined : epochMilliseconds
 }

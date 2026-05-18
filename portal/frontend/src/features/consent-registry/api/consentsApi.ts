@@ -41,7 +41,7 @@ export async function fetchMyConsents(
 }
 
 export async function fetchMyConsentByID(consentID: string): Promise<ConsentDetailAPI> {
-  return apiRequest<ConsentDetailAPI>(`/me/consents/${consentID}`, {
+  return apiRequest<ConsentDetailAPI>(`/me/consents/${encodeURIComponent(consentID)}`, {
     method: 'GET',
   })
 }
@@ -50,7 +50,7 @@ export async function approveMyConsent(
   consentID: string,
   selectedOptionalElements: ConsentApprovalSelection[],
 ): Promise<unknown> {
-  return apiRequest<unknown>(`/me/consents/${consentID}/approve`, {
+  return apiRequest<unknown>(`/me/consents/${encodeURIComponent(consentID)}/approve`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ export async function approveMyConsent(
 }
 
 export async function revokeMyConsent(consentID: string): Promise<unknown> {
-  return apiRequest<unknown>(`/me/consents/${consentID}/revoke`, {
+  return apiRequest<unknown>(`/me/consents/${encodeURIComponent(consentID)}/revoke`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
