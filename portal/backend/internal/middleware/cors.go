@@ -50,7 +50,7 @@ func CORS(next http.Handler, options CORSOptions) http.Handler {
 			return
 		}
 
-		w.Header().Set("Vary", "Origin")
+		appendVary(w.Header(), "Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", allowMethods)
 		w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
@@ -77,4 +77,15 @@ func toSet(values []string) map[string]struct{} {
 		out[trimmed] = struct{}{}
 	}
 	return out
+}
+
+func appendVary(header http.Header, value string) {
+	for _, existing := range header.Values("Vary") {
+		for _, part := range strings.Split(existing, ",") {
+			if strings.EqualFold(strings.TrimSpace(part), value) {
+				return
+			}
+		}
+	}
+	header.Add("Vary", value)
 }

@@ -21,6 +21,7 @@ package unit
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/wso2/openfgc/portal/backend/internal/middleware"
@@ -112,4 +113,43 @@ func TestCORSMiddleware_HandlesPreflight(t *testing.T) {
 	if got := res.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
 		t.Fatalf("expected Access-Control-Allow-Credentials=true, got %q", got)
 	}
+}
+
+func TestCORSMiddleware_AppendsVaryOrigin(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	corsHandler := middleware.CORS(next, middleware.CORSOptions{
+		AllowedOrigins: []string{"http://localhost:3000"},
+		AllowedMethods: []string{"GET"},
+		AllowedHeaders: []string{"Content-Type"},
+	})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "Accept-Encoding")
+		corsHandler.ServeHTTP(w, r)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/me/consents", nil)
+	req.Header.Set("Origin", "http://localhost:3000")
+	res := httptest.NewRecorder()
+
+	handler.ServeHTTP(res, req)
+
+	vary := strings.Join(res.Header().Values("Vary"), ",")
+	if !headerListContains(vary, "Accept-Encoding") {
+		t.Fatalf("expected Vary to retain Accept-Encoding, got %q", vary)
+	}
+	if !headerListContains(vary, "Origin") {
+		t.Fatalf("expected Vary to include Origin, got %q", vary)
+	}
+}
+
+func headerListContains(headerValue, expected string) bool {
+	for _, part := range strings.Split(headerValue, ",") {
+		if strings.EqualFold(strings.TrimSpace(part), expected) {
+			return true
+		}
+	}
+	return false
 }
