@@ -37,7 +37,7 @@ corepack enable
 corepack prepare pnpm@10.6.5 --activate
 ```
 
-If your machine cannot install global Corepack shims due permission restrictions, use `corepack pnpm` directly.
+If your machine cannot install global Corepack shims due to permission restrictions, use `corepack pnpm` directly.
 
 ## Install
 

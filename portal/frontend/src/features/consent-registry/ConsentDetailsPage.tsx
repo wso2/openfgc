@@ -48,7 +48,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
-import { formatEpochTimestamp, formatIsoDateTime } from '../../utils/dateTime'
+import { formatEpochTimestamp } from '../../utils/dateTime'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
 import {
@@ -62,18 +62,6 @@ import {
   useConsentDetailQuery,
   useRevokeConsentMutation,
 } from './hooks/useConsentQueries'
-
-const LIFECYCLE_DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-}
-
-const LIFECYCLE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-}
 
 const PURPOSE_ELEMENTS_COLUMN_WIDTHS = {
   element: '28%',
@@ -603,7 +591,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                 >
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <Chip
-                      label={`${approved}/${total} approved`}
+                      label={t('consentRegistry.details.approvedCount', { approved, total })}
                       color="primary"
                       size="small"
                       sx={{
@@ -691,7 +679,11 @@ function ConsentDetailsPage(): React.JSX.Element {
                             </TableCell>
                             <TableCell>
                               {element.isUserApproved ? (
-                                <Box sx={{ color: 'success.main', display: 'inline-flex' }}>
+                                <Box
+                                  role="img"
+                                  aria-label={t('consentRegistry.details.approved', 'Approved')}
+                                  sx={{ color: 'success.main', display: 'inline-flex' }}
+                                >
                                   <CheckCircle size={16} />
                                 </Box>
                               ) : (
@@ -872,8 +864,9 @@ function ConsentDetailsPage(): React.JSX.Element {
         </DialogActions>
       </Dialog>
 
-      {/* Consent Lifecycle Section intentionally have mock data until backend API
-        provides lifecycle timeline fields. */}
+      {/*
+      Consent Lifecycle Section is intentionally commented until the backend API
+      provides lifecycle timeline fields.
 
       <Card sx={{ boxShadow: 1 }}>
         <CardHeader
@@ -907,23 +900,17 @@ function ConsentDetailsPage(): React.JSX.Element {
               <TableRow>
                 <TableCell>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Box
-                      sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'action.disabled' }}
-                    />
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'action.disabled' }} />
                     <Typography variant="body2" fontWeight={600}>
                       Pending
                     </Typography>
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-01T09:15:04Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
-                  </Typography>
+                  <Typography variant="body2">2026-03-01</Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-01T09:15:04Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
-                  </Typography>
+                  <Typography variant="body2">09:15:04</Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -934,23 +921,17 @@ function ConsentDetailsPage(): React.JSX.Element {
               <TableRow>
                 <TableCell>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Box
-                      sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main' }}
-                    />
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main' }} />
                     <Typography variant="body2" fontWeight={600}>
                       Approved
                     </Typography>
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:29:57Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
-                  </Typography>
+                  <Typography variant="body2">2026-03-02</Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:29:57Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
-                  </Typography>
+                  <Typography variant="body2">15:29:57</Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -961,23 +942,17 @@ function ConsentDetailsPage(): React.JSX.Element {
               <TableRow>
                 <TableCell>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Box
-                      sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main' }}
-                    />
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main' }} />
                     <Typography variant="body2" fontWeight={600}>
                       Active
                     </Typography>
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:30:00Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
-                  </Typography>
+                  <Typography variant="body2">2026-03-02</Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:30:00Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
-                  </Typography>
+                  <Typography variant="body2">15:30:00</Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -988,9 +963,7 @@ function ConsentDetailsPage(): React.JSX.Element {
               <TableRow sx={{ opacity: 0.6 }}>
                 <TableCell>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Box
-                      sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'action.disabled' }}
-                    />
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'action.disabled' }} />
                     <Typography variant="body2" fontWeight={600} color="text.secondary">
                       Expired
                     </Typography>
@@ -998,12 +971,12 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    {formatIsoDateTime('2026-05-30T23:59:59Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                    2026-05-30
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    {formatIsoDateTime('2026-05-30T23:59:59Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                    23:59:59
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -1016,6 +989,7 @@ function ConsentDetailsPage(): React.JSX.Element {
           </Table>
         </TableContainer>
       </Card>
+      */}
 
       <ConsentApprovalDialog
         key={`approval-${id}-${String(approvalDialogOpen)}`}

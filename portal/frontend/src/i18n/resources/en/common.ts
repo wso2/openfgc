@@ -60,6 +60,9 @@ const commonEn = {
       created: 'Created',
       back: 'Back to Registry',
       notFound: 'Consent record not found',
+      approved: 'Approved',
+      notApproved: 'Not approved',
+      approvedCount: '{{approved}}/{{total}} approved',
       actions: {
         viewResources: 'View Resources',
         noResourcesTooltip: 'No resources available',
