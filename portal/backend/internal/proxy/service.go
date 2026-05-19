@@ -321,6 +321,9 @@ func (s *Service) skipHeader(name string, connectionHeaders map[string]struct{})
 	if strings.EqualFold(canonical, "Org-Id") || strings.EqualFold(canonical, "TPP-Client-Id") {
 		return true
 	}
+	if strings.EqualFold(canonical, "Cookie") || strings.EqualFold(canonical, "Authorization") {
+		return true
+	}
 	if isForwardingHeader(canonical) {
 		return true
 	}

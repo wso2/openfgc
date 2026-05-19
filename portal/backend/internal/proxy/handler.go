@@ -267,7 +267,7 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 
 	payload, trustedClientID, err := h.buildApprovalUpdatePayload(r, baseResp.Body, selections, userID)
 	if err != nil {
-		if errors.Is(err, ErrUpstreamTimeout) || errors.Is(err, ErrUpstreamUnavailable) {
+		if errors.Is(err, ErrUpstreamTimeout) || errors.Is(err, ErrUpstreamUnavailable) || errors.Is(err, ErrUpstreamResponseTooLarge) {
 			h.writeProxyError(w, err)
 			return
 		}

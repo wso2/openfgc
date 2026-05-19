@@ -315,6 +315,39 @@ func TestForwardStripsClientForwardingHeaders(t *testing.T) {
 	}
 }
 
+func TestForwardStripsClientCredentialHeaders(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Cookie"); got != "" {
+			t.Fatalf("expected Cookie to be stripped, got %q", got)
+		}
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Fatalf("expected Authorization to be stripped, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	svc, err := proxy.NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL,
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
+		AllowedPassthrough: []string{"GET"},
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	req.Header.Set("Cookie", "sid=secret")
+	req.Header.Set("Authorization", "Bearer secret")
+
+	rr := httptest.NewRecorder()
+	if err := svc.Forward(rr, req, http.MethodGet, "/api/v1/consents", nil, nil); err != nil {
+		t.Fatalf("unexpected forward error: %v", err)
+	}
+}
+
 func TestForwardGeneratesCorrelationIDWhenMissing(t *testing.T) {
 	var gotCorrelationID string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
