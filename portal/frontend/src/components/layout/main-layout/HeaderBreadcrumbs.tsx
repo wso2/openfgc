@@ -27,6 +27,14 @@ interface BreadcrumbItem {
   isCurrent: boolean
 }
 
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
 function buildBreadcrumbItems(
   pathname: string,
   homeLabel: string,
@@ -47,7 +55,7 @@ function buildBreadcrumbItems(
         isCurrent: false,
       },
       {
-        label: decodeURIComponent(consentDetailsMatch[1]),
+        label: safeDecodeURIComponent(consentDetailsMatch[1]),
         path: pathname,
         isCurrent: true,
       },

@@ -105,4 +105,10 @@ describe('MainLayout', () => {
 
     expect(screen.getByText('consent/123?draft')).toBeInTheDocument()
   })
+
+  it('falls back to the raw consent ID when breadcrumb decoding fails', () => {
+    renderHeaderBreadcrumbs('/consents/consent%')
+
+    expect(screen.getByText('consent%')).toBeInTheDocument()
+  })
 })
