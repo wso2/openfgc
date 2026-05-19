@@ -108,3 +108,15 @@ func TestOpenFGCAPIURLRequiresHTTPSchemeAndHost(t *testing.T) {
 		})
 	}
 }
+
+func TestMaxResponseBytesMustBePositive(t *testing.T) {
+	t.Setenv("BFF_PROXY__MAX_RESPONSE_BYTES", "0")
+
+	_, err := config.Load()
+	if err == nil {
+		t.Fatal("expected config load error")
+	}
+	if !strings.Contains(err.Error(), "proxy.max_response_bytes must be > 0") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

@@ -70,6 +70,7 @@ type ProxyConfig struct {
 	OpenFGCAPIURL     string        `koanf:"openfgc_api_url"`
 	OpenFGCAPITimeout time.Duration `koanf:"openfgc_api_timeout"`
 	MaxRequestBytes   int64         `koanf:"max_request_bytes"`
+	MaxResponseBytes  int64         `koanf:"max_response_bytes"`
 
 	PlaceholderModeEnabled bool   `koanf:"placeholder_mode_enabled"`
 	PlaceholderUserID      string `koanf:"placeholder_user_id"`
@@ -177,6 +178,9 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("proxy.max_request_bytes", int64(1048576)); err != nil {
 		return err
 	}
+	if err := k.Set("proxy.max_response_bytes", int64(10485760)); err != nil {
+		return err
+	}
 	if err := k.Set("proxy.placeholder_mode_enabled", false); err != nil {
 		return err
 	}
@@ -211,6 +215,9 @@ func validate(cfg Config) error {
 	}
 	if cfg.Proxy.MaxRequestBytes <= 0 {
 		return fmt.Errorf("proxy.max_request_bytes must be > 0")
+	}
+	if cfg.Proxy.MaxResponseBytes <= 0 {
+		return fmt.Errorf("proxy.max_response_bytes must be > 0")
 	}
 	for _, raw := range cfg.CORS.AllowedOrigins {
 		origin := strings.TrimSpace(raw)

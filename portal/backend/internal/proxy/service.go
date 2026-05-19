@@ -55,6 +55,8 @@ var (
 	ErrUpstreamTimeout = errors.New("upstream timeout")
 	// ErrUpstreamUnavailable is returned when upstream cannot be reached.
 	ErrUpstreamUnavailable = errors.New("upstream unavailable")
+	// ErrUpstreamResponseTooLarge is returned when an upstream body exceeds the configured buffer limit.
+	ErrUpstreamResponseTooLarge = errors.New("upstream response too large")
 )
 
 var proxyFallbackSequence uint64
@@ -214,9 +216,13 @@ func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstre
 		_ = resp.Body.Close()
 	}()
 
-	respBody, err := io.ReadAll(resp.Body)
+	limitedBody := io.LimitReader(resp.Body, s.cfg.MaxResponseBytes+1)
+	respBody, err := io.ReadAll(limitedBody)
 	if err != nil {
 		return nil, fmt.Errorf("read upstream response body: %w", ErrUpstreamUnavailable)
+	}
+	if int64(len(respBody)) > s.cfg.MaxResponseBytes {
+		return nil, ErrUpstreamResponseTooLarge
 	}
 
 	return &UpstreamResponse{

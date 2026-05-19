@@ -49,6 +49,7 @@ func TestNewServiceRejectsInvalidUpstreamURL(t *testing.T) {
 				OpenFGCAPIURL:      tt.url,
 				OpenFGCAPITimeout:  2 * time.Second,
 				MaxRequestBytes:    1024,
+				MaxResponseBytes:   1024,
 				AllowedPassthrough: []string{"GET"},
 			})
 			if err == nil {
@@ -66,6 +67,7 @@ func TestCheckAPIAccess(t *testing.T) {
 		OpenFGCAPIURL:       "http://localhost:9090",
 		OpenFGCAPITimeout:   2 * time.Second,
 		MaxRequestBytes:     1024,
+		MaxResponseBytes:    1024,
 		AllowedPassthrough:  []string{"GET", "POST", "PUT", "DELETE"},
 		PlaceholderOrgID:    "ORG-001",
 		PlaceholderClientID: "TPP-CLIENT-001",
@@ -104,6 +106,7 @@ func TestIsAllowedPassthroughMethod(t *testing.T) {
 		OpenFGCAPIURL:      "http://localhost:9090",
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET", "POST"},
 	})
 	if err != nil {
@@ -129,6 +132,7 @@ func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET"},
 	})
 	if err != nil {
@@ -139,6 +143,30 @@ func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
 	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", nil, nil)
 	if !errors.Is(err, proxy.ErrUpstreamUnavailable) {
 		t.Fatalf("expected ErrUpstreamUnavailable, got: %v", err)
+	}
+}
+
+func TestForwardRawRejectsOversizedUpstreamResponse(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("too-large"))
+	}))
+	defer upstream.Close()
+
+	svc, err := proxy.NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL,
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		MaxResponseBytes:   4,
+		AllowedPassthrough: []string{"GET"},
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", nil, nil)
+	if !errors.Is(err, proxy.ErrUpstreamResponseTooLarge) {
+		t.Fatalf("expected ErrUpstreamResponseTooLarge, got: %v", err)
 	}
 }
 
@@ -156,6 +184,7 @@ func TestForwardRawPreservesConfiguredBasePath(t *testing.T) {
 		OpenFGCAPIURL:      upstream.URL + "/openfgc/",
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET"},
 	})
 	if err != nil {
@@ -207,6 +236,7 @@ func TestForwardStripsHeadersNamedByConnection(t *testing.T) {
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET"},
 	})
 	if err != nil {
@@ -263,6 +293,7 @@ func TestForwardStripsClientForwardingHeaders(t *testing.T) {
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET"},
 	})
 	if err != nil {
@@ -296,6 +327,7 @@ func TestForwardGeneratesCorrelationIDWhenMissing(t *testing.T) {
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET"},
 	})
 	if err != nil {

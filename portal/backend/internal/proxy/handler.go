@@ -314,6 +314,10 @@ func (h *Handler) writeProxyError(w http.ResponseWriter, err error) {
 		writeJSONError(w, http.StatusServiceUnavailable, "UPSTREAM_TIMEOUT", "upstream timeout")
 		return
 	}
+	if errors.Is(err, ErrUpstreamResponseTooLarge) {
+		writeJSONError(w, http.StatusBadGateway, "UPSTREAM_RESPONSE_TOO_LARGE", "upstream response too large")
+		return
+	}
 	writeJSONError(w, http.StatusBadGateway, "UPSTREAM_UNAVAILABLE", "upstream unavailable")
 }
 

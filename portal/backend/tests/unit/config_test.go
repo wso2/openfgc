@@ -30,6 +30,7 @@ func TestLoadFromEnv(t *testing.T) {
 	t.Setenv("BFF_SERVER__PORT", "8082")
 	t.Setenv("BFF_LOG__LEVEL", "debug")
 	t.Setenv("BFF_CORS__ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")
+	t.Setenv("BFF_PROXY__MAX_RESPONSE_BYTES", "2097152")
 	_ = os.Unsetenv("BFF_CONFIG_FILE")
 
 	cfg, err := config.Load()
@@ -48,6 +49,9 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 	if cfg.CORS.AllowedOrigins[0] != "http://localhost:3000" {
 		t.Fatalf("unexpected first origin: %s", cfg.CORS.AllowedOrigins[0])
+	}
+	if cfg.Proxy.MaxResponseBytes != 2097152 {
+		t.Fatalf("expected max response bytes 2097152, got %d", cfg.Proxy.MaxResponseBytes)
 	}
 }
 
