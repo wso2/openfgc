@@ -39,16 +39,30 @@ func TestPlaceholderModeBlockedInProduction(t *testing.T) {
 	}
 }
 
-func TestPlaceholderUserRejectedWhenModeDisabled(t *testing.T) {
-	t.Setenv("BFF_PROXY__PLACEHOLDER_MODE_ENABLED", "false")
-	t.Setenv("BFF_PROXY__PLACEHOLDER_USER_ID", "user@example.com")
-
-	_, err := config.Load()
-	if err == nil {
-		t.Fatal("expected error when placeholder user is set while mode is disabled")
+func TestPlaceholderValuesRejectedWhenModeDisabled(t *testing.T) {
+	tests := []struct {
+		name    string
+		envName string
+		errText string
+	}{
+		{name: "user id", envName: "BFF_PROXY__PLACEHOLDER_USER_ID", errText: "proxy.placeholder_user_id must be empty"},
+		{name: "org id", envName: "BFF_PROXY__PLACEHOLDER_ORG_ID", errText: "proxy.placeholder_org_id must be empty"},
+		{name: "client id", envName: "BFF_PROXY__PLACEHOLDER_CLIENT_ID", errText: "proxy.placeholder_client_id must be empty"},
 	}
-	if !strings.Contains(err.Error(), "must be empty") {
-		t.Fatalf("unexpected error: %v", err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("BFF_PROXY__PLACEHOLDER_MODE_ENABLED", "false")
+			t.Setenv(tt.envName, "placeholder-value")
+
+			_, err := config.Load()
+			if err == nil {
+				t.Fatal("expected error when placeholder value is set while mode is disabled")
+			}
+			if !strings.Contains(err.Error(), tt.errText) {
+				t.Fatalf("expected error to contain %q, got %v", tt.errText, err)
+			}
+		})
 	}
 }
 

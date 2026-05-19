@@ -248,6 +248,12 @@ func validate(cfg Config) error {
 	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderUserID != "" {
 		return fmt.Errorf("proxy.placeholder_user_id must be empty when placeholder mode is disabled")
 	}
+	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderOrgID != "" {
+		return fmt.Errorf("proxy.placeholder_org_id must be empty when placeholder mode is disabled")
+	}
+	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderClientID != "" {
+		return fmt.Errorf("proxy.placeholder_client_id must be empty when placeholder mode is disabled")
+	}
 	if len(cfg.Proxy.AllowedPassthrough) == 0 {
 		return fmt.Errorf("proxy.allowed_passthrough_methods must not be empty")
 	}
