@@ -83,6 +83,36 @@ func TestCORSMiddleware_BlocksUnknownOrigin(t *testing.T) {
 	}
 }
 
+func TestCORSMiddleware_AllowsSameOriginWithoutAllowlist(t *testing.T) {
+	nextCalled := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := middleware.CORS(next, middleware.CORSOptions{
+		AllowedOrigins: []string{},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type", "X-Correlation-ID"},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.example.com/me/consents", nil)
+	req.Header.Set("Origin", "http://bff.example.com")
+	res := httptest.NewRecorder()
+
+	handler.ServeHTTP(res, req)
+
+	if !nextCalled {
+		t.Fatal("expected next handler to be called for same-origin request")
+	}
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", res.Code)
+	}
+	if got := res.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Fatalf("expected no CORS allow-origin header for same-origin request, got %q", got)
+	}
+}
+
 func TestCORSMiddleware_HandlesPreflight(t *testing.T) {
 	nextCalled := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

@@ -20,7 +20,9 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -45,6 +47,11 @@ func CORS(next http.Handler, options CORSOptions) http.Handler {
 			return
 		}
 
+		if isSameOrigin(origin, r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if _, ok := allowedOrigins[origin]; !ok {
 			w.WriteHeader(http.StatusForbidden)
 			return
@@ -65,6 +72,63 @@ func CORS(next http.Handler, options CORSOptions) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isSameOrigin(origin string, r *http.Request) bool {
+	parsedOrigin, err := url.Parse(origin)
+	if err != nil || parsedOrigin.Scheme == "" || parsedOrigin.Host == "" {
+		return false
+	}
+
+	requestScheme := "http"
+	if r.TLS != nil {
+		requestScheme = "https"
+	}
+	if !strings.EqualFold(parsedOrigin.Scheme, requestScheme) {
+		return false
+	}
+
+	originHost, originPort := splitHostPort(parsedOrigin.Host)
+	requestHost, requestPort := splitHostPort(r.Host)
+	if !strings.EqualFold(originHost, requestHost) {
+		return false
+	}
+
+	if originPort == "" {
+		originPort = defaultPort(requestScheme)
+	}
+	if requestPort == "" {
+		requestPort = defaultPort(requestScheme)
+	}
+	return originPort == requestPort
+}
+
+func splitHostPort(hostPort string) (string, string) {
+	host := strings.TrimSpace(hostPort)
+	if host == "" {
+		return "", ""
+	}
+
+	if parsedHost := (&url.URL{Host: host}).Hostname(); parsedHost != "" {
+		return parsedHost, (&url.URL{Host: host}).Port()
+	}
+
+	hostOnly, port, err := net.SplitHostPort(host)
+	if err == nil {
+		return hostOnly, port
+	}
+	return host, ""
+}
+
+func defaultPort(scheme string) string {
+	switch strings.ToLower(scheme) {
+	case "http":
+		return "80"
+	case "https":
+		return "443"
+	default:
+		return ""
+	}
 }
 
 func toSet(values []string) map[string]struct{} {
