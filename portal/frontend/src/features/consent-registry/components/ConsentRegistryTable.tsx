@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
 import { formatEpochTimestamp, formatIsoDateTime } from '../../../utils/dateTime'
+import { CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS } from '../constants'
 import { getConsentStatusChipColor, getConsentStatusLabelKey } from '../utils/statusChip'
 
 interface ConsentRegistryTableProps {
@@ -149,8 +150,6 @@ function ConsentRegistryTable({
       clientRows,
     }))
   }, [sortedRows])
-
-  const rowsPerPageOptions: number[] = [5, 10, 25]
 
   const selectedRowIds: readonly string[] = []
   const isPurposesPopoverOpen = Boolean(purposesPopoverAnchor)
@@ -488,7 +487,7 @@ function ConsentRegistryTable({
           count={totalCount}
           page={page}
           rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={rowsPerPageOptions}
+          rowsPerPageOptions={[...CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS]}
           onPageChange={(_, nextPage) => {
             onPageChange(nextPage)
           }}

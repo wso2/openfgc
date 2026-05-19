@@ -75,7 +75,7 @@ function ConsentRevocationDialog({
           <Typography variant="body2" color="text.secondary">
             {t(
               'consentRegistry.modals.revocation.message',
-              'Are you sure you want to revoke all data permissions?',
+              'Are you sure you want to revoke consent?',
             )}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 300 }}>
@@ -116,7 +116,7 @@ function ConsentRevocationDialog({
             <Typography variant="body2" color="text.secondary">
               {t(
                 'consentRegistry.modals.revocation.note',
-                'This action revokes both mandatory and optional data permissions for this consent.',
+                'This action revokes both mandatory and optional consents granted for all associated purposes.',
               )}
             </Typography>
           </Box>
@@ -137,10 +137,10 @@ function ConsentRevocationDialog({
         <Button fullWidth color="error" variant="contained" disabled={loading} onClick={onConfirm}>
           {loading
             ? t('consentRegistry.modals.actions.processing', 'Processing...')
-            : t('consentRegistry.modals.revocation.confirm', 'Revoke All Data')}
+            : t('consentRegistry.modals.revocation.confirm', 'Revoke Consents')}
         </Button>
         <Button fullWidth variant="outlined" disabled={loading} onClick={onClose}>
-          {t('consentRegistry.modals.revocation.cancel', 'Keep Permissions')}
+          {t('consentRegistry.modals.revocation.cancel', 'Cancel')}
         </Button>
       </DialogActions>
     </Dialog>

@@ -25,6 +25,7 @@ import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRegistryFilters from './components/ConsentRegistryFilters'
 import ConsentRegistryTable from './components/ConsentRegistryTable'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
+import { CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS } from './constants'
 import type { ConsentRegistryFilters as ConsentRegistryFiltersModel } from '../../types/consent'
 import {
   useApproveConsentMutation,
@@ -52,7 +53,6 @@ const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
 const TABLE_SKELETON_DEBOUNCE_MS = 50
 const DEFAULT_PAGE = 0
 const DEFAULT_ROWS_PER_PAGE = 10
-const ROWS_PER_PAGE_VALUES = [5, 10, 25] as const
 
 function isValidFilterStatus(value: string): value is ConsentRegistryFiltersModel['status'] {
   return FILTER_STATUS_VALUES.includes(value as ConsentRegistryFiltersModel['status'])
@@ -84,7 +84,9 @@ function getRowsPerPageFromSearchParams(searchParams: URLSearchParams): number {
   const rowsPerPageParam = searchParams.get('rowsPerPage')
   const rowsPerPage = rowsPerPageParam ? Number(rowsPerPageParam) : Number.NaN
 
-  return ROWS_PER_PAGE_VALUES.includes(rowsPerPage as (typeof ROWS_PER_PAGE_VALUES)[number])
+  return CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS.includes(
+    rowsPerPage as (typeof CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS)[number],
+  )
     ? rowsPerPage
     : DEFAULT_ROWS_PER_PAGE
 }

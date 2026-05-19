@@ -65,7 +65,7 @@ function toListParams(
 ): ConsentListQueryParams {
   const statusFilterMap: Record<Exclude<ConsentRegistryFilters['status'], 'All'>, string> = {
     Active: 'ACTIVE',
-    Pending: 'CREATED,PENDING',
+    Pending: 'CREATED',
     Rejected: 'REJECTED',
     Revoked: 'REVOKED',
     Expired: 'EXPIRED',
