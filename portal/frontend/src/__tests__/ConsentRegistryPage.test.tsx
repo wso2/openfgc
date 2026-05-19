@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import { I18nextProvider } from 'react-i18next'
@@ -47,13 +47,13 @@ function createQueryClient(): QueryClient {
   })
 }
 
-function renderConsentRegistryPage(queryClient: QueryClient): void {
+function renderConsentRegistryPage(queryClient: QueryClient, initialEntry = '/consents'): void {
   render(
     <OxygenUIThemeProvider theme={AcrylicOrangeTheme}>
       <CssBaseline />
       <I18nextProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={['/consents']}>
+          <MemoryRouter initialEntries={[initialEntry]}>
             <Routes>
               <Route
                 path="*"
@@ -185,5 +185,35 @@ describe('ConsentRegistryPage', () => {
 
     expect(await screen.findByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Approve')).not.toBeInTheDocument()
+  })
+
+  it('uses page and rowsPerPage URL params when fetching consents', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [],
+        metadata: {
+          total: 0,
+          offset: 25,
+          count: 0,
+          limit: 25,
+        },
+      }),
+    })
+
+    const queryClient = createQueryClient()
+
+    renderConsentRegistryPage(queryClient, '/consents?page=2&rowsPerPage=25')
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled()
+    })
+
+    const [requestUrl] = fetchMock.mock.calls[0] ?? []
+
+    expect(String(requestUrl)).toContain('limit=25')
+    expect(String(requestUrl)).toContain('offset=25')
   })
 })

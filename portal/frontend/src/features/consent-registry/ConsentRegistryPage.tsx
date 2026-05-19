@@ -50,6 +50,9 @@ const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
 ]
 
 const TABLE_SKELETON_DEBOUNCE_MS = 50
+const DEFAULT_PAGE = 0
+const DEFAULT_ROWS_PER_PAGE = 10
+const ROWS_PER_PAGE_VALUES = [5, 10, 25] as const
 
 function isValidFilterStatus(value: string): value is ConsentRegistryFiltersModel['status'] {
   return FILTER_STATUS_VALUES.includes(value as ConsentRegistryFiltersModel['status'])
@@ -66,7 +69,31 @@ function getFiltersFromSearchParams(searchParams: URLSearchParams): ConsentRegis
   }
 }
 
-function toSearchParams(filters: ConsentRegistryFiltersModel): URLSearchParams {
+function getPageFromSearchParams(searchParams: URLSearchParams): number {
+  const pageParam = searchParams.get('page')
+  const pageNumber = pageParam ? Number(pageParam) : Number.NaN
+
+  if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+    return DEFAULT_PAGE
+  }
+
+  return pageNumber - 1
+}
+
+function getRowsPerPageFromSearchParams(searchParams: URLSearchParams): number {
+  const rowsPerPageParam = searchParams.get('rowsPerPage')
+  const rowsPerPage = rowsPerPageParam ? Number(rowsPerPageParam) : Number.NaN
+
+  return ROWS_PER_PAGE_VALUES.includes(rowsPerPage as (typeof ROWS_PER_PAGE_VALUES)[number])
+    ? rowsPerPage
+    : DEFAULT_ROWS_PER_PAGE
+}
+
+function toSearchParams(
+  filters: ConsentRegistryFiltersModel,
+  page = DEFAULT_PAGE,
+  rowsPerPage = DEFAULT_ROWS_PER_PAGE,
+): URLSearchParams {
   const params = new URLSearchParams()
 
   if (filters.status !== DEFAULT_FILTERS.status) {
@@ -85,14 +112,20 @@ function toSearchParams(filters: ConsentRegistryFiltersModel): URLSearchParams {
     params.set('consentType', filters.consentType.trim())
   }
 
+  if (page !== DEFAULT_PAGE) {
+    params.set('page', String(page + 1))
+  }
+
+  if (rowsPerPage !== DEFAULT_ROWS_PER_PAGE) {
+    params.set('rowsPerPage', String(rowsPerPage))
+  }
+
   return params
 }
 
 function ConsentRegistryPage(): React.JSX.Element {
   const { t } = useTranslation('common')
   const [searchParams, setSearchParams] = useSearchParams()
-  const [page, setPage] = useState<number>(0)
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10)
   const [approvalDialogOpen, setApprovalDialogOpen] = useState<boolean>(false)
   const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
   const [selectedApprovalConsentID, setSelectedApprovalConsentID] = useState<string | null>(null)
@@ -102,6 +135,8 @@ function ConsentRegistryPage(): React.JSX.Element {
   const [showTableSkeleton, setShowTableSkeleton] = useState<boolean>(false)
 
   const filters = useMemo(() => getFiltersFromSearchParams(searchParams), [searchParams])
+  const page = useMemo(() => getPageFromSearchParams(searchParams), [searchParams])
+  const rowsPerPage = useMemo(() => getRowsPerPageFromSearchParams(searchParams), [searchParams])
   const consentListQuery = useConsentListQuery(filters, page, rowsPerPage)
   const selectedApprovalConsentQuery = useConsentDetailQuery(selectedApprovalConsentID ?? undefined)
   const approveMutation = useApproveConsentMutation()
@@ -140,11 +175,11 @@ function ConsentRegistryPage(): React.JSX.Element {
         <ConsentRegistryFilters
           filters={filters}
           onFilterChange={(nextFilters) => {
-            setPage(0)
-            setSearchParams(toSearchParams(nextFilters), { replace: true })
+            setSearchParams(toSearchParams(nextFilters, DEFAULT_PAGE, rowsPerPage), {
+              replace: true,
+            })
           }}
           onClear={() => {
-            setPage(0)
             setSearchParams({}, { replace: true })
           }}
         />
@@ -160,10 +195,13 @@ function ConsentRegistryPage(): React.JSX.Element {
             isLoading={isTableFetching && showTableSkeleton}
             page={page}
             rowsPerPage={rowsPerPage}
-            onPageChange={setPage}
+            onPageChange={(nextPage) => {
+              setSearchParams(toSearchParams(filters, nextPage, rowsPerPage), { replace: true })
+            }}
             onRowsPerPageChange={(nextRowsPerPage) => {
-              setRowsPerPage(nextRowsPerPage)
-              setPage(0)
+              setSearchParams(toSearchParams(filters, DEFAULT_PAGE, nextRowsPerPage), {
+                replace: true,
+              })
             }}
             onApprove={(consentID) => {
               setSelectedApprovalConsentID(consentID)
