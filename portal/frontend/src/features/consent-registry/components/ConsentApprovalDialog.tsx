@@ -133,144 +133,150 @@ function ConsentApprovalDialog({
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3, mt: 1.5, pb: 3 }}>
-        <Stack spacing={3} sx={{ mt: 0.5 }}>
-          <Box>
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                mb: 1.5,
-                fontWeight: 700,
-                color: 'primary.main',
-                letterSpacing: 0.6,
-                textTransform: 'uppercase',
-              }}
-            >
-              {t('consentRegistry.modals.approval.mandatory', 'Mandatory Elements (Required)')}
-            </Typography>
-            <Stack spacing={1.25}>
-              {mandatoryElements.map((element) => (
-                <Stack
-                  key={toElementKey(element.purposeName, element.elementName)}
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 1,
-                    border: 1,
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
-                    gap: 1.5,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="body2" fontWeight={600}>
-                      {element.elementName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {element.purposeName}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    size="small"
-                    color="error"
-                    variant="outlined"
-                    label={t('consentRegistry.modals.approval.required', 'Required')}
-                  />
-                </Stack>
-              ))}
+      <DialogContent sx={{ px: 3, mt: 3, pb: 3 }}>
+        {loading ? (
+          <Typography variant="body2" color="text.secondary">
+            {t('consentRegistry.modals.approval.loading', 'Loading consent details...')}
+          </Typography>
+        ) : (
+          <Stack spacing={3} sx={{ mt: 0.5 }}>
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  mb: 1.5,
+                  fontWeight: 700,
+                  color: 'primary.main',
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {t('consentRegistry.modals.approval.mandatory', 'Mandatory Elements (Required)')}
+              </Typography>
+              <Stack spacing={1.25}>
+                {mandatoryElements.map((element) => (
+                  <Stack
+                    key={toElementKey(element.purposeName, element.elementName)}
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 1,
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {element.elementName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {element.purposeName}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      label={t('consentRegistry.modals.approval.required', 'Required')}
+                    />
+                  </Stack>
+                ))}
 
-              {mandatoryElements.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  {t(
-                    'consentRegistry.modals.approval.noMandatory',
-                    'No mandatory requirements for this consent.',
-                  )}
-                </Typography>
-              ) : null}
-            </Stack>
-          </Box>
+                {mandatoryElements.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {t(
+                      'consentRegistry.modals.approval.noMandatory',
+                      'No mandatory requirements for this consent.',
+                    )}
+                  </Typography>
+                ) : null}
+              </Stack>
+            </Box>
 
-          {optionalElements.length > 0 ? (
-            <>
-              <Divider />
+            {optionalElements.length > 0 ? (
+              <>
+                <Divider />
 
-              <Box>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    display: 'block',
-                    mb: 1.5,
-                    fontWeight: 700,
-                    color: 'primary.main',
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {t('consentRegistry.modals.approval.optional', 'Optional Elements')}
-                </Typography>
-                <Stack spacing={1.25}>
-                  {optionalElements.map((element) => {
-                    const key = toElementKey(element.purposeName, element.elementName)
-                    const checked = selectedOptionalKeys.includes(key)
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      mb: 1.5,
+                      fontWeight: 700,
+                      color: 'primary.main',
+                      letterSpacing: 0.6,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {t('consentRegistry.modals.approval.optional', 'Optional Elements')}
+                  </Typography>
+                  <Stack spacing={1.25}>
+                    {optionalElements.map((element) => {
+                      const key = toElementKey(element.purposeName, element.elementName)
+                      const checked = selectedOptionalKeys.includes(key)
 
-                    return (
-                      <Stack
-                        key={key}
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="space-between"
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 1,
-                          border: 1,
-                          borderColor: checked ? 'primary.main' : 'divider',
-                          bgcolor: 'background.paper',
-                          gap: 1.5,
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {element.elementName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {element.purposeName}
-                          </Typography>
-                        </Box>
-                        <Switch
-                          checked={checked}
-                          onChange={() => {
-                            setSelectedOptionalKeys((previousKeys) => {
-                              if (previousKeys.includes(key)) {
-                                return previousKeys.filter((existingKey) => existingKey !== key)
-                              }
-
-                              return [...previousKeys, key]
-                            })
+                      return (
+                        <Stack
+                          key={key}
+                          direction="row"
+                          alignItems="center"
+                          justifyContent="space-between"
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 1,
+                            border: 1,
+                            borderColor: checked ? 'primary.main' : 'divider',
+                            bgcolor: 'background.paper',
+                            gap: 1.5,
                           }}
-                          slotProps={{
-                            input: {
-                              'aria-label': t(
-                                'consentRegistry.modals.approval.toggleWithDetails',
-                                'Toggle permission for {{elementName}} in {{purposeName}}',
-                                {
-                                  elementName: element.elementName,
-                                  purposeName: element.purposeName,
-                                },
-                              ),
-                            },
-                          }}
-                        />
-                      </Stack>
-                    )
-                  })}
-                </Stack>
-              </Box>
-            </>
-          ) : null}
-        </Stack>
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>
+                              {element.elementName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {element.purposeName}
+                            </Typography>
+                          </Box>
+                          <Switch
+                            checked={checked}
+                            onChange={() => {
+                              setSelectedOptionalKeys((previousKeys) => {
+                                if (previousKeys.includes(key)) {
+                                  return previousKeys.filter((existingKey) => existingKey !== key)
+                                }
+
+                                return [...previousKeys, key]
+                              })
+                            }}
+                            slotProps={{
+                              input: {
+                                'aria-label': t(
+                                  'consentRegistry.modals.approval.toggleWithDetails',
+                                  'Toggle permission for {{elementName}} in {{purposeName}}',
+                                  {
+                                    elementName: element.elementName,
+                                    purposeName: element.purposeName,
+                                  },
+                                ),
+                              },
+                            }}
+                          />
+                        </Stack>
+                      )
+                    })}
+                  </Stack>
+                </Box>
+              </>
+            ) : null}
+          </Stack>
+        )}
       </DialogContent>
 
       <DialogActions

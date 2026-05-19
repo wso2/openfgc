@@ -42,6 +42,24 @@ afterEach(() => {
 })
 
 describe('consent registry dialogs', () => {
+  it('shows loading text instead of empty states while approval details load', () => {
+    renderWithProviders(
+      <ConsentApprovalDialog
+        open
+        consentId="consent-123"
+        loading
+        purposes={[]}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Loading consent details...')).toBeInTheDocument()
+    expect(
+      screen.queryByText('No mandatory requirements for this consent.'),
+    ).not.toBeInTheDocument()
+  })
+
   it('submits selected optional permissions from approval dialog', () => {
     const onConfirm = vi.fn()
 

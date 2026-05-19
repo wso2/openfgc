@@ -120,6 +120,7 @@ const commonEn = {
         required: 'Required',
         toggle: 'Toggle permission',
         toggleWithDetails: 'Toggle permission for {{elementName}} in {{purposeName}}',
+        loading: 'Loading consent details...',
         noMandatory: 'No mandatory requirements for this consent.',
         confirm: 'Approve & Continue',
       },

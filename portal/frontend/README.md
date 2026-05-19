@@ -69,7 +69,7 @@ pnpm preview
 
 Tests are written with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/react).
 
-- **Test files**: Located in `src/__tests__/` with `.test.tsx` extension
+- **Test files**: Located in `src/__tests__/` with `.test.ts`/`.test.tsx` extensions
 - **Setup**: Global setup in `vitest.setup.ts` imports jest-dom matchers
 - **Run tests**: `pnpm test` or `pnpm test:watch` for watch mode
 - **Coverage**: `pnpm test:coverage` generates HTML coverage report in `coverage/`
@@ -86,8 +86,7 @@ src/
 ├── utils/            # Utility functions and helpers
 ├── __tests__/        # Test files
 ├── App.tsx           # Root component
-├── main.tsx          # Entry point
-└── index.css         # Global styles
+└── main.tsx          # Entry point
 ```
 
 ## AI Instructions
