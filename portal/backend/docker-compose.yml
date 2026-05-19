@@ -1,0 +1,11 @@
+services:
+  bff:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      # Load local environment overrides when present.
+      - path: .env
+        required: false
+    ports:
+      - "8080:8080"
