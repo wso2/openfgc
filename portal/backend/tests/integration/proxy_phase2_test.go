@@ -112,6 +112,16 @@ func newPhase2ServerPlaceholderDisabled(t *testing.T, upstreamURL string) *httpt
 	return httptest.NewServer(h)
 }
 
+type failingReadCloser struct{}
+
+func (failingReadCloser) Read(_ []byte) (int, error) {
+	return 0, io.ErrUnexpectedEOF
+}
+
+func (failingReadCloser) Close() error {
+	return nil
+}
+
 func TestAPIPassthroughRewriteAndHeaderSafety(t *testing.T) {
 	var gotPath string
 	var gotQuery string
@@ -268,7 +278,8 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 					"purposes":[
 						{"name":"profile_access","elements":[
 							{"name":"first_name","isUserApproved":false,"value":{}},
-							{"name":"last_name","isUserApproved":false,"value":{}}
+							{"name":"last_name","isUserApproved":false,"value":{}},
+							{"name":"email","isUserApproved":true,"value":{}}
 						]}
 					]
 				}`))
@@ -279,7 +290,8 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 					"data":[
 						{"name":"profile_access","clientId":"TPP-CLIENT-001","description":null,"elements":[
 							{"name":"first_name","isMandatory":true},
-							{"name":"last_name","isMandatory":false}
+							{"name":"last_name","isMandatory":false},
+							{"name":"email","isMandatory":false}
 						]}
 					]
 				}`))
@@ -356,8 +368,8 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 			t.Fatalf("expected purpose object, got %T", purposes[0])
 		}
 		elements, ok := purpose["elements"].([]any)
-		if !ok || len(elements) != 2 {
-			t.Fatalf("expected two elements, got %v", purpose["elements"])
+		if !ok || len(elements) != 3 {
+			t.Fatalf("expected three elements, got %v", purpose["elements"])
 		}
 		mandatoryElement, ok := elements[0].(map[string]any)
 		if !ok {
@@ -373,14 +385,28 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		if optionalElement["isUserApproved"] != true {
 			t.Fatalf("expected selected optional element approved, got %v", optionalElement["isUserApproved"])
 		}
+		omittedOptionalElement, ok := elements[2].(map[string]any)
+		if !ok {
+			t.Fatalf("expected omitted optional element object, got %T", elements[2])
+		}
+		if omittedOptionalElement["isUserApproved"] != true {
+			t.Fatalf("expected omitted optional element to keep existing approval, got %v", omittedOptionalElement["isUserApproved"])
+		}
 
 		authorizations, ok := gotBody["authorizations"].([]any)
-		if !ok || len(authorizations) != 1 {
-			t.Fatalf("expected one authorization, got %v", gotBody["authorizations"])
+		if !ok || len(authorizations) != 2 {
+			t.Fatalf("expected existing authorization plus current user authorization, got %v", gotBody["authorizations"])
 		}
-		updatedAuthorization, ok := authorizations[0].(map[string]any)
+		existingAuthorization, ok := authorizations[0].(map[string]any)
 		if !ok {
-			t.Fatalf("expected authorization object, got %T", authorizations[0])
+			t.Fatalf("expected existing authorization object, got %T", authorizations[0])
+		}
+		if existingAuthorization["userId"] != "user1@example.com" {
+			t.Fatalf("expected existing user id to be preserved, got %v", existingAuthorization["userId"])
+		}
+		updatedAuthorization, ok := authorizations[1].(map[string]any)
+		if !ok {
+			t.Fatalf("expected current user authorization object, got %T", authorizations[1])
 		}
 		if updatedAuthorization["userId"] != "user@example.com" {
 			t.Fatalf("expected current user id, got %v", updatedAuthorization["userId"])
@@ -639,6 +665,46 @@ func TestRequestBodySizeLimitReturns413(t *testing.T) {
 			t.Fatalf("expected code REQUEST_TOO_LARGE, got %v", payload["code"])
 		}
 	})
+}
+
+func TestRequestBodyReadFailureReturnsBadRequest(t *testing.T) {
+	upstreamCalled := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		upstreamCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+	cfg.Proxy.OpenFGCAPIURL = upstream.URL
+
+	h, err := router.New(logger.New("error"), *cfg)
+	if err != nil {
+		t.Fatalf("failed to create router: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/consents", nil)
+	req.Body = failingReadCloser{}
+	res := httptest.NewRecorder()
+
+	h.ServeHTTP(res, req)
+
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.Code)
+	}
+	var payload map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		t.Fatalf("expected json error payload: %v", err)
+	}
+	if payload["code"] != "INVALID_REQUEST_BODY" {
+		t.Fatalf("expected code INVALID_REQUEST_BODY, got %v", payload["code"])
+	}
+	if upstreamCalled {
+		t.Fatalf("expected upstream not to be called")
+	}
 }
 
 func TestUpstreamUnavailableMapsTo502(t *testing.T) {

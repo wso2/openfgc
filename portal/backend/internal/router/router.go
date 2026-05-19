@@ -29,7 +29,7 @@ import (
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
 )
 
-// New builds the root HTTP handler with Phase 1 bootstrap routes.
+// New builds the root HTTP handler with health, proxy, and /me routes.
 func New(log *slog.Logger, cfg config.Config) (http.Handler, error) {
 	mux := http.NewServeMux()
 

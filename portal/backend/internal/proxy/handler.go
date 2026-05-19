@@ -42,6 +42,8 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
+var errRequestBodyTooLarge = errors.New("request body too large")
+
 type consentRetrievalResponse struct {
 	ID                         string                      `json:"id"`
 	Purposes                   []consentPurposeItem        `json:"purposes"`
@@ -167,7 +169,7 @@ func (h *Handler) API(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := h.readBoundedBody(r)
 	if err != nil {
-		writeJSONError(w, http.StatusRequestEntityTooLarge, "REQUEST_TOO_LARGE", "request entity too large")
+		writeBodyReadError(w, err)
 		return
 	}
 	if err := h.svc.Forward(w, r, r.Method, "/api/v1"+path, nil, body); err != nil {
@@ -245,7 +247,7 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := h.readBoundedBody(r)
 	if err != nil {
-		writeJSONError(w, http.StatusRequestEntityTooLarge, "REQUEST_TOO_LARGE", "request entity too large")
+		writeBodyReadError(w, err)
 		return
 	}
 	selections, err := parseApprovalSelections(body)
@@ -294,7 +296,7 @@ func (h *Handler) MeConsentRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := h.readBoundedBody(r)
 	if err != nil {
-		writeJSONError(w, http.StatusRequestEntityTooLarge, "REQUEST_TOO_LARGE", "request entity too large")
+		writeBodyReadError(w, err)
 		return
 	}
 	payload, err := h.buildRevokePayload(body, userID)
@@ -530,6 +532,14 @@ func writeJSONError(w http.ResponseWriter, status int, code, message string) {
 	_ = json.NewEncoder(w).Encode(errorResponse{Code: code, Message: message})
 }
 
+func writeBodyReadError(w http.ResponseWriter, err error) {
+	if errors.Is(err, errRequestBodyTooLarge) {
+		writeJSONError(w, http.StatusRequestEntityTooLarge, "REQUEST_TOO_LARGE", "request entity too large")
+		return
+	}
+	writeJSONError(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "invalid request body")
+}
+
 func (h *Handler) resolveUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
@@ -552,7 +562,7 @@ func (h *Handler) readBoundedBody(r *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	if int64(len(body)) > h.cfg.MaxRequestBytes {
-		return nil, errors.New("body too large")
+		return nil, errRequestBodyTooLarge
 	}
 	return body, nil
 }
@@ -620,8 +630,8 @@ func (h *Handler) buildApprovalUpdatePayload(r *http.Request, baseBody []byte, s
 				updatedElement.IsUserApproved = true
 			} else {
 				key := toConsentApprovalKey(purpose.Name, element.Name)
-				_, updatedElement.IsUserApproved = selectedOptionalElements[key]
-				if updatedElement.IsUserApproved {
+				if _, isSelected := selectedOptionalElements[key]; isSelected {
+					updatedElement.IsUserApproved = true
 					matchedSelections[key] = struct{}{}
 				}
 			}
@@ -726,24 +736,12 @@ func normalizeAuthorizationResources(resources any) any {
 }
 
 func findAuthorizationIndexToUpdate(authorizations []consentAuthorizationEntry, userID string) (int, bool) {
-	if len(authorizations) == 0 {
-		return -1, false
-	}
-
+	userID = strings.TrimSpace(userID)
 	for index, authorization := range authorizations {
 		if authorization.UserID != nil && strings.EqualFold(strings.TrimSpace(*authorization.UserID), userID) {
 			return index, true
 		}
 	}
 
-	latestIndex := 0
-	latestUpdatedTime := authorizations[0].UpdatedTime
-	for index := 1; index < len(authorizations); index++ {
-		if authorizations[index].UpdatedTime > latestUpdatedTime {
-			latestUpdatedTime = authorizations[index].UpdatedTime
-			latestIndex = index
-		}
-	}
-
-	return latestIndex, true
+	return -1, false
 }
