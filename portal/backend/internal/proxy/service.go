@@ -30,7 +30,10 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/wso2/openfgc/portal/backend/internal/config"
@@ -53,6 +56,8 @@ var (
 	// ErrUpstreamUnavailable is returned when upstream cannot be reached.
 	ErrUpstreamUnavailable = errors.New("upstream unavailable")
 )
+
+var proxyFallbackSequence uint64
 
 type routeSpec struct {
 	pathParts []string
@@ -310,10 +315,28 @@ func (s *Service) skipHeader(name string, connectionHeaders map[string]struct{})
 	if strings.EqualFold(canonical, "Org-Id") || strings.EqualFold(canonical, "TPP-Client-Id") {
 		return true
 	}
+	if isForwardingHeader(canonical) {
+		return true
+	}
 	if strings.EqualFold(canonical, "Content-Length") {
 		return true
 	}
 	return false
+}
+
+func isForwardingHeader(name string) bool {
+	switch http.CanonicalHeaderKey(name) {
+	case "Forwarded",
+		"X-Forwarded-For",
+		"X-Forwarded-Host",
+		"X-Forwarded-Proto",
+		"X-Forwarded-Port",
+		"X-Real-Ip",
+		"X-Original-Forwarded-For":
+		return true
+	default:
+		return false
+	}
 }
 
 func connectionHeaderNames(headers http.Header) map[string]struct{} {
@@ -349,7 +372,16 @@ func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Reque
 func newCorrelationID() string {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
-		return time.Now().UTC().Format("20060102150405")
+		return fallbackCorrelationID()
 	}
 	return hex.EncodeToString(buf)
+}
+
+func fallbackCorrelationID() string {
+	sequence := atomic.AddUint64(&proxyFallbackSequence, 1)
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 36)
+	pid := strconv.Itoa(os.Getpid())
+	seq := strconv.FormatUint(sequence, 36)
+
+	return "fb-" + timestamp + "-" + pid + "-" + seq
 }

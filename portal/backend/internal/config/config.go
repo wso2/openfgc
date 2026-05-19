@@ -220,7 +220,7 @@ func validate(cfg Config) error {
 		if cfg.CORS.AllowCredentials && origin == "*" {
 			return fmt.Errorf("cors.allowed_origins cannot contain wildcard when cors.allow_credentials is true")
 		}
-		u, err := url.ParseRequestURI(origin)
+		u, err := url.Parse(origin)
 		if err != nil {
 			return fmt.Errorf("cors.allowed_origins contains invalid URL %q: %w", origin, err)
 		}
@@ -229,6 +229,15 @@ func validate(cfg Config) error {
 		}
 		if u.Host == "" {
 			return fmt.Errorf("cors.allowed_origins contains missing host for %q", origin)
+		}
+		if u.Path != "" && u.Path != "/" {
+			return fmt.Errorf("cors.allowed_origins must not contain a path for %q", origin)
+		}
+		if u.RawQuery != "" {
+			return fmt.Errorf("cors.allowed_origins must not contain a query string for %q", origin)
+		}
+		if u.Fragment != "" {
+			return fmt.Errorf("cors.allowed_origins must not contain a fragment for %q", origin)
 		}
 	}
 	if len(cfg.CORS.AllowedMethods) == 0 {

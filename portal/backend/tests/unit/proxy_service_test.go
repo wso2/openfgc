@@ -239,3 +239,76 @@ func TestForwardStripsHeadersNamedByConnection(t *testing.T) {
 		t.Fatalf("expected X-Upstream-End to be forwarded, got %q", got)
 	}
 }
+
+func TestForwardStripsClientForwardingHeaders(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, name := range []string{
+			"Forwarded",
+			"X-Forwarded-For",
+			"X-Forwarded-Host",
+			"X-Forwarded-Proto",
+			"X-Forwarded-Port",
+			"X-Real-IP",
+			"X-Original-Forwarded-For",
+		} {
+			if got := r.Header.Get(name); got != "" {
+				t.Fatalf("expected %s to be stripped, got %q", name, got)
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	svc, err := proxy.NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL,
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		AllowedPassthrough: []string{"GET"},
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	req.Header.Set("Forwarded", "for=203.0.113.7;proto=https")
+	req.Header.Set("X-Forwarded-For", "203.0.113.7")
+	req.Header.Set("X-Forwarded-Host", "evil.example")
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.Header.Set("X-Forwarded-Port", "443")
+	req.Header.Set("X-Real-IP", "203.0.113.7")
+	req.Header.Set("X-Original-Forwarded-For", "203.0.113.7")
+
+	rr := httptest.NewRecorder()
+	if err := svc.Forward(rr, req, http.MethodGet, "/api/v1/consents", nil, nil); err != nil {
+		t.Fatalf("unexpected forward error: %v", err)
+	}
+}
+
+func TestForwardGeneratesCorrelationIDWhenMissing(t *testing.T) {
+	var gotCorrelationID string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCorrelationID = r.Header.Get("X-Correlation-ID")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	svc, err := proxy.NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL,
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		AllowedPassthrough: []string{"GET"},
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	rr := httptest.NewRecorder()
+	if err := svc.Forward(rr, req, http.MethodGet, "/api/v1/consents", nil, nil); err != nil {
+		t.Fatalf("unexpected forward error: %v", err)
+	}
+
+	if gotCorrelationID == "" {
+		t.Fatal("expected generated correlation id")
+	}
+}

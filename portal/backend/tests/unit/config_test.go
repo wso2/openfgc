@@ -52,11 +52,29 @@ func TestLoadFromEnv(t *testing.T) {
 }
 
 func TestInvalidCORSOriginRejected(t *testing.T) {
-	t.Setenv("BFF_CORS__ALLOWED_ORIGINS", "not-a-url")
+	tests := []struct {
+		name    string
+		origin  string
+		errText string
+	}{
+		{name: "invalid url", origin: "http://[::1", errText: "invalid URL"},
+		{name: "contains path", origin: "http://localhost:3000/some/path", errText: "must not contain a path"},
+		{name: "contains query", origin: "http://localhost:3000?debug=true", errText: "must not contain a query string"},
+		{name: "contains fragment", origin: "http://localhost:3000#app", errText: "must not contain a fragment"},
+	}
 
-	_, err := config.Load()
-	if err == nil {
-		t.Fatal("expected config load to fail for invalid CORS origin")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("BFF_CORS__ALLOWED_ORIGINS", tt.origin)
+
+			_, err := config.Load()
+			if err == nil {
+				t.Fatal("expected config load to fail for invalid CORS origin")
+			}
+			if !strings.Contains(err.Error(), tt.errText) {
+				t.Fatalf("expected error to contain %q, got %v", tt.errText, err)
+			}
+		})
 	}
 }
 
