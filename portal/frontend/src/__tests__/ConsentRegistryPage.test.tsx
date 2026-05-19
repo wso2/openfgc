@@ -87,7 +87,7 @@ describe('ConsentRegistryPage', () => {
       json: async () => ({
         data: [
           {
-            id: 'CON-8291',
+            id: 'CON/8291?draft',
             clientId: 'Tesco_Bank_v1',
             type: 'Accounts',
             status: 'ACTIVE',
@@ -121,6 +121,10 @@ describe('ConsentRegistryPage', () => {
     expect(await screen.findByText('Client: Tesco_Bank_v1')).toBeInTheDocument()
     expect(await screen.findByText('Marketing')).toBeInTheDocument()
     expect(await screen.findByText('Not applicable')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(
+      'href',
+      '/consents/CON%2F8291%3Fdraft',
+    )
     expect(screen.queryByText('Consent ID')).not.toBeInTheDocument()
   })
 

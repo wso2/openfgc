@@ -279,7 +279,7 @@ function ConsentRegistryTable({
                         hover
                         variant="table"
                         onClick={() => {
-                          navigate(`/consents/${row.id}`)
+                          navigate(`/consents/${encodeURIComponent(row.id)}`)
                         }}
                         sx={{ cursor: 'pointer' }}
                       >
@@ -361,7 +361,7 @@ function ConsentRegistryTable({
                               <IconButton
                                 size="small"
                                 component={RouterLink}
-                                to={`/consents/${row.id}`}
+                                to={`/consents/${encodeURIComponent(row.id)}`}
                                 aria-label={t('consentRegistry.actions.view')}
                                 onClick={handleStopPropagation}
                               >

@@ -21,6 +21,7 @@ import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/ox
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import HeaderBreadcrumbs from '../components/layout/main-layout/HeaderBreadcrumbs'
 import MainLayout from '../components/layout/main-layout/MainLayout'
 import i18n from '../i18n/i18n'
 
@@ -55,6 +56,21 @@ function renderMainLayout(initialRoute = '/'): void {
   )
 }
 
+function renderHeaderBreadcrumbs(initialRoute: string): void {
+  render(
+    <OxygenUIThemeProvider theme={AcrylicOrangeTheme}>
+      <CssBaseline />
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={[initialRoute]}>
+          <Routes>
+            <Route path="*" element={<HeaderBreadcrumbs />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>
+    </OxygenUIThemeProvider>,
+  )
+}
+
 describe('MainLayout', () => {
   it('renders translated header title and avatar aria label', () => {
     renderMainLayout()
@@ -82,5 +98,11 @@ describe('MainLayout', () => {
     renderMainLayout()
 
     expect(screen.getByRole('heading', { name: 'Nested route content' })).toBeInTheDocument()
+  })
+
+  it('decodes encoded consent IDs in breadcrumbs', () => {
+    renderHeaderBreadcrumbs('/consents/consent%2F123%3Fdraft')
+
+    expect(screen.getByText('consent/123?draft')).toBeInTheDocument()
   })
 })

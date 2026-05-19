@@ -47,7 +47,7 @@ function buildBreadcrumbItems(
         isCurrent: false,
       },
       {
-        label: consentDetailsMatch[1],
+        label: decodeURIComponent(consentDetailsMatch[1]),
         path: pathname,
         isCurrent: true,
       },
