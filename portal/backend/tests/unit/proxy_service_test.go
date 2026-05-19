@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -138,6 +139,42 @@ func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
 	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", nil, nil)
 	if !errors.Is(err, proxy.ErrUpstreamUnavailable) {
 		t.Fatalf("expected ErrUpstreamUnavailable, got: %v", err)
+	}
+}
+
+func TestForwardRawPreservesConfiguredBasePath(t *testing.T) {
+	var gotPath string
+	var gotQuery string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	svc, err := proxy.NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL + "/openfgc/",
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		AllowedPassthrough: []string{"GET"},
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents?limit=10", nil)
+	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", func(q url.Values) {
+		q.Set("offset", "0")
+	}, nil)
+	if err != nil {
+		t.Fatalf("unexpected forward error: %v", err)
+	}
+
+	if gotPath != "/openfgc/api/v1/consents" {
+		t.Fatalf("expected joined upstream path, got %s", gotPath)
+	}
+	if gotQuery != "limit=10&offset=0" {
+		t.Fatalf("expected forwarded and mutated query, got %s", gotQuery)
 	}
 }
 

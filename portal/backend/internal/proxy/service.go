@@ -182,7 +182,7 @@ func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstre
 	defer cancel()
 
 	target := *s.baseURL
-	target.Path = upstreamPath
+	target.Path = joinURLPaths(s.baseURL.Path, upstreamPath)
 	query := r.URL.Query()
 	if queryMutator != nil {
 		queryMutator(query)
@@ -219,6 +219,22 @@ func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstre
 		Headers:    resp.Header.Clone(),
 		Body:       respBody,
 	}, nil
+}
+
+func joinURLPaths(basePath string, upstreamPath string) string {
+	basePath = strings.TrimRight(basePath, "/")
+	upstreamPath = strings.TrimLeft(upstreamPath, "/")
+
+	switch {
+	case basePath == "" && upstreamPath == "":
+		return ""
+	case basePath == "":
+		return "/" + upstreamPath
+	case upstreamPath == "":
+		return basePath
+	default:
+		return basePath + "/" + upstreamPath
+	}
 }
 
 func toMethodSet(methods ...string) map[string]struct{} {
