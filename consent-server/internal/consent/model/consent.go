@@ -243,6 +243,7 @@ type ConsentOutput struct {
 	Attributes                 map[string]string
 	Purposes                   []ConsentPurposeOutput
 	Authorizations             []authmodel.AuthResourceOutput
+	StatusHistory              []ConsentStatusAudit
 }
 
 // ConsentListOutput is the return type from SearchConsents.
@@ -338,28 +339,28 @@ type AuthorizationRequest struct {
 // ConsentCreateRequest is the body for POST /consents.
 // GroupID is not in the body — it is read from the group-id request header.
 type ConsentCreateRequest struct {
-	Type                       string                      `json:"type"`
-	ExpirationTime             *int64                      `json:"expirationTime,omitempty"` // Unix milliseconds
-	Frequency                  *int                        `json:"frequency,omitempty"`
-	RecurringIndicator         *bool                       `json:"recurringIndicator,omitempty"`
-	DataAccessValidityDuration *int64                      `json:"dataAccessValidityDuration,omitempty"`
-	Attributes                 map[string]string           `json:"attributes,omitempty"`
-	Purposes                   []ConsentPurposeRefRequest  `json:"purposes,omitempty"`
-	Authorizations             []AuthorizationRequest      `json:"authorizations,omitempty"`
+	Type                       string                     `json:"type"`
+	ExpirationTime             *int64                     `json:"expirationTime,omitempty"` // Unix milliseconds
+	Frequency                  *int                       `json:"frequency,omitempty"`
+	RecurringIndicator         *bool                      `json:"recurringIndicator,omitempty"`
+	DataAccessValidityDuration *int64                     `json:"dataAccessValidityDuration,omitempty"`
+	Attributes                 map[string]string          `json:"attributes,omitempty"`
+	Purposes                   []ConsentPurposeRefRequest `json:"purposes,omitempty"`
+	Authorizations             []AuthorizationRequest     `json:"authorizations,omitempty"`
 }
 
 // ConsentUpdateRequest is the body for PUT /consents/{consentId}.
 // Purposes, Authorizations, and Attributes intentionally omit `omitempty` so that sending an
 // explicit empty array/map removes all existing entries.
 type ConsentUpdateRequest struct {
-	Type                       string                      `json:"type,omitempty"`
-	ExpirationTime             *int64                      `json:"expirationTime,omitempty"` // Unix milliseconds
-	Frequency                  *int                        `json:"frequency,omitempty"`
-	RecurringIndicator         *bool                       `json:"recurringIndicator,omitempty"`
-	DataAccessValidityDuration *int64                      `json:"dataAccessValidityDuration,omitempty"`
-	Attributes                 map[string]string           `json:"attributes"`
-	Purposes                   []ConsentPurposeRefRequest  `json:"purposes"`
-	Authorizations             []AuthorizationRequest      `json:"authorizations"`
+	Type                       string                     `json:"type,omitempty"`
+	ExpirationTime             *int64                     `json:"expirationTime,omitempty"` // Unix milliseconds
+	Frequency                  *int                       `json:"frequency,omitempty"`
+	RecurringIndicator         *bool                      `json:"recurringIndicator,omitempty"`
+	DataAccessValidityDuration *int64                     `json:"dataAccessValidityDuration,omitempty"`
+	Attributes                 map[string]string          `json:"attributes"`
+	Purposes                   []ConsentPurposeRefRequest `json:"purposes"`
+	Authorizations             []AuthorizationRequest     `json:"authorizations"`
 }
 
 // ConsentRevokeRequest is the body for POST /consents/{consentId}/revoke.
@@ -422,19 +423,20 @@ type AuthorizationResponse struct {
 
 // ConsentResponse is the response body for POST, GET, and PUT /consents.
 type ConsentResponse struct {
-	ConsentID                  string                   `json:"id"`
-	GroupID                    string                   `json:"groupId"`
-	Type                       string                   `json:"type"`
-	Status                     string                   `json:"status"`
-	CreatedTime                int64                    `json:"createdTime"`
-	UpdatedTime                int64                    `json:"updatedTime"`
-	ExpirationTime             *int64                   `json:"expirationTime,omitempty"`
-	Frequency                  *int                     `json:"frequency,omitempty"`
-	RecurringIndicator         *bool                    `json:"recurringIndicator,omitempty"`
-	DataAccessValidityDuration *int64                   `json:"dataAccessValidityDuration,omitempty"`
-	Attributes                 map[string]string        `json:"attributes"`
-	Purposes                   []ConsentPurposeResponse `json:"purposes"`
-	Authorizations             []AuthorizationResponse  `json:"authorizations"`
+	ConsentID                  string                       `json:"id"`
+	GroupID                    string                       `json:"groupId"`
+	Type                       string                       `json:"type"`
+	Status                     string                       `json:"status"`
+	CreatedTime                int64                        `json:"createdTime"`
+	UpdatedTime                int64                        `json:"updatedTime"`
+	ExpirationTime             *int64                       `json:"expirationTime,omitempty"`
+	Frequency                  *int                         `json:"frequency,omitempty"`
+	RecurringIndicator         *bool                        `json:"recurringIndicator,omitempty"`
+	DataAccessValidityDuration *int64                       `json:"dataAccessValidityDuration,omitempty"`
+	Attributes                 map[string]string            `json:"attributes"`
+	Purposes                   []ConsentPurposeResponse     `json:"purposes"`
+	Authorizations             []AuthorizationResponse      `json:"authorizations"`
+	StatusHistory              []ConsentStatusAuditResponse `json:"statusHistory,omitempty"`
 }
 
 // ConsentListMetadata holds pagination metadata for the list response.

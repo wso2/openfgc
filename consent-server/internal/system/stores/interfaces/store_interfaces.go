@@ -40,6 +40,8 @@ type ConsentStore interface {
 	UpdateStatus(tx dbmodel.TxInterface, consentID, orgID, status string, updatedTime int64) error
 	// GetByID returns the CONSENT row for the given ID, or nil if not found.
 	GetByID(ctx context.Context, consentID, orgID string) (*consentModel.Consent, error)
+	// GetByIDForUpdate returns the CONSENT row and locks it for update within a transaction.
+	GetByIDForUpdate(tx dbmodel.TxInterface, consentID, orgID string) (*consentModel.Consent, error)
 	// Search returns consents matching the filters along with the total count for pagination.
 	Search(ctx context.Context, filters consentModel.ConsentSearchFilter) ([]consentModel.Consent, int, error)
 	// GetExpiredConsents Get expired consents based on current time and expirable statuses.
@@ -61,6 +63,12 @@ type ConsentStore interface {
 
 	// CreateStatusAudit inserts a CONSENT_STATUS_AUDIT row within a transaction.
 	CreateStatusAudit(tx dbmodel.TxInterface, audit *consentModel.ConsentStatusAudit) error
+	// CreateHistory inserts a CONSENT_HISTORY row within a transaction.
+	CreateHistory(tx dbmodel.TxInterface, history *consentModel.ConsentHistory) error
+	// GetHistoryByConsentID returns consent amendment history for a consent.
+	GetHistoryByConsentID(ctx context.Context, consentID, orgID string, includeSnapshots bool) ([]consentModel.ConsentHistory, error)
+	// GetStatusAuditsByConsentID returns status audit history for a consent.
+	GetStatusAuditsByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentStatusAudit, error)
 
 	// LinkPurposeVersionToConsent records that a consent was created against a specific purpose version.
 	LinkPurposeVersionToConsent(tx dbmodel.TxInterface, consentID, purposeVersionID, orgID string) error

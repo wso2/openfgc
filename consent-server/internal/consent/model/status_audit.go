@@ -65,3 +65,25 @@ type StatusAuditOutput struct {
 	PreviousStatus *string
 	OrgID          string
 }
+
+// ConsentStatusAuditResponse is the API response shape for a consent status audit entry.
+type ConsentStatusAuditResponse struct {
+	StatusAuditID  string  `json:"statusAuditId"`
+	PreviousStatus *string `json:"previousStatus,omitempty"`
+	CurrentStatus  string  `json:"currentStatus"`
+	ActionTime     int64   `json:"actionTime"`
+	ActionBy       *string `json:"actionBy,omitempty"`
+	Reason         *string `json:"reason,omitempty"`
+}
+
+// ToResponse converts a status audit row to an API response row.
+func (a ConsentStatusAudit) ToResponse() ConsentStatusAuditResponse {
+	return ConsentStatusAuditResponse{
+		StatusAuditID:  a.StatusAuditID,
+		PreviousStatus: a.PreviousStatus,
+		CurrentStatus:  a.CurrentStatus,
+		ActionTime:     a.ActionTime,
+		ActionBy:       a.ActionBy,
+		Reason:         a.Reason,
+	}
+}
