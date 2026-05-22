@@ -50,11 +50,99 @@ type consentService struct {
 	stores *stores.StoreRegistry
 }
 
+type historyReason string
+
+const (
+	historyReasonConsentAmended                        historyReason = "Consent amended"
+	historyReasonConsentDetailsAmended                 historyReason = "Consent details amended"
+	historyReasonConsentAttributesAmended              historyReason = "Consent attributes amended"
+	historyReasonConsentAuthorizationsAmended          historyReason = "Consent authorizations amended"
+	historyReasonConsentPurposesAmended                historyReason = "Consent purposes amended"
+	historyReasonConsentRevoked                        historyReason = "Consent revoked"
+	historyReasonConsentExpired                        historyReason = "Consent expired"
+	historyReasonConsentDetailsAmendedAndReactivated   historyReason = "Consent details amended and reactivated"
+	historyReasonConsentAuthorizationsAmendedAndStatus historyReason = "Consent authorizations amended and status updated"
+)
+
 // newConsentService creates a new consent service
 func newConsentService(registry *stores.StoreRegistry) ConsentService {
 	return &consentService{
 		stores: registry,
 	}
+}
+
+func (consentService *consentService) recordConsentHistory(
+	ctx context.Context,
+	tx dbmodel.TxInterface,
+	consentID, orgID string,
+	actionBy *string,
+	reason historyReason,
+) error {
+	cfg := config.Get()
+	if cfg == nil || !cfg.Consent.History.Enabled {
+		return nil
+	}
+
+	consent, err := consentService.stores.Consent.GetByIDForUpdate(tx, consentID, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to lock consent for history: %w", err)
+	}
+	if consent == nil {
+		return fmt.Errorf("consent with ID '%s' not found", consentID)
+	}
+
+	snapshot, err := consentService.buildConsentHistorySnapshot(ctx, consent, orgID)
+	if err != nil {
+		return err
+	}
+
+	reasonText := string(reason)
+	history := &model.ConsentHistory{
+		HistoryID:  utils.GenerateUUID(),
+		ConsentID:  consentID,
+		OrgID:      orgID,
+		ActionTime: utils.GetCurrentTimeMillis(),
+		ActionBy:   actionBy,
+		Reason:     &reasonText,
+		Snapshot:   snapshot,
+	}
+	return consentService.stores.Consent.CreateHistory(tx, history)
+}
+
+func (consentService *consentService) buildConsentHistorySnapshot(
+	ctx context.Context,
+	consent *model.Consent,
+	orgID string,
+) ([]byte, error) {
+	consentStore := consentService.stores.Consent
+	authResourceStore := consentService.stores.AuthResource
+
+	attributes, err := consentStore.GetAttributesByConsentID(ctx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch consent attributes for history: %w", err)
+	}
+
+	authResources, err := authResourceStore.GetByConsentID(ctx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch authorization resources for history: %w", err)
+	}
+
+	attributesMap := make(map[string]string)
+	for _, attribute := range attributes {
+		attributesMap[attribute.AttKey] = attribute.AttValue
+	}
+
+	purposes, err := consentService.getResolvedConsentPurposes(ctx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve purposes for history: %w", err)
+	}
+
+	response := buildConsentResponse(consent, purposes, attributesMap, authResources)
+	snapshot, err := json.Marshal(response.ToAPIResponse())
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal consent history snapshot: %w", err)
+	}
+	return snapshot, nil
 }
 
 // CreateConsent creates a new consent with all related entities in a single transaction
