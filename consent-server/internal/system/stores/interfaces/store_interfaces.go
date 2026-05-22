@@ -32,12 +32,16 @@ import (
 // ConsentStore defines the interface for consent data operations
 type ConsentStore interface {
 	GetByID(ctx context.Context, consentID, orgID string) (*consentModel.Consent, error)
+	GetByIDForUpdate(tx dbmodel.TxInterface, consentID, orgID string) (*consentModel.Consent, error)
 	Search(ctx context.Context, filters consentModel.ConsentSearchFilters) ([]consentModel.Consent, int, error)
 	GetAttributesByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentAttribute, error)
 	GetAttributesByConsentIDs(ctx context.Context, consentIDs []string, orgID string) (map[string]map[string]string, error)
 	FindConsentIDsByAttributeKey(ctx context.Context, key, orgID string) ([]string, error)
 	FindConsentIDsByAttribute(ctx context.Context, key, value, orgID string) ([]string, error)
+	GetHistoryByConsentID(ctx context.Context, consentID, orgID string, includeSnapshots bool) ([]consentModel.ConsentHistory, error)
+	GetStatusAuditsByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentStatusAudit, error)
 	Create(tx dbmodel.TxInterface, consent *consentModel.Consent) error
+	CreateHistory(tx dbmodel.TxInterface, history *consentModel.ConsentHistory) error
 	Update(tx dbmodel.TxInterface, consent *consentModel.Consent) error
 	UpdateStatus(tx dbmodel.TxInterface, consentID, orgID, status string, updatedTime int64) error
 	CreateAttributes(tx dbmodel.TxInterface, attributes []consentModel.ConsentAttribute) error

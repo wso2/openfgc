@@ -309,6 +309,7 @@ type ConsentResponse struct {
 	OrgID                      string                          `json:"orgId"`
 	Attributes                 map[string]string               `json:"attributes,omitempty"`
 	AuthResources              []authmodel.ConsentAuthResource `json:"authResources,omitempty"`
+	StatusHistory              []ConsentStatusAudit            `json:"statusHistory,omitempty"`
 }
 
 // ConsentSearchParams represents search parameters for consent queries
@@ -560,20 +561,21 @@ func (req *ConsentAPIUpdateRequest) ToConsentUpdateRequest() (*ConsentUpdateRequ
 
 // ConsentAPIResponse represents the API response format for consent (external format)
 type ConsentAPIResponse struct {
-	ID                         string                     `json:"id"`
-	Purposes                   []ConsentPurposeItem       `json:"purposes"`
-	CreatedTime                int64                      `json:"createdTime"`
-	UpdatedTime                int64                      `json:"updatedTime"`
-	ClientID                   string                     `json:"clientId"`
-	Type                       string                     `json:"type"`
-	Status                     string                     `json:"status"`
-	Frequency                  *int                       `json:"frequency,omitempty"`
-	ValidityTime               *int64                     `json:"validityTime,omitempty"`
-	RecurringIndicator         *bool                      `json:"recurringIndicator,omitempty"`
-	DataAccessValidityDuration *int64                     `json:"dataAccessValidityDuration,omitempty"`
-	Attributes                 map[string]string          `json:"attributes"`
-	Authorizations             []AuthorizationAPIResponse `json:"authorizations"`
-	ModifiedResponse           interface{}                `json:"modifiedResponse,omitempty"` // Present in GET/POST/PUT, excluded in validate
+	ID                         string                       `json:"id"`
+	Purposes                   []ConsentPurposeItem         `json:"purposes"`
+	CreatedTime                int64                        `json:"createdTime"`
+	UpdatedTime                int64                        `json:"updatedTime"`
+	ClientID                   string                       `json:"clientId"`
+	Type                       string                       `json:"type"`
+	Status                     string                       `json:"status"`
+	Frequency                  *int                         `json:"frequency,omitempty"`
+	ValidityTime               *int64                       `json:"validityTime,omitempty"`
+	RecurringIndicator         *bool                        `json:"recurringIndicator,omitempty"`
+	DataAccessValidityDuration *int64                       `json:"dataAccessValidityDuration,omitempty"`
+	Attributes                 map[string]string            `json:"attributes"`
+	Authorizations             []AuthorizationAPIResponse   `json:"authorizations"`
+	StatusHistory              []ConsentStatusAuditResponse `json:"statusHistory,omitempty"`
+	ModifiedResponse           interface{}                  `json:"modifiedResponse,omitempty"` // Present in GET/POST/PUT, excluded in validate
 }
 
 // AuthorizationAPIResponse represents the API response format for authorization resource (external format)
@@ -641,6 +643,13 @@ func (resp *ConsentResponse) ToAPIResponse() *ConsentAPIResponse {
 				UpdatedTime: auth.UpdatedTime,
 				Resources:   resources,
 			}
+		}
+	}
+
+	if len(resp.StatusHistory) > 0 {
+		apiResp.StatusHistory = make([]ConsentStatusAuditResponse, len(resp.StatusHistory))
+		for i, audit := range resp.StatusHistory {
+			apiResp.StatusHistory[i] = audit.ToResponse()
 		}
 	}
 

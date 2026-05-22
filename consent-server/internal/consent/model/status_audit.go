@@ -58,3 +58,17 @@ type ConsentStatusAuditResponse struct {
 type ConsentStatusAuditListResponse struct {
 	Data []ConsentStatusAuditResponse `json:"data"`
 }
+
+// ToResponse converts a status audit row to an API response row.
+func (a ConsentStatusAudit) ToResponse() ConsentStatusAuditResponse {
+	return ConsentStatusAuditResponse{
+		StatusAuditID:  a.StatusAuditID,
+		ConsentID:      a.ConsentID,
+		CurrentStatus:  a.CurrentStatus,
+		ActionTime:     a.ActionTime,
+		Reason:         a.Reason,
+		ActionBy:       a.ActionBy,
+		PreviousStatus: a.PreviousStatus,
+		OrgID:          a.OrgID,
+	}
+}
