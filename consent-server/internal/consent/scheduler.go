@@ -32,15 +32,12 @@ type ExpirationStatuses struct {
 // It runs until the context is cancelled.
 func StartScheduler(ctx context.Context, expirationService ExpirationService, interval time.Duration, statuses ExpirationStatuses) {
 	logger := log.GetLogger().With(log.String(log.LoggerKeyComponentName, "ConsentScheduler"))
-
 	if interval <= 0 {
 		logger.Error("Invalid scheduler interval — must be greater than zero", log.String("interval", interval.String()))
 		return
 	}
-
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -48,6 +45,8 @@ func StartScheduler(ctx context.Context, expirationService ExpirationService, in
 			return
 		case <-ticker.C:
 			logger.Debug("Scheduler tick — running expiration job")
+			// RunExpirationJob is called synchronously (not in a goroutine) to ensure only one
+			// expiration job runs at a time, preventing concurrent writes on the same consents.
 			RunExpirationJob(ctx, expirationService, statuses)
 			logger.Debug("Expiration job completed")
 		}

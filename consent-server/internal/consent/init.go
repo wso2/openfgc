@@ -24,7 +24,7 @@ import (
 )
 
 // Initialize sets up the consent module and registers routes
-func Initialize(mux *http.ServeMux, registry *stores.StoreRegistry) ExpirationService {
+func Initialize(mux *http.ServeMux, registry *stores.StoreRegistry) ConsentService {
 	// Create service and handler using the registry
 	service := newConsentService(registry)
 	handler := newConsentHandler(service)

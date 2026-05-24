@@ -43,8 +43,8 @@ type ConsentService interface {
 	RevokeConsent(ctx context.Context, consentID, orgID string, req model.ConsentRevokeRequest) (*model.ConsentRevokeResponse, *serviceerror.ServiceError)
 	ValidateConsent(ctx context.Context, req model.ValidateRequest, orgID string) (*model.ValidateResponse, *serviceerror.ServiceError)
 	SearchConsentsByAttribute(ctx context.Context, key, value, orgID string) (*model.ConsentAttributeSearchResponse, *serviceerror.ServiceError)
-	ExpireConsent(ctx context.Context, consent *model.Consent, orgID string) error // already there
-
+	GetExpiredConsents(ctx context.Context, nowMs int64, expirableStatuses []string) ([]model.Consent, error)
+	ExpireConsent(ctx context.Context, consent *model.Consent, orgID string) error
 }
 
 // consentService implements the ConsentService interface
@@ -1607,4 +1607,75 @@ func (s *consentService) validatePurposes(
 		log.Int("purpose_count", len(resolvedPurposes)))
 
 	return resolvedPurposes, nil
+}
+
+// GetExpiredConsents retrieves all consents whose validity time has passed
+// and whose status is in the expirable list.
+func (consentService *consentService) GetExpiredConsents(ctx context.Context, nowMs int64, expirableStatuses []string) ([]model.Consent, error) {
+	logger := log.GetLogger().WithContext(ctx)
+
+	consents, err := consentService.stores.Consent.GetExpiredConsents(nowMs, expirableStatuses)
+	if err != nil {
+		logger.Error("Failed to fetch expired consents", log.Error(err))
+		return nil, err
+	}
+
+	return consents, nil
+}
+
+// ExpireConsent updates consent and all related auth resources to expired status.
+func (consentService *consentService) ExpireConsent(ctx context.Context, consent *model.Consent, orgID string) error {
+	logger := log.GetLogger().WithContext(ctx)
+	logger.Debug("Expiring consent",
+		log.String("consent_id", consent.ConsentID),
+		log.String("org_id", orgID))
+
+	expiredStatusName := string(config.Get().Consent.GetExpiredConsentStatus())
+	currentTime := utils.GetCurrentTimeMillis()
+
+	auditID := utils.GenerateUUID()
+	reason := "Consent expired based on validityTime"
+	actionBy := "SYSTEM"
+	previousStatus := consent.CurrentStatus
+	audit := &model.ConsentStatusAudit{
+		StatusAuditID:  auditID,
+		ConsentID:      consent.ConsentID,
+		CurrentStatus:  expiredStatusName,
+		ActionTime:     currentTime,
+		Reason:         &reason,
+		ActionBy:       &actionBy,
+		PreviousStatus: &previousStatus,
+		OrgID:          orgID,
+	}
+
+	consentStore := consentService.stores.Consent
+	authResourceStore := consentService.stores.AuthResource
+
+	err := consentService.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
+		func(tx dbmodel.TxInterface) error {
+			return consentStore.UpdateStatus(tx, consent.ConsentID, orgID, expiredStatusName, currentTime)
+		},
+		func(tx dbmodel.TxInterface) error {
+			sysExpiredStatus := string(config.Get().Consent.GetSystemExpiredAuthStatus())
+			return authResourceStore.UpdateAllStatusByConsentID(tx, consent.ConsentID, orgID, sysExpiredStatus, currentTime)
+		},
+		func(tx dbmodel.TxInterface) error {
+			return consentStore.CreateStatusAudit(tx, audit)
+		},
+	})
+	if err != nil {
+		logger.Error("Failed to expire consent in transaction",
+			log.Error(err),
+			log.String("consent_id", consent.ConsentID))
+		return err
+	}
+
+	consent.CurrentStatus = expiredStatusName
+	consent.UpdatedTime = currentTime
+
+	logger.Debug("Consent expired successfully",
+		log.String("consent_id", consent.ConsentID),
+		log.String("new_status", expiredStatusName))
+
+	return nil
 }

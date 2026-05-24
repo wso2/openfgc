@@ -18,6 +18,7 @@ package consent
 
 import (
 	"context"
+	"runtime/debug"
 	"time"
 
 	"github.com/wso2/openfgc/internal/consent/model"
@@ -36,30 +37,23 @@ type ExpirationService interface {
 // Panics are recovered so a single job failure does not stop the scheduler.
 func RunExpirationJob(ctx context.Context, svc ExpirationService, statuses ExpirationStatuses) {
 	logger := log.GetLogger().With(log.String(log.LoggerKeyComponentName, "ConsentExpirationJob"))
-
 	defer func() {
 		if panicValue := recover(); panicValue != nil {
-			logger.Error("Panic recovered in expiration job", log.Any("panic", panicValue))
+			logger.Error("Panic recovered in expiration job", log.Any("panic", panicValue), log.String("stack_trace", string(debug.Stack())))
 		}
 	}()
-
 	logger.Debug("Running consent expiration job")
-
 	currentTimeMillis := time.Now().UnixMilli()
-
 	consents, err := svc.GetExpiredConsents(ctx, currentTimeMillis, statuses.ExpirableConsentStatuses)
 	if err != nil {
 		logger.Error("Failed to query expired consents", log.Error(err))
 		return
 	}
-
 	if len(consents) == 0 {
 		logger.Debug("No consents to expire")
 		return
 	}
-
 	logger.Info("Found consents to expire", log.Int("count", len(consents)))
-
 	for _, consent := range consents {
 		if err := svc.ExpireConsent(ctx, &consent, consent.OrgID); err != nil {
 			logger.Error("Failed to expire consent",
