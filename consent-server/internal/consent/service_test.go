@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	authmodel "github.com/wso2/openfgc/internal/authresource/model"
 	"github.com/wso2/openfgc/internal/consent/model"
 )
 
@@ -490,4 +491,105 @@ func TestEmptyAttributesMap(t *testing.T) {
 
 	require.NotNil(t, req.Attributes)
 	require.Empty(t, req.Attributes)
+}
+
+func TestConsentUpdateDetailsChanged(t *testing.T) {
+	frequency := 5
+	validityTime := int64(12345)
+	recurringIndicator := true
+	dataAccessValidityDuration := int64(67890)
+	updatedAttributes := map[string]string{"region": "LK", "externalRef": "ext-1"}
+
+	existing := &model.Consent{
+		ConsentType:                "accounts",
+		ConsentFrequency:           &frequency,
+		ValidityTime:               &validityTime,
+		RecurringIndicator:         &recurringIndicator,
+		DataAccessValidityDuration: &dataAccessValidityDuration,
+	}
+
+	updateReq := &model.ConsentUpdateRequest{
+		ConsentType:                "accounts",
+		ConsentFrequency:           &frequency,
+		ValidityTime:               &validityTime,
+		RecurringIndicator:         &recurringIndicator,
+		DataAccessValidityDuration: &dataAccessValidityDuration,
+		Attributes:                 updatedAttributes,
+	}
+
+	require.False(t, consentDetailsChanged(existing, updateReq))
+
+	changedFrequency := 10
+	updateReq.ConsentFrequency = &changedFrequency
+
+	require.True(t, consentDetailsChanged(existing, updateReq))
+}
+
+func TestAuthResourcesEqualIgnoresOrderAndCanonicalJSON(t *testing.T) {
+	userOne := "user-1"
+	userTwo := "user-2"
+	resourcesOne := `{"scopes":["accounts","balances"],"limit":2}`
+	resourcesTwo := `["transactions","payments"]`
+
+	current := []authmodel.AuthResource{
+		{AuthType: "secondary", UserID: &userTwo, AuthStatus: "active", Resources: &resourcesTwo},
+		{AuthType: "primary", UserID: &userOne, AuthStatus: "active", Resources: &resourcesOne},
+	}
+	requested := []authmodel.ConsentAuthResourceCreateRequest{
+		{
+			AuthType:   "primary",
+			UserID:     &userOne,
+			AuthStatus: "active",
+			Resources:  map[string]interface{}{"limit": float64(2), "scopes": []interface{}{"accounts", "balances"}},
+		},
+		{
+			AuthType:   "secondary",
+			UserID:     &userTwo,
+			AuthStatus: "active",
+			Resources:  []interface{}{"transactions", "payments"},
+		},
+	}
+
+	require.True(t, authResourcesEqual(current, requested))
+
+	requested[0].AuthStatus = "revoked"
+	require.False(t, authResourcesEqual(current, requested))
+}
+
+func TestPurposeSetsEqualIgnoresOrderAndDetectsApprovalChanges(t *testing.T) {
+	current := []model.ConsentPurposeItem{
+		{
+			PurposeName: "payments",
+			Elements: []model.ConsentElementApprovalItem{
+				{ElementName: "amount", IsUserApproved: true},
+			},
+		},
+		{
+			PurposeName: "accounts",
+			Elements: []model.ConsentElementApprovalItem{
+				{ElementName: "balance", IsUserApproved: true},
+				{ElementName: "transactions", IsUserApproved: false},
+			},
+		},
+	}
+	requested := []model.ConsentPurposeCreateRequest{
+		{
+			PurposeName: "accounts",
+			Elements: []model.ConsentElementApprovalCreateRequest{
+				{ElementName: "transactions", IsUserApproved: false},
+				{ElementName: "balance", IsUserApproved: true},
+			},
+		},
+		{
+			PurposeName: "payments",
+			Elements: []model.ConsentElementApprovalCreateRequest{
+				{ElementName: "amount", IsUserApproved: true},
+			},
+		},
+	}
+
+	require.True(t, purposeSetsEqual(current, requested))
+
+	requested[0].Elements[0].IsUserApproved = true
+	require.False(t, purposeSetsEqual(current, requested))
 }
