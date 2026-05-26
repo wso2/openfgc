@@ -195,6 +195,16 @@ type ConsentAPIRequest struct {
 	Purposes                   []ConsentPurposeItem      `json:"purposes" binding:"required,min=1"`
 	Attributes                 map[string]string         `json:"attributes,omitempty"`
 	Authorizations             []AuthorizationAPIRequest `json:"authorizations"` // Remove omitempty to allow explicit empty array in updates
+	Delegation                 *DelegationRequest        `json:"delegation,omitempty"`
+}
+
+// DelegationRequest represents the optional delegation metadata in the consent request.
+// When present, all authorizations are inferred as type "delegate".
+// The consent manager stores these values as-is without enforcing their meaning.
+type DelegationRequest struct {
+	Type             string `json:"type"`             // Free-form string (e.g., "parental_biological", "carer")
+	RevocationPolicy string `json:"revocationPolicy"` // Free-form string (e.g., "ANY", "BOTH", "SUBJECT_ONLY")
+	OnBehalfOf       string `json:"onBehalfOf"`       // User ID of the data subject
 }
 
 // AuthorizationAPIRequest represents the API payload for authorization resource (external format)
@@ -309,6 +319,7 @@ type ConsentResponse struct {
 	OrgID                      string                          `json:"orgId"`
 	Attributes                 map[string]string               `json:"attributes,omitempty"`
 	AuthResources              []authmodel.ConsentAuthResource `json:"authResources,omitempty"`
+	Delegation                 *ConsentDelegation              `json:"delegation,omitempty"`
 }
 
 // ConsentSearchParams represents search parameters for consent queries
@@ -341,6 +352,7 @@ type ConsentSearchMetadata struct {
 
 // ConsentSearchFilters represents search criteria for consents
 type ConsentSearchFilters struct {
+	ConsentIDs      []string // Filter by specific consent IDs (used by delegation filter)
 	ConsentTypes    []string // e.g., ["accounts", "payments"]
 	ConsentStatuses []string // e.g., ["active", "revoked"]
 	ClientIDs       []string // TPP client IDs
@@ -351,6 +363,16 @@ type ConsentSearchFilters struct {
 	Limit           int
 	Offset          int
 	OrgID           string
+	IsDelegated     *bool // When true, only return delegated consents; when false, only non-delegated
+}
+
+// ConsentDelegation represents the CONSENT_DELEGATION table
+type ConsentDelegation struct {
+	ConsentID        string `db:"CONSENT_ID" json:"consentId"`
+	DelegationType   string `db:"DELEGATION_TYPE" json:"type"`
+	RevocationPolicy string `db:"REVOCATION_POLICY" json:"revocationPolicy"`
+	OnBehalfOf       string `db:"ON_BEHALF_OF" json:"onBehalfOf"`
+	OrgID            string `db:"ORG_ID" json:"orgId,omitempty"`
 }
 
 // ConsentDetailResponse represents a detailed consent with related data
@@ -368,6 +390,7 @@ type ConsentDetailResponse struct {
 	DataAccessValidityDuration int64                 `json:"dataAccessValidityDuration"`
 	Attributes                 map[string]string     `json:"attributes"`
 	Authorizations             []AuthorizationDetail `json:"authorizations"`
+	Delegation                 *ConsentDelegation    `json:"delegation,omitempty"`
 }
 
 // AuthorizationDetail represents authorization resource details
@@ -464,8 +487,15 @@ func (req *ConsentAPIRequest) ToConsentCreateRequest() (*ConsentCreateRequest, e
 				status = string(AuthStatusMappings.ApprovedState)
 			}
 
+			// Infer auth type as "delegate" when delegation object is present.
+			// If the app sets a different type, we override it to "delegate".
+			authType := auth.Type
+			if req.Delegation != nil {
+				authType = "delegate"
+			}
+
 			createReq.AuthResources[i] = authmodel.ConsentAuthResourceCreateRequest{
-				AuthType:   auth.Type,
+				AuthType:   authType,
 				UserID:     userID,
 				AuthStatus: status,
 				Resources:  auth.Resources,
@@ -573,6 +603,7 @@ type ConsentAPIResponse struct {
 	DataAccessValidityDuration *int64                     `json:"dataAccessValidityDuration,omitempty"`
 	Attributes                 map[string]string          `json:"attributes"`
 	Authorizations             []AuthorizationAPIResponse `json:"authorizations"`
+	Delegation                 *ConsentDelegation         `json:"delegation,omitempty"`
 	ModifiedResponse           interface{}                `json:"modifiedResponse,omitempty"` // Present in GET/POST/PUT, excluded in validate
 }
 
@@ -613,6 +644,7 @@ func (resp *ConsentResponse) ToAPIResponse() *ConsentAPIResponse {
 		RecurringIndicator:         resp.RecurringIndicator,
 		DataAccessValidityDuration: resp.DataAccessValidityDuration,
 		Attributes:                 attributes,
+		Delegation:                 resp.Delegation,
 		ModifiedResponse:           make(map[string]interface{}),
 		Authorizations:             make([]AuthorizationAPIResponse, 0),
 	}
@@ -687,6 +719,7 @@ type ValidateConsentAPIResponse struct {
 	Purposes                   []ConsentPurposeItemValidate `json:"purposes"`
 	Attributes                 map[string]string            `json:"attributes,omitempty"`
 	Authorizations             []AuthorizationAPIResponse   `json:"authorizations,omitempty"`
+	Delegation                 *ConsentDelegation           `json:"delegation,omitempty"`
 }
 
 // ConsentRevokeResponse represents the response after revoking a consent

@@ -50,6 +50,23 @@ type ConsentCreateRequest struct {
 	ValidityTime       int64                  `json:"validityTime,omitempty"`
 	RecurringIndicator bool                   `json:"recurringIndicator,omitempty"`
 	Frequency          int                    `json:"frequency,omitempty"`
+	Delegation         *DelegationRequest     `json:"delegation,omitempty"`
+}
+
+// DelegationRequest represents the delegation object in consent creation
+type DelegationRequest struct {
+	Type             string `json:"type"`
+	RevocationPolicy string `json:"revocationPolicy"`
+	OnBehalfOf       string `json:"onBehalfOf"`
+}
+
+// DelegationResponse represents delegation data in consent response
+type DelegationResponse struct {
+	ConsentID        string `json:"consentId,omitempty"`
+	Type             string `json:"type"`
+	RevocationPolicy string `json:"revocationPolicy"`
+	OnBehalfOf       string `json:"onBehalfOf"`
+	OrgID            string `json:"orgId,omitempty"`
 }
 
 // ConsentUpdateRequest represents the payload for updating a consent
@@ -94,6 +111,7 @@ type ConsentResponse struct {
 	DataAccessValidityDuration *int64                  `json:"dataAccessValidityDuration,omitempty"`
 	CreatedTime                int64                   `json:"createdTime"`
 	UpdatedTime                int64                   `json:"updatedTime"`
+	Delegation                 *DelegationResponse     `json:"delegation,omitempty"`
 }
 
 // ConsentListResponse represents the API response for listing consents

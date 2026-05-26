@@ -185,3 +185,136 @@ func TestValidateConsentUpdateRequest_MissingAuthType(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "authorizations[0].type is required")
 }
+
+// ==================== Delegation Validator Tests ====================
+
+// TestValidateConsentCreateRequest_DelegationPresent_AuthTypeNotRequired tests that
+// auth type is not required when delegation object is present
+func TestValidateConsentCreateRequest_DelegationPresent_AuthTypeNotRequired(t *testing.T) {
+	req := model.ConsentAPIRequest{
+		Type: "food_delivery_consent",
+		Delegation: &model.DelegationRequest{
+			Type:             "parental_biological",
+			RevocationPolicy: "ANY",
+			OnBehalfOf:       "child-456",
+		},
+		Purposes: []model.ConsentPurposeItem{
+			{
+				PurposeName: "food_delivery",
+				Elements: []model.ConsentElementApprovalItem{
+					{ElementName: "child_name", IsUserApproved: true},
+				},
+			},
+		},
+		Authorizations: []model.AuthorizationAPIRequest{
+			{UserID: "mother-111"},
+			{UserID: "father-222"},
+		},
+	}
+
+	err := ValidateConsentCreateRequest(req, "quickbite-app", "quickbite-org")
+	require.NoError(t, err, "Auth type should not be required when delegation is present")
+}
+
+// TestValidateConsentCreateRequest_NoDelegation_AuthTypeStillRequired tests that
+// auth type is still required when delegation object is NOT present
+func TestValidateConsentCreateRequest_NoDelegation_AuthTypeStillRequired(t *testing.T) {
+	req := model.ConsentAPIRequest{
+		Type: "marketing",
+		Purposes: []model.ConsentPurposeItem{
+			{
+				PurposeName: "purpose-1",
+				Elements: []model.ConsentElementApprovalItem{
+					{ElementName: "element-1", IsUserApproved: true},
+				},
+			},
+		},
+		Authorizations: []model.AuthorizationAPIRequest{
+			{UserID: "user@example.com", Status: "APPROVED"},
+		},
+	}
+
+	err := ValidateConsentCreateRequest(req, "test-app", "test-org")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "authorizations[0].type is required")
+}
+
+// TestValidateConsentCreateRequest_DelegationPresent_WithAuthType tests that
+// providing auth type with delegation present does not cause error
+func TestValidateConsentCreateRequest_DelegationPresent_WithAuthType(t *testing.T) {
+	req := model.ConsentAPIRequest{
+		Type: "food_delivery_consent",
+		Delegation: &model.DelegationRequest{
+			Type:             "parental_biological",
+			RevocationPolicy: "ANY",
+			OnBehalfOf:       "child-456",
+		},
+		Purposes: []model.ConsentPurposeItem{
+			{
+				PurposeName: "food_delivery",
+				Elements: []model.ConsentElementApprovalItem{
+					{ElementName: "child_name", IsUserApproved: true},
+				},
+			},
+		},
+		Authorizations: []model.AuthorizationAPIRequest{
+			{UserID: "mother-111", Type: "authorisation"},
+		},
+	}
+
+	err := ValidateConsentCreateRequest(req, "quickbite-app", "quickbite-org")
+	require.NoError(t, err, "Providing auth type with delegation present should not cause error")
+}
+
+// TestValidateConsentCreateRequest_DelegationWithEmptyFields tests delegation with empty optional fields
+func TestValidateConsentCreateRequest_DelegationWithEmptyFields(t *testing.T) {
+	req := model.ConsentAPIRequest{
+		Type: "food_delivery_consent",
+		Delegation: &model.DelegationRequest{
+			Type:             "",
+			RevocationPolicy: "",
+			OnBehalfOf:       "child-456",
+		},
+		Purposes: []model.ConsentPurposeItem{
+			{
+				PurposeName: "food_delivery",
+				Elements: []model.ConsentElementApprovalItem{
+					{ElementName: "child_name", IsUserApproved: true},
+				},
+			},
+		},
+		Authorizations: []model.AuthorizationAPIRequest{
+			{UserID: "mother-111"},
+		},
+	}
+
+	err := ValidateConsentCreateRequest(req, "quickbite-app", "quickbite-org")
+	require.NoError(t, err, "Empty type and revocationPolicy should be accepted — onBehalfOf is present")
+}
+
+// TestValidateConsentCreateRequest_EmptyDelegationObject tests that empty delegation object is rejected
+func TestValidateConsentCreateRequest_EmptyDelegationObject(t *testing.T) {
+	req := model.ConsentAPIRequest{
+		Type: "food_delivery_consent",
+		Delegation: &model.DelegationRequest{
+			Type:             "",
+			RevocationPolicy: "",
+			OnBehalfOf:       "",
+		},
+		Purposes: []model.ConsentPurposeItem{
+			{
+				PurposeName: "food_delivery",
+				Elements: []model.ConsentElementApprovalItem{
+					{ElementName: "child_name", IsUserApproved: true},
+				},
+			},
+		},
+		Authorizations: []model.AuthorizationAPIRequest{
+			{UserID: "mother-111"},
+		},
+	}
+
+	err := ValidateConsentCreateRequest(req, "quickbite-app", "quickbite-org")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "delegation.onBehalfOf is required")
+}

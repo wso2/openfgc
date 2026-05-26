@@ -194,6 +194,35 @@ var (
 		Query:         "DELETE FROM CONSENT_ELEMENT_APPROVAL WHERE CONSENT_ID = ? AND ORG_ID = ?",
 		PostgresQuery: "DELETE FROM CONSENT_ELEMENT_APPROVAL WHERE CONSENT_ID = $1 AND ORG_ID = $2",
 	}
+
+	// Delegation queries
+	QueryCreateDelegation = dbmodel.DBQuery{
+		ID:            "CREATE_DELEGATION",
+		Query:         "INSERT INTO CONSENT_DELEGATION (CONSENT_ID, DELEGATION_TYPE, REVOCATION_POLICY, ON_BEHALF_OF, ORG_ID) VALUES (?, ?, ?, ?, ?)",
+		PostgresQuery: "INSERT INTO CONSENT_DELEGATION (CONSENT_ID, DELEGATION_TYPE, REVOCATION_POLICY, ON_BEHALF_OF, ORG_ID) VALUES ($1, $2, $3, $4, $5)",
+	}
+
+	QueryGetDelegationByConsentID = dbmodel.DBQuery{
+		ID:            "GET_DELEGATION_BY_CONSENT_ID",
+		Query:         "SELECT CONSENT_ID, DELEGATION_TYPE, REVOCATION_POLICY, ON_BEHALF_OF, ORG_ID FROM CONSENT_DELEGATION WHERE CONSENT_ID = ? AND ORG_ID = ?",
+		PostgresQuery: "SELECT CONSENT_ID, DELEGATION_TYPE, REVOCATION_POLICY, ON_BEHALF_OF, ORG_ID FROM CONSENT_DELEGATION WHERE CONSENT_ID = $1 AND ORG_ID = $2",
+	}
+
+	QueryGetDelegatedConsentIDs = dbmodel.DBQuery{
+		ID:            "GET_DELEGATED_CONSENT_IDS",
+		Query:         "SELECT CONSENT_ID FROM CONSENT_DELEGATION WHERE ORG_ID = ? ORDER BY CONSENT_ID",
+		PostgresQuery: "SELECT CONSENT_ID FROM CONSENT_DELEGATION WHERE ORG_ID = $1 ORDER BY CONSENT_ID",
+	}
+
+	QueryGetDelegatedConsentIDsByOnBehalfOf = dbmodel.DBQuery{
+		ID:            "GET_DELEGATED_CONSENT_IDS_BY_ON_BEHALF_OF",
+		Query:         "SELECT CONSENT_ID FROM CONSENT_DELEGATION WHERE ON_BEHALF_OF = ? AND ORG_ID = ? ORDER BY CONSENT_ID",
+		PostgresQuery: "SELECT CONSENT_ID FROM CONSENT_DELEGATION WHERE ON_BEHALF_OF = $1 AND ORG_ID = $2 ORDER BY CONSENT_ID",
+	}
+
+	QueryGetDelegationsByConsentIDs = dbmodel.DBQuery{
+		ID: "GET_DELEGATIONS_BY_CONSENT_IDS",
+	}
 )
 
 // store implements the interfaces.ConsentStore interface
@@ -249,6 +278,17 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilters) 
 	args := []interface{}{filters.OrgID}
 	countArgs := []interface{}{filters.OrgID}
 
+	// Add consentIDs filter (IN clause) - used by delegation search
+	if len(filters.ConsentIDs) > 0 {
+		placeholders := make([]string, len(filters.ConsentIDs))
+		for i, id := range filters.ConsentIDs {
+			placeholders[i] = "?"
+			args = append(args, id)
+			countArgs = append(countArgs, id)
+		}
+		whereConditions = append(whereConditions, fmt.Sprintf("CONSENT.CONSENT_ID IN (%s)", strings.Join(placeholders, ",")))
+	}
+
 	// Add consentTypes filter (IN clause)
 	if len(filters.ConsentTypes) > 0 {
 		placeholders := make([]string, len(filters.ConsentTypes))
@@ -283,8 +323,28 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilters) 
 		whereConditions = append(whereConditions, fmt.Sprintf("CONSENT.CLIENT_ID IN (%s)", strings.Join(placeholders, ",")))
 	}
 
-	// Add userIds filter (via JOIN with CONSENT_AUTH_RESOURCE)
+	// Build JOIN clauses dynamically
 	joinClause := ""
+
+	// Add delegation filter (JOIN with CONSENT_DELEGATION)
+	if filters.IsDelegated != nil && *filters.IsDelegated {
+		joinClause += " INNER JOIN CONSENT_DELEGATION cd ON CONSENT.CONSENT_ID = cd.CONSENT_ID AND CONSENT.ORG_ID = cd.ORG_ID"
+
+		// When delegation=true and userIds are provided, search by onBehalfOf instead of auth resource
+		if len(filters.UserIDs) > 0 {
+			placeholders := make([]string, len(filters.UserIDs))
+			for i, userID := range filters.UserIDs {
+				placeholders[i] = "?"
+				args = append(args, userID)
+				countArgs = append(countArgs, userID)
+			}
+			whereConditions = append(whereConditions, fmt.Sprintf("cd.ON_BEHALF_OF IN (%s)", strings.Join(placeholders, ",")))
+			// Clear UserIDs so the auth resource JOIN is not added below
+			filters.UserIDs = nil
+		}
+	}
+
+	// Add userIds filter (via JOIN with CONSENT_AUTH_RESOURCE)
 	if len(filters.UserIDs) > 0 {
 		placeholders := make([]string, len(filters.UserIDs))
 		for i, userID := range filters.UserIDs {
@@ -292,7 +352,7 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilters) 
 			args = append(args, userID)
 			countArgs = append(countArgs, userID)
 		}
-		joinClause = " INNER JOIN CONSENT_AUTH_RESOURCE car ON CONSENT.CONSENT_ID = car.CONSENT_ID AND CONSENT.ORG_ID = car.ORG_ID"
+		joinClause += " INNER JOIN CONSENT_AUTH_RESOURCE car ON CONSENT.CONSENT_ID = car.CONSENT_ID AND CONSENT.ORG_ID = car.ORG_ID"
 		whereConditions = append(whereConditions, fmt.Sprintf("car.USER_ID IN (%s)", strings.Join(placeholders, ",")))
 	}
 
@@ -833,4 +893,126 @@ func getStringPointer(row map[string]interface{}, key string) *string {
 		return &str
 	}
 	return nil
+}
+
+// CreateDelegation inserts a delegation record within a transaction
+func (s *store) CreateDelegation(tx dbmodel.TxInterface, delegation *model.ConsentDelegation) error {
+	_, err := tx.Exec(QueryCreateDelegation,
+		delegation.ConsentID, delegation.DelegationType, delegation.RevocationPolicy,
+		delegation.OnBehalfOf, delegation.OrgID)
+	return err
+}
+
+// GetDelegationByConsentID retrieves the delegation record for a consent
+func (s *store) GetDelegationByConsentID(ctx context.Context, consentID, orgID string) (*model.ConsentDelegation, error) {
+	dbClient, err := s.getDBClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+
+	rows, err := dbClient.Query(QueryGetDelegationByConsentID, consentID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	return &model.ConsentDelegation{
+		ConsentID:        getString(rows[0], "consent_id"),
+		DelegationType:   getString(rows[0], "delegation_type"),
+		RevocationPolicy: getString(rows[0], "revocation_policy"),
+		OnBehalfOf:       getString(rows[0], "on_behalf_of"),
+		OrgID:            getString(rows[0], "org_id"),
+	}, nil
+}
+
+// GetDelegatedConsentIDs returns all consent IDs that have delegation records
+func (s *store) GetDelegatedConsentIDs(ctx context.Context, orgID string) ([]string, error) {
+	dbClient, err := s.getDBClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+
+	rows, err := dbClient.Query(QueryGetDelegatedConsentIDs, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	consentIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if consentID := getString(row, "consent_id"); consentID != "" {
+			consentIDs = append(consentIDs, consentID)
+		}
+	}
+	return consentIDs, nil
+}
+
+// GetDelegatedConsentIDsByOnBehalfOf returns consent IDs delegated on behalf of a specific user
+func (s *store) GetDelegatedConsentIDsByOnBehalfOf(ctx context.Context, onBehalfOf, orgID string) ([]string, error) {
+	dbClient, err := s.getDBClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+
+	rows, err := dbClient.Query(QueryGetDelegatedConsentIDsByOnBehalfOf, onBehalfOf, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	consentIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if consentID := getString(row, "consent_id"); consentID != "" {
+			consentIDs = append(consentIDs, consentID)
+		}
+	}
+	return consentIDs, nil
+}
+
+// GetDelegationsByConsentIDs retrieves delegation records for multiple consents, keyed by consent ID
+func (s *store) GetDelegationsByConsentIDs(ctx context.Context, consentIDs []string, orgID string) (map[string]*model.ConsentDelegation, error) {
+	if len(consentIDs) == 0 {
+		return make(map[string]*model.ConsentDelegation), nil
+	}
+
+	dbClient, err := s.getDBClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+
+	placeholders := ""
+	args := make([]interface{}, 0, len(consentIDs)+1)
+	for i, id := range consentIDs {
+		if i > 0 {
+			placeholders += ", "
+		}
+		placeholders += "?"
+		args = append(args, id)
+	}
+	args = append(args, orgID)
+
+	mysqlQuery := fmt.Sprintf("SELECT CONSENT_ID, DELEGATION_TYPE, REVOCATION_POLICY, ON_BEHALF_OF, ORG_ID FROM CONSENT_DELEGATION WHERE CONSENT_ID IN (%s) AND ORG_ID = ?", placeholders)
+	query := dbmodel.DBQuery{
+		ID:            QueryGetDelegationsByConsentIDs.ID,
+		Query:         mysqlQuery,
+		PostgresQuery: dbutils.ConvertToPostgresParams(mysqlQuery),
+	}
+
+	rows, err := dbClient.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*model.ConsentDelegation)
+	for _, row := range rows {
+		delegation := &model.ConsentDelegation{
+			ConsentID:        getString(row, "consent_id"),
+			DelegationType:   getString(row, "delegation_type"),
+			RevocationPolicy: getString(row, "revocation_policy"),
+			OnBehalfOf:       getString(row, "on_behalf_of"),
+			OrgID:            getString(row, "org_id"),
+		}
+		result[delegation.ConsentID] = delegation
+	}
+	return result, nil
 }

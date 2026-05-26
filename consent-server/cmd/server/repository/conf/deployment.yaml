@@ -44,3 +44,4 @@ consent:
     system_expired_state: SYS_EXPIRED
     # Authorization state indicating authorization was system-revoked due to consent revocation
     system_revoked_state: SYS_REVOKED
+    

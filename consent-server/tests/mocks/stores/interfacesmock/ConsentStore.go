@@ -1297,3 +1297,52 @@ func NewConsentStore(t interface {
 
 	return mock
 }
+
+// CreateDelegation provides a mock function
+func (_m *ConsentStore) CreateDelegation(tx model.TxInterface, delegation *consentmodel.ConsentDelegation) error {
+	ret := _m.Called(tx, delegation)
+	return ret.Error(0)
+}
+
+// GetDelegationByConsentID provides a mock function
+func (_m *ConsentStore) GetDelegationByConsentID(ctx context.Context, consentID string, orgID string) (*consentmodel.ConsentDelegation, error) {
+	ret := _m.Called(ctx, consentID, orgID)
+
+	var r0 *consentmodel.ConsentDelegation
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*consentmodel.ConsentDelegation)
+	}
+	return r0, ret.Error(1)
+}
+
+// GetDelegatedConsentIDs provides a mock function
+func (_m *ConsentStore) GetDelegatedConsentIDs(ctx context.Context, orgID string) ([]string, error) {
+	ret := _m.Called(ctx, orgID)
+
+	var r0 []string
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]string)
+	}
+	return r0, ret.Error(1)
+}
+
+// GetDelegatedConsentIDsByOnBehalfOf provides a mock function
+func (_m *ConsentStore) GetDelegatedConsentIDsByOnBehalfOf(ctx context.Context, onBehalfOf string, orgID string) ([]string, error) {
+	ret := _m.Called(ctx, onBehalfOf, orgID)
+
+	var r0 []string
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]string)
+	}
+	return r0, ret.Error(1)
+}
+
+func (_m *ConsentStore) GetDelegationsByConsentIDs(ctx context.Context, consentIDs []string, orgID string) (map[string]*consentmodel.ConsentDelegation, error) {
+	ret := _m.Called(ctx, consentIDs, orgID)
+
+	var r0 map[string]*consentmodel.ConsentDelegation
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string]*consentmodel.ConsentDelegation)
+	}
+	return r0, ret.Error(1)
+}

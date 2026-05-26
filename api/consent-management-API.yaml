@@ -186,6 +186,14 @@ paths:
             type: integer
             format: int32
           example: 0
+        - name: delegation
+          in: query
+          description: |
+            When set to 'true', returns only delegated consents. When used with 'userIds', searches for consents
+            delegated on behalf of the specified user IDs (via the onBehalfOf field in CONSENT_DELEGATION).
+          schema:
+            type: boolean
+          example: true
       responses:
         "200":
           description: OK. Returns a list of consents matching the search criteria, along with pagination metadata.
@@ -2316,6 +2324,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ConsentAuthorizationCreatePayload"
+        delegation:
+          $ref: "#/components/schemas/DelegationObject"
     ConsentAuthorizationCreatePayload:
       type: object
       description: |
@@ -2577,6 +2587,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+        delegation:
+          $ref: "#/components/schemas/DelegationObject"
         modifiedResponse:
           description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
           type: object
@@ -2673,6 +2685,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+        delegation:
+          $ref: "#/components/schemas/DelegationObject"
         modifiedResponse:
           description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
           type: object
@@ -2882,6 +2896,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+        delegation:
+          $ref: "#/components/schemas/DelegationObject"
+    DelegationObject:
+      type: object
+      description: |
+        Optional delegation metadata for consents created on behalf of another user.
+        The consent manager stores these values as-is without enforcing their meaning.
+        When this object is present in a consent creation request, all authorization types
+        are automatically inferred as "delegate".
+      properties:
+        type:
+          description: Free-form string identifying the delegation type (e.g., "parental_biological", "registered_carer", "power_of_attorney").
+          type: string
+          example: "parental_biological"
+        revocationPolicy:
+          description: Free-form string indicating the revocation policy (e.g., "ANY", "BOTH", "SUBJECT_ONLY"). Stored as-is, not enforced by the consent manager.
+          type: string
+          example: "ANY"
+        onBehalfOf:
+          description: The user ID of the data subject on whose behalf this consent is created. Searchable via delegation=true&userIds query parameters.
+          type: string
+          example: "child-456"
     ConsentSearchMetadata:
       type: object
       description: Pagination metadata returned with search results.
@@ -3158,6 +3194,8 @@ components:
                 type: integer
                 format: int64
                 example: 1699651200
+        delegation:
+          $ref: "#/components/schemas/DelegationObject"
       required:
         - id
         - type
