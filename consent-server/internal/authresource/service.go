@@ -26,6 +26,7 @@ import (
 
 	"github.com/wso2/openfgc/internal/authresource/model"
 	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
+	consenthistory "github.com/wso2/openfgc/internal/consent"
 	consentModel "github.com/wso2/openfgc/internal/consent/model"
 	"github.com/wso2/openfgc/internal/consent/validator"
 	"github.com/wso2/openfgc/internal/system/config"
@@ -139,9 +140,16 @@ func (s *authResourceService) CreateAuthResource(
 
 	// Derive consent status based on all authorization statuses
 	derivedConsentStatus := validator.EvaluateConsentStatusFromAuthStatuses(authStatuses)
+	historyReason := consenthistory.HistoryReasonConsentAuthorizationsAmended
+	if currentConsent.CurrentStatus != derivedConsentStatus {
+		historyReason = consenthistory.HistoryReasonConsentAuthorizationsAmendedAndStatus
+	}
 
 	// Create auth resource and update consent status in a transaction
 	err = s.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
+		func(tx dbmodel.TxInterface) error {
+			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, historyReason)
+		},
 		func(tx dbmodel.TxInterface) error {
 			return store.Create(tx, authResource)
 		},
@@ -416,6 +424,14 @@ func (s *authResourceService) UpdateAuthResource(
 		updatedAuthResource.Resources = &resourcesStr
 	}
 
+	if !authResourceUpdateChanged(existingAuthResource, request) {
+		logger.Debug("Auth resource update contains no effective changes",
+			log.String("auth_id", authID),
+			log.String("consent_id", consentID),
+		)
+		return s.buildResponse(existingAuthResource), nil
+	}
+
 	// Fetch all auth resources and consent outside transaction if status changed
 	var allAuthResources []model.AuthResource
 	var currentConsent *consentModel.Consent
@@ -508,6 +524,16 @@ func (s *authResourceService) UpdateAuthResource(
 			return nil
 		})
 	}
+
+	historyReason := consenthistory.HistoryReasonConsentAuthorizationsAmended
+	if statusChanged && currentConsent != nil && currentConsent.CurrentStatus != derivedConsentStatus {
+		historyReason = consenthistory.HistoryReasonConsentAuthorizationsAmendedAndStatus
+	}
+	transactionSteps = append([]func(tx dbmodel.TxInterface) error{
+		func(tx dbmodel.TxInterface) error {
+			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, historyReason)
+		},
+	}, transactionSteps...)
 
 	err = s.stores.ExecuteTransaction(transactionSteps)
 	if err != nil {
@@ -667,6 +693,56 @@ func (s *authResourceService) validateOrgID(orgID string) *serviceerror.ServiceE
 		)
 	}
 	return nil
+}
+
+func authResourceUpdateChanged(existing *model.AuthResource, request *model.UpdateRequest) bool {
+	if request.AuthStatus != "" && existing.AuthStatus != request.AuthStatus {
+		return true
+	}
+	if request.UserID != nil && !stringPointersEqual(existing.UserID, request.UserID) {
+		return true
+	}
+	if request.Resources != nil {
+		existingResources := ""
+		if existing.Resources != nil {
+			existingResources = canonicalJSONString(*existing.Resources)
+		}
+		return existingResources != canonicalJSONValue(request.Resources)
+	}
+	return false
+}
+
+func stringPointersEqual(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func canonicalJSONValue(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	bytes, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Sprintf("%v", value)
+	}
+	return canonicalJSONString(string(bytes))
+}
+
+func canonicalJSONString(value string) string {
+	if value == "" {
+		return ""
+	}
+	var normalized interface{}
+	if err := json.Unmarshal([]byte(value), &normalized); err != nil {
+		return value
+	}
+	bytes, err := json.Marshal(normalized)
+	if err != nil {
+		return value
+	}
+	return string(bytes)
 }
 
 func (s *authResourceService) buildResponse(authResource *model.AuthResource) *model.Response {

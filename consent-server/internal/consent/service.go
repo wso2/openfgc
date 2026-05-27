@@ -65,11 +65,34 @@ const (
 	historyReasonConsentAuthorizationsAmendedAndStatus historyReason = "Consent authorizations amended and status updated"
 )
 
+const (
+	HistoryReasonConsentAuthorizationsAmended          = "Consent authorizations amended"
+	HistoryReasonConsentAuthorizationsAmendedAndStatus = "Consent authorizations amended and status updated"
+)
+
 // newConsentService creates a new consent service
 func newConsentService(registry *stores.StoreRegistry) ConsentService {
 	return &consentService{
 		stores: registry,
 	}
+}
+
+func RecordConsentHistory(
+	ctx context.Context,
+	registry *stores.StoreRegistry,
+	tx dbmodel.TxInterface,
+	consentID, orgID string,
+	actionBy *string,
+	reason string,
+) error {
+	return (&consentService{stores: registry}).recordConsentHistory(
+		ctx,
+		tx,
+		consentID,
+		orgID,
+		actionBy,
+		historyReason(reason),
+	)
 }
 
 func (consentService *consentService) recordConsentHistory(
@@ -1374,6 +1397,9 @@ func (consentService *consentService) RevokeConsent(ctx context.Context, consent
 	logger.Debug("Executing revocation transaction")
 	err = consentService.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
 		func(tx dbmodel.TxInterface) error {
+			return consentService.recordConsentHistory(ctx, tx, consentID, orgID, &req.ActionBy, historyReasonConsentRevoked)
+		},
+		func(tx dbmodel.TxInterface) error {
 			return store.UpdateStatus(tx, consentID, orgID, string(revokedStatusName), currentTime)
 		},
 		func(tx dbmodel.TxInterface) error {
@@ -1540,23 +1566,11 @@ func (consentService *consentService) expireConsent(ctx context.Context, consent
 		log.String("org_id", orgID))
 
 	expiredStatusName := string(config.Get().Consent.GetExpiredConsentStatus())
-	currentTime := utils.GetCurrentTimeMillis()
-
-	// Create audit entry
-	auditID := utils.GenerateUUID()
 	reason := "Consent expired based on validityTime"
 	actionBy := "SYSTEM"
-	previousStatus := consent.CurrentStatus
-	audit := &model.ConsentStatusAudit{
-		StatusAuditID:  auditID,
-		ConsentID:      consent.ConsentID,
-		CurrentStatus:  expiredStatusName,
-		ActionTime:     currentTime,
-		Reason:         &reason,
-		ActionBy:       &actionBy,
-		PreviousStatus: &previousStatus,
-		OrgID:          orgID,
-	}
+	currentTime := utils.GetCurrentTimeMillis()
+	shouldExpire := true
+	var audit *model.ConsentStatusAudit
 
 	// Get stores for cascading status update
 	consentStore := consentService.stores.Consent
@@ -1565,14 +1579,49 @@ func (consentService *consentService) expireConsent(ctx context.Context, consent
 	// Execute transaction - update consent status, all auth resource statuses, and create audit
 	err := consentService.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
 		func(tx dbmodel.TxInterface) error {
+			lockedConsent, err := consentStore.GetByIDForUpdate(tx, consent.ConsentID, orgID)
+			if err != nil {
+				return err
+			}
+			if lockedConsent == nil {
+				return fmt.Errorf("consent with ID '%s' not found", consent.ConsentID)
+			}
+			if lockedConsent.CurrentStatus == expiredStatusName {
+				shouldExpire = false
+				return nil
+			}
+
+			previousStatus := lockedConsent.CurrentStatus
+			audit = &model.ConsentStatusAudit{
+				StatusAuditID:  utils.GenerateUUID(),
+				ConsentID:      consent.ConsentID,
+				CurrentStatus:  expiredStatusName,
+				ActionTime:     currentTime,
+				Reason:         &reason,
+				ActionBy:       &actionBy,
+				PreviousStatus: &previousStatus,
+				OrgID:          orgID,
+			}
+			return consentService.recordConsentHistory(ctx, tx, consent.ConsentID, orgID, &actionBy, historyReasonConsentExpired)
+		},
+		func(tx dbmodel.TxInterface) error {
+			if !shouldExpire {
+				return nil
+			}
 			return consentStore.UpdateStatus(tx, consent.ConsentID, orgID, expiredStatusName, currentTime)
 		},
 		func(tx dbmodel.TxInterface) error {
+			if !shouldExpire {
+				return nil
+			}
 			// Update all authorization statuses to system expired status when consent expires
 			sysExpiredStatus := string(config.Get().Consent.GetSystemExpiredAuthStatus())
 			return authResourceStore.UpdateAllStatusByConsentID(tx, consent.ConsentID, orgID, sysExpiredStatus, currentTime)
 		},
 		func(tx dbmodel.TxInterface) error {
+			if !shouldExpire {
+				return nil
+			}
 			return consentStore.CreateStatusAudit(tx, audit)
 		},
 	})
@@ -1581,6 +1630,12 @@ func (consentService *consentService) expireConsent(ctx context.Context, consent
 			log.Error(err),
 			log.String("consent_id", consent.ConsentID))
 		return err
+	}
+
+	if !shouldExpire {
+		logger.Debug("Consent was already expired, skipping expiry mutation",
+			log.String("consent_id", consent.ConsentID))
+		return nil
 	}
 
 	// Update local consent object
