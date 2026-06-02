@@ -85,7 +85,14 @@ func (h *consentHandler) getConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	consent, serviceErr := h.service.GetConsent(ctx, consentID, orgID)
+	includeStatusHistory := r.URL.Query().Get("includeStatusHistory") == "true"
+	var consent *model.ConsentResponse
+	var serviceErr *serviceerror.ServiceError
+	if includeStatusHistory {
+		consent, serviceErr = h.service.GetConsentWithStatusHistory(ctx, consentID, orgID)
+	} else {
+		consent, serviceErr = h.service.GetConsent(ctx, consentID, orgID)
+	}
 	if serviceErr != nil {
 		utils.SendError(w, r, serviceErr)
 		return
@@ -94,6 +101,33 @@ func (h *consentHandler) getConsent(w http.ResponseWriter, r *http.Request) {
 	apiResponse := consent.ToAPIResponse()
 	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
 	json.NewEncoder(w).Encode(apiResponse)
+}
+
+// getConsentHistory handles GET /consents/{consentId}/history
+func (h *consentHandler) getConsentHistory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	consentID := r.PathValue("consentId")
+	orgID := r.Header.Get(constants.HeaderOrgID)
+
+	if err := utils.ValidateOrgID(orgID); err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
+		return
+	}
+
+	if err := utils.ValidateConsentID(consentID); err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
+		return
+	}
+
+	includeSnapshots := r.URL.Query().Get("includeSnapshots") == "true"
+	response, serviceErr := h.service.GetConsentHistory(ctx, consentID, orgID, includeSnapshots)
+	if serviceErr != nil {
+		utils.SendError(w, r, serviceErr)
+		return
+	}
+
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+	json.NewEncoder(w).Encode(response)
 }
 
 // listConsents handles GET /consents

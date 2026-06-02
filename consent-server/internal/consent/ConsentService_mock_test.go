@@ -7,7 +7,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 	model "github.com/wso2/openfgc/internal/consent/model"
-
 	serviceerror "github.com/wso2/openfgc/internal/system/error/serviceerror"
 )
 
@@ -54,6 +53,70 @@ func (_m *MockConsentService) GetConsent(ctx context.Context, consentID string, 
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetConsent")
+	}
+
+	var r0 *model.ConsentResponse
+	var r1 *serviceerror.ServiceError
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*model.ConsentResponse, *serviceerror.ServiceError)); ok {
+		return rf(ctx, consentID, orgID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *model.ConsentResponse); ok {
+		r0 = rf(ctx, consentID, orgID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ConsentResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) *serviceerror.ServiceError); ok {
+		r1 = rf(ctx, consentID, orgID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*serviceerror.ServiceError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetConsentHistory provides a mock function with given fields: ctx, consentID, orgID, includeSnapshots
+func (_m *MockConsentService) GetConsentHistory(ctx context.Context, consentID string, orgID string, includeSnapshots bool) (*model.ConsentHistoryListResponse, *serviceerror.ServiceError) {
+	ret := _m.Called(ctx, consentID, orgID, includeSnapshots)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConsentHistory")
+	}
+
+	var r0 *model.ConsentHistoryListResponse
+	var r1 *serviceerror.ServiceError
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) (*model.ConsentHistoryListResponse, *serviceerror.ServiceError)); ok {
+		return rf(ctx, consentID, orgID, includeSnapshots)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) *model.ConsentHistoryListResponse); ok {
+		r0 = rf(ctx, consentID, orgID, includeSnapshots)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ConsentHistoryListResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool) *serviceerror.ServiceError); ok {
+		r1 = rf(ctx, consentID, orgID, includeSnapshots)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*serviceerror.ServiceError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetConsentWithStatusHistory provides a mock function with given fields: ctx, consentID, orgID
+func (_m *MockConsentService) GetConsentWithStatusHistory(ctx context.Context, consentID string, orgID string) (*model.ConsentResponse, *serviceerror.ServiceError) {
+	ret := _m.Called(ctx, consentID, orgID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConsentWithStatusHistory")
 	}
 
 	var r0 *model.ConsentResponse

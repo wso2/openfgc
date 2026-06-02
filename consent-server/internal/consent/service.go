@@ -39,6 +39,8 @@ import (
 type ConsentService interface {
 	CreateConsent(ctx context.Context, req model.ConsentAPIRequest, clientID, orgID string) (*model.ConsentResponse, *serviceerror.ServiceError)
 	GetConsent(ctx context.Context, consentID, orgID string) (*model.ConsentResponse, *serviceerror.ServiceError)
+	GetConsentWithStatusHistory(ctx context.Context, consentID, orgID string) (*model.ConsentResponse, *serviceerror.ServiceError)
+	GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListResponse, *serviceerror.ServiceError)
 	SearchConsentsDetailed(ctx context.Context, filters model.ConsentSearchFilters) (*model.ConsentDetailSearchResponse, *serviceerror.ServiceError)
 	UpdateConsent(ctx context.Context, req model.ConsentAPIUpdateRequest, clientID, orgID, consentID string) (*model.ConsentResponse, *serviceerror.ServiceError)
 	RevokeConsent(ctx context.Context, consentID, orgID string, req model.ConsentRevokeRequest) (*model.ConsentRevokeResponse, *serviceerror.ServiceError)
@@ -787,6 +789,59 @@ func (consentService *consentService) GetConsent(ctx context.Context, consentID,
 		log.Int("purpose_count", len(response.Purposes)),
 	)
 	return response, nil
+}
+
+// GetConsentWithStatusHistory retrieves a consent by ID with status audit history appended.
+func (consentService *consentService) GetConsentWithStatusHistory(ctx context.Context, consentID, orgID string) (*model.ConsentResponse, *serviceerror.ServiceError) {
+	response, serviceErr := consentService.GetConsent(ctx, consentID, orgID)
+	if serviceErr != nil {
+		return nil, serviceErr
+	}
+
+	audits, err := consentService.stores.Consent.GetStatusAuditsByConsentID(ctx, consentID, orgID)
+	if err != nil {
+		log.GetLogger().WithContext(ctx).Error("Failed to retrieve consent status history",
+			log.Error(err),
+			log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+	response.StatusHistory = audits
+	return response, nil
+}
+
+// GetConsentHistory retrieves amendment history for a consent.
+func (consentService *consentService) GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListResponse, *serviceerror.ServiceError) {
+	logger := log.GetLogger().WithContext(ctx)
+
+	consent, err := consentService.stores.Consent.GetByID(ctx, consentID, orgID)
+	if err != nil {
+		logger.Error("Failed to retrieve consent before history lookup",
+			log.Error(err),
+			log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+	if consent == nil {
+		logger.Warn("Consent not found for history lookup", log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorConsentNotFound, fmt.Sprintf("Consent with ID '%s' not found", consentID))
+	}
+
+	history, err := consentService.stores.Consent.GetHistoryByConsentID(ctx, consentID, orgID, includeSnapshots)
+	if err != nil {
+		logger.Error("Failed to retrieve consent history",
+			log.Error(err),
+			log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+
+	responseItems := make([]model.ConsentHistoryResponse, 0, len(history))
+	for _, item := range history {
+		responseItems = append(responseItems, item.ToResponse(includeSnapshots))
+	}
+
+	return &model.ConsentHistoryListResponse{
+		ID:      consentID,
+		History: responseItems,
+	}, nil
 }
 
 // SearchConsentsDetailed retrieves consents with nested authorization resources, purposes, and attributes

@@ -288,6 +288,13 @@ paths:
           description: The unique identifier of the consent to retrieve.
           schema:
             type: string
+        - in: query
+          name: includeStatusHistory
+          required: false
+          description: Include consent status audit history in the response when set to `true`.
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: OK. The full details of the requested consent are returned in the response body.
@@ -393,6 +400,63 @@ paths:
                 $ref: "#/components/schemas/ConsentErrorCommon"
         "500":
           description: Internal Server Error. An unexpected error occurred on the server while trying to update the consent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/{consentId}/history:
+    get:
+      summary: Retrieve consent amendment history
+      description: |
+        Fetches amendment history for a specific consent. Snapshot payloads are excluded by default
+        and can be included on demand with `includeSnapshots=true`.
+      operationId: consents-history-GET
+      tags:
+        - Consents
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization (e.g., the bank) that this consent belongs to."
+          schema:
+            type: string
+            example: "ORG-001"
+        - in: path
+          name: consentId
+          required: true
+          description: The unique identifier of the consent to retrieve history for.
+          schema:
+            type: string
+        - in: query
+          name: includeSnapshots
+          required: false
+          description: Include the full pre-mutation consent snapshot on each history entry when set to `true`.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: OK. Consent amendment history is returned in descending action time order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentHistoryResponse"
+        "400":
+          description: Bad Request. The request was invalid, possibly due to a malformed `consentID` or missing headers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "404":
+          description: Not Found. Consent does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error. An unexpected error occurred on the server.
           content:
             application/json:
               schema:
@@ -2673,9 +2737,94 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ConsentAuthorizationCreateResponse"
+        statusHistory:
+          description: Consent status audit history. Included only when `includeStatusHistory=true`.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentStatusHistoryItem"
         modifiedResponse:
           description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
           type: object
+    ConsentStatusHistoryItem:
+      type: object
+      description: A single consent status audit history entry.
+      properties:
+        statusAuditId:
+          type: string
+          description: Unique identifier of the status audit entry.
+          example: "s3c4d5e6-f7a8-9012-abcd-ef1234567890"
+        consentId:
+          type: string
+          description: Unique identifier of the consent.
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        previousStatus:
+          type: string
+          nullable: true
+          description: Consent status before the transition.
+          example: "CREATED"
+        currentStatus:
+          type: string
+          description: Consent status after the transition.
+          example: "ACTIVE"
+        actionTime:
+          type: integer
+          format: int64
+          description: Time at which the status transition occurred.
+          example: 1745050000000
+        actionBy:
+          type: string
+          nullable: true
+          description: Actor that triggered the transition, when available.
+          example: "client-tpp-001"
+        reason:
+          type: string
+          nullable: true
+          description: Human-readable status transition reason.
+          example: "All authorizations approved"
+        orgId:
+          type: string
+          description: Organization identifier.
+          example: "ORG-001"
+    ConsentHistoryResponse:
+      type: object
+      description: Consent amendment history response.
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the consent.
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        history:
+          type: array
+          description: Consent amendment history entries in descending action time order.
+          items:
+            $ref: "#/components/schemas/ConsentHistoryItem"
+    ConsentHistoryItem:
+      type: object
+      description: A single consent amendment history entry.
+      properties:
+        historyId:
+          type: string
+          description: Unique identifier of the amendment history entry.
+          example: "m3c4d5e6-f7a8-9012-abcd-ef1234567890"
+        actionTime:
+          type: integer
+          format: int64
+          description: Time at which the amendment occurred.
+          example: 1745200000000
+        actionBy:
+          type: string
+          nullable: true
+          description: Actor that triggered the amendment, when available.
+          example: "client-tpp-001"
+        reason:
+          type: string
+          nullable: true
+          description: Server-generated amendment reason.
+          example: "Consent amended"
+        snapshot:
+          description: Full pre-mutation consent response snapshot. Included only when `includeSnapshots=true`.
+          allOf:
+            - $ref: "#/components/schemas/ConsentRetrievalResponse"
     ConsentRevokedResponse:
       type: object
       description: The response body returned after successfully revoking a consent.

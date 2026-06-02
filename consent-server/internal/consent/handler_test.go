@@ -148,6 +148,145 @@ func TestGetConsent_Success(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
+func TestGetConsent_WithStatusHistory(t *testing.T) {
+	mockService := NewMockConsentService(t)
+	reason := "Consent created"
+	actionBy := "client-456"
+
+	expectedResponse := &model.ConsentResponse{
+		ConsentID:     "550e8400-e29b-41d4-a716-446655440000",
+		ConsentType:   "accounts",
+		CurrentStatus: "active",
+		ClientID:      testClientID,
+		OrgID:         testOrgID,
+		StatusHistory: []model.ConsentStatusAudit{
+			{
+				StatusAuditID: "audit-123",
+				ConsentID:     "550e8400-e29b-41d4-a716-446655440000",
+				CurrentStatus: "active",
+				ActionTime:    1234567890,
+				Reason:        &reason,
+				ActionBy:      &actionBy,
+				OrgID:         testOrgID,
+			},
+		},
+	}
+
+	mockService.On("GetConsentWithStatusHistory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", testOrgID).
+		Return(expectedResponse, nil)
+
+	handler := newConsentHandler(mockService)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET "+constants.APIBasePath+"/consents/{consentId}", handler.getConsent)
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/consents/550e8400-e29b-41d4-a716-446655440000?includeStatusHistory=true", nil)
+	require.NoError(t, err)
+	req.Header.Set(constants.HeaderOrgID, testOrgID)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var response model.ConsentAPIResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	require.NoError(t, err)
+	require.Len(t, response.StatusHistory, 1)
+	require.Equal(t, "audit-123", response.StatusHistory[0].StatusAuditID)
+	mockService.AssertExpectations(t)
+}
+
+func TestGetConsentHistory_WithoutSnapshots(t *testing.T) {
+	mockService := NewMockConsentService(t)
+	actionBy := "client-456"
+	reason := "Consent amended"
+
+	expectedResponse := &model.ConsentHistoryListResponse{
+		ID: "550e8400-e29b-41d4-a716-446655440000",
+		History: []model.ConsentHistoryResponse{
+			{
+				HistoryID:  "history-123",
+				ActionTime: 1234567890,
+				ActionBy:   &actionBy,
+				Reason:     &reason,
+			},
+		},
+	}
+
+	mockService.On("GetConsentHistory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", testOrgID, false).
+		Return(expectedResponse, nil)
+
+	handler := newConsentHandler(mockService)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET "+constants.APIBasePath+"/consents/{consentId}/history", handler.getConsentHistory)
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/consents/550e8400-e29b-41d4-a716-446655440000/history", nil)
+	require.NoError(t, err)
+	req.Header.Set(constants.HeaderOrgID, testOrgID)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var response model.ConsentHistoryListResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	require.NoError(t, err)
+	require.Equal(t, "550e8400-e29b-41d4-a716-446655440000", response.ID)
+	require.Len(t, response.History, 1)
+	require.Empty(t, response.History[0].Snapshot)
+	mockService.AssertExpectations(t)
+}
+
+func TestGetConsentHistory_WithSnapshots(t *testing.T) {
+	mockService := NewMockConsentService(t)
+	expectedResponse := &model.ConsentHistoryListResponse{
+		ID: "550e8400-e29b-41d4-a716-446655440000",
+		History: []model.ConsentHistoryResponse{
+			{
+				HistoryID:  "history-123",
+				ActionTime: 1234567890,
+				Snapshot:   json.RawMessage(`{"id":"550e8400-e29b-41d4-a716-446655440000","status":"active"}`),
+			},
+		},
+	}
+
+	mockService.On("GetConsentHistory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", testOrgID, true).
+		Return(expectedResponse, nil)
+
+	handler := newConsentHandler(mockService)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET "+constants.APIBasePath+"/consents/{consentId}/history", handler.getConsentHistory)
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/consents/550e8400-e29b-41d4-a716-446655440000/history?includeSnapshots=true", nil)
+	require.NoError(t, err)
+	req.Header.Set(constants.HeaderOrgID, testOrgID)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var response model.ConsentHistoryListResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	require.NoError(t, err)
+	require.Len(t, response.History, 1)
+	require.NotEmpty(t, response.History[0].Snapshot)
+	mockService.AssertExpectations(t)
+}
+
 func TestGetConsent_NotFound(t *testing.T) {
 	mockService := NewMockConsentService(t)
 
