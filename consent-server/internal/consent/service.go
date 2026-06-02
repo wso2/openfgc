@@ -53,103 +53,11 @@ type consentService struct {
 	stores *stores.StoreRegistry
 }
 
-type historyReason string
-
-const (
-	historyReasonConsentAmended                        historyReason = "Consent amended"
-	historyReasonConsentDetailsAmended                 historyReason = "Consent details amended"
-	historyReasonConsentAttributesAmended              historyReason = "Consent attributes amended"
-	historyReasonConsentAuthorizationsAmended          historyReason = "Consent authorizations amended"
-	historyReasonConsentPurposesAmended                historyReason = "Consent purposes amended"
-	historyReasonConsentRevoked                        historyReason = "Consent revoked"
-	historyReasonConsentExpired                        historyReason = "Consent expired"
-	historyReasonConsentDetailsAmendedAndReactivated   historyReason = "Consent details amended and reactivated"
-	historyReasonConsentAuthorizationsAmendedAndStatus historyReason = "Consent authorizations amended and status updated"
-)
-
-const (
-	HistoryReasonConsentAuthorizationsAmended          = "Consent authorizations amended"
-	HistoryReasonConsentAuthorizationsAmendedAndStatus = "Consent authorizations amended and status updated"
-)
-
 // newConsentService creates a new consent service
 func newConsentService(registry *stores.StoreRegistry) ConsentService {
 	return &consentService{
 		stores: registry,
 	}
-}
-
-func RecordConsentHistory(
-	ctx context.Context,
-	registry *stores.StoreRegistry,
-	tx dbmodel.TxInterface,
-	consentID, orgID string,
-	actionBy *string,
-	reason string,
-) error {
-	return (&consentService{stores: registry}).recordConsentHistory(
-		ctx,
-		tx,
-		consentID,
-		orgID,
-		actionBy,
-		historyReason(reason),
-	)
-}
-
-func (consentService *consentService) recordConsentHistory(
-	ctx context.Context,
-	tx dbmodel.TxInterface,
-	consentID, orgID string,
-	actionBy *string,
-	reason historyReason,
-) error {
-	cfg := config.Get()
-	if cfg == nil || !cfg.Consent.History.Enabled {
-		return nil
-	}
-
-	consent, err := consentService.stores.Consent.GetByIDForUpdate(tx, consentID, orgID)
-	if err != nil {
-		return fmt.Errorf("failed to lock consent for history: %w", err)
-	}
-	if consent == nil {
-		return fmt.Errorf("consent with ID '%s' not found", consentID)
-	}
-
-	snapshot, err := consentService.buildConsentHistorySnapshot(ctx, consent, orgID)
-	if err != nil {
-		return err
-	}
-
-	reasonText := string(reason)
-	history := &model.ConsentHistory{
-		HistoryID:  utils.GenerateUUID(),
-		ConsentID:  consentID,
-		OrgID:      orgID,
-		ActionTime: utils.GetCurrentTimeMillis(),
-		ActionBy:   actionBy,
-		Reason:     &reasonText,
-		Snapshot:   snapshot,
-	}
-	return consentService.stores.Consent.CreateHistory(tx, history)
-}
-
-func (consentService *consentService) buildConsentHistorySnapshot(
-	ctx context.Context,
-	consent *model.Consent,
-	orgID string,
-) ([]byte, error) {
-	response, err := consentService.buildConsentResponseFromLiveState(ctx, consent, orgID)
-	if err != nil {
-		return nil, err
-	}
-
-	snapshot, err := json.Marshal(response.ToAPIResponse())
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal consent history snapshot: %w", err)
-	}
-	return snapshot, nil
 }
 
 func (consentService *consentService) buildConsentResponseFromLiveState(
@@ -190,37 +98,37 @@ func (consentService *consentService) evaluateConsentUpdateChanges(
 	resolvedPurposes []model.ConsentPurposeCreateRequest,
 	orgID string,
 	statusChanged bool,
-) (bool, historyReason, error) {
-	changedReasons := make([]historyReason, 0, 4)
+) (bool, HistoryReason, error) {
+	changedReasons := make([]HistoryReason, 0, 4)
 
 	if consentDetailsChanged(existing, updateReq) {
-		changedReasons = append(changedReasons, historyReasonConsentDetailsAmended)
+		changedReasons = append(changedReasons, HistoryReasonConsentDetailsAmended)
 	}
 
 	if updateReq.Attributes != nil {
 		attributes, err := consentService.stores.Consent.GetAttributesByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, historyReasonConsentAmended, fmt.Errorf("failed to fetch current attributes: %w", err)
+			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current attributes: %w", err)
 		}
 		currentAttributes := make(map[string]string)
 		for _, attribute := range attributes {
 			currentAttributes[attribute.AttKey] = attribute.AttValue
 		}
 		if !stringMapsEqual(currentAttributes, updateReq.Attributes) {
-			changedReasons = append(changedReasons, historyReasonConsentAttributesAmended)
+			changedReasons = append(changedReasons, HistoryReasonConsentAttributesAmended)
 		}
 	}
 
 	if updateReq.AuthResources != nil {
 		authResources, err := consentService.stores.AuthResource.GetByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, historyReasonConsentAmended, fmt.Errorf("failed to fetch current authorization resources: %w", err)
+			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current authorization resources: %w", err)
 		}
 		if !authResourcesEqual(authResources, updateReq.AuthResources) {
 			if statusChanged {
-				changedReasons = append(changedReasons, historyReasonConsentAuthorizationsAmendedAndStatus)
+				changedReasons = append(changedReasons, HistoryReasonConsentAuthorizationsAmendedAndStatus)
 			} else {
-				changedReasons = append(changedReasons, historyReasonConsentAuthorizationsAmended)
+				changedReasons = append(changedReasons, HistoryReasonConsentAuthorizationsAmended)
 			}
 		}
 	}
@@ -228,60 +136,39 @@ func (consentService *consentService) evaluateConsentUpdateChanges(
 	if updateReq.Purposes != nil {
 		currentPurposes, err := consentService.getResolvedConsentPurposes(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, historyReasonConsentAmended, fmt.Errorf("failed to fetch current purposes: %w", err)
+			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current purposes: %w", err)
 		}
 		if !purposeSetsEqual(currentPurposes, resolvedPurposes) {
-			changedReasons = append(changedReasons, historyReasonConsentPurposesAmended)
+			changedReasons = append(changedReasons, HistoryReasonConsentPurposesAmended)
 		}
 	}
 
 	if len(changedReasons) == 0 {
-		return false, historyReasonConsentAmended, nil
+		return false, HistoryReasonConsentAmended, nil
 	}
 	if len(changedReasons) == 1 {
 		return true, changedReasons[0], nil
 	}
-	return true, historyReasonConsentAmended, nil
+	return true, HistoryReasonConsentAmended, nil
 }
 
 func consentDetailsChanged(existing *model.Consent, updateReq *model.ConsentUpdateRequest) bool {
 	if updateReq.ConsentType != "" && updateReq.ConsentType != existing.ConsentType {
 		return true
 	}
-	if updateReq.ConsentFrequency != nil && !intPointersEqual(updateReq.ConsentFrequency, existing.ConsentFrequency) {
+	if updateReq.ConsentFrequency != nil && !utils.PointersEqual(updateReq.ConsentFrequency, existing.ConsentFrequency) {
 		return true
 	}
-	if updateReq.ValidityTime != nil && !int64PointersEqual(updateReq.ValidityTime, existing.ValidityTime) {
+	if updateReq.ValidityTime != nil && !utils.PointersEqual(updateReq.ValidityTime, existing.ValidityTime) {
 		return true
 	}
-	if updateReq.RecurringIndicator != nil && !boolPointersEqual(updateReq.RecurringIndicator, existing.RecurringIndicator) {
+	if updateReq.RecurringIndicator != nil && !utils.PointersEqual(updateReq.RecurringIndicator, existing.RecurringIndicator) {
 		return true
 	}
-	if updateReq.DataAccessValidityDuration != nil && !int64PointersEqual(updateReq.DataAccessValidityDuration, existing.DataAccessValidityDuration) {
+	if updateReq.DataAccessValidityDuration != nil && !utils.PointersEqual(updateReq.DataAccessValidityDuration, existing.DataAccessValidityDuration) {
 		return true
 	}
 	return false
-}
-
-func intPointersEqual(a, b *int) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
-}
-
-func int64PointersEqual(a, b *int64) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
-}
-
-func boolPointersEqual(a, b *bool) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
 }
 
 func stringMapsEqual(a, b map[string]string) bool {
@@ -316,7 +203,7 @@ func authResourcesEqual(current []authmodel.AuthResource, requested []authmodel.
 		}
 		resources := ""
 		if authResource.Resources != nil {
-			resources = canonicalJSONString(*authResource.Resources)
+			resources = utils.CanonicalJSONString(*authResource.Resources)
 		}
 		currentComparable = append(currentComparable, comparableAuthResource{
 			authType:  authResource.AuthType,
@@ -336,7 +223,7 @@ func authResourcesEqual(current []authmodel.AuthResource, requested []authmodel.
 			authType:  authResource.AuthType,
 			userID:    userID,
 			status:    authResource.AuthStatus,
-			resources: canonicalJSONValue(authResource.Resources),
+			resources: utils.CanonicalJSONValue(authResource.Resources),
 		})
 	}
 
@@ -365,32 +252,6 @@ func sortAuthResources(authResources []comparableAuthResource) {
 	})
 }
 
-func canonicalJSONValue(value interface{}) string {
-	if value == nil {
-		return ""
-	}
-	bytes, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Sprintf("%v", value)
-	}
-	return canonicalJSONString(string(bytes))
-}
-
-func canonicalJSONString(value string) string {
-	if value == "" {
-		return ""
-	}
-	var normalized interface{}
-	if err := json.Unmarshal([]byte(value), &normalized); err != nil {
-		return value
-	}
-	bytes, err := json.Marshal(normalized)
-	if err != nil {
-		return value
-	}
-	return string(bytes)
-}
-
 type comparablePurpose struct {
 	purposeName string
 	elements    []comparablePurposeElement
@@ -410,7 +271,7 @@ func purposeSetsEqual(current []model.ConsentPurposeItem, requested []model.Cons
 			elements = append(elements, comparablePurposeElement{
 				elementName:    element.ElementName,
 				isUserApproved: element.IsUserApproved,
-				value:          canonicalJSONValue(element.Value),
+				value:          utils.CanonicalJSONValue(element.Value),
 			})
 		}
 		currentComparable = append(currentComparable, comparablePurpose{
@@ -425,7 +286,7 @@ func purposeSetsEqual(current []model.ConsentPurposeItem, requested []model.Cons
 		for _, element := range purpose.Elements {
 			value := ""
 			if element.Value != nil {
-				value = canonicalJSONString(*element.Value)
+				value = utils.CanonicalJSONString(*element.Value)
 			}
 			elements = append(elements, comparablePurposeElement{
 				elementName:    element.ElementName,
@@ -1452,7 +1313,7 @@ func (consentService *consentService) RevokeConsent(ctx context.Context, consent
 	logger.Debug("Executing revocation transaction")
 	err = consentService.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
 		func(tx dbmodel.TxInterface) error {
-			return consentService.recordConsentHistory(ctx, tx, consentID, orgID, &req.ActionBy, historyReasonConsentRevoked)
+			return consentService.recordConsentHistory(ctx, tx, consentID, orgID, &req.ActionBy, HistoryReasonConsentRevoked)
 		},
 		func(tx dbmodel.TxInterface) error {
 			return store.UpdateStatus(tx, consentID, orgID, string(revokedStatusName), currentTime)
@@ -1657,7 +1518,7 @@ func (consentService *consentService) expireConsent(ctx context.Context, consent
 				PreviousStatus: &previousStatus,
 				OrgID:          orgID,
 			}
-			return consentService.recordConsentHistory(ctx, tx, consent.ConsentID, orgID, &actionBy, historyReasonConsentExpired)
+			return consentService.recordConsentHistory(ctx, tx, consent.ConsentID, orgID, &actionBy, HistoryReasonConsentExpired)
 		},
 		func(tx dbmodel.TxInterface) error {
 			if !shouldExpire {

@@ -699,50 +699,17 @@ func authResourceUpdateChanged(existing *model.AuthResource, request *model.Upda
 	if request.AuthStatus != "" && existing.AuthStatus != request.AuthStatus {
 		return true
 	}
-	if request.UserID != nil && !stringPointersEqual(existing.UserID, request.UserID) {
+	if request.UserID != nil && !utils.PointersEqual(existing.UserID, request.UserID) {
 		return true
 	}
 	if request.Resources != nil {
 		existingResources := ""
 		if existing.Resources != nil {
-			existingResources = canonicalJSONString(*existing.Resources)
+			existingResources = utils.CanonicalJSONString(*existing.Resources)
 		}
-		return existingResources != canonicalJSONValue(request.Resources)
+		return existingResources != utils.CanonicalJSONValue(request.Resources)
 	}
 	return false
-}
-
-func stringPointersEqual(a, b *string) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
-}
-
-func canonicalJSONValue(value interface{}) string {
-	if value == nil {
-		return ""
-	}
-	bytes, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Sprintf("%v", value)
-	}
-	return canonicalJSONString(string(bytes))
-}
-
-func canonicalJSONString(value string) string {
-	if value == "" {
-		return ""
-	}
-	var normalized interface{}
-	if err := json.Unmarshal([]byte(value), &normalized); err != nil {
-		return value
-	}
-	bytes, err := json.Marshal(normalized)
-	if err != nil {
-		return value
-	}
-	return string(bytes)
 }
 
 func (s *authResourceService) buildResponse(authResource *model.AuthResource) *model.Response {
