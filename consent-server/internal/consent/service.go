@@ -81,87 +81,9 @@ type consentService struct {
 	stores *stores.StoreRegistry
 }
 
-type historyReason string
-
-const (
-	historyReasonConsentAmended                        historyReason = "Consent amended"
-	historyReasonConsentDetailsAmended                 historyReason = "Consent details amended"
-	historyReasonConsentAttributesAmended              historyReason = "Consent attributes amended"
-	historyReasonConsentAuthorizationsAmended          historyReason = "Consent authorizations amended"
-	historyReasonConsentPurposesAmended                historyReason = "Consent purposes amended"
-	historyReasonConsentRevoked                        historyReason = "Consent revoked"
-	historyReasonConsentExpired                        historyReason = "Consent expired"
-	historyReasonConsentDetailsAmendedAndReactivated   historyReason = "Consent details amended and reactivated"
-	historyReasonConsentAuthorizationsAmendedAndStatus historyReason = "Consent authorizations amended and status updated"
-)
-
-const (
-	HistoryReasonConsentAuthorizationsAmended          = "Consent authorizations amended"
-	HistoryReasonConsentAuthorizationsAmendedAndStatus = "Consent authorizations amended and status updated"
-)
-
 // newConsentService creates a new consent service.
 func newConsentService(registry *stores.StoreRegistry) ConsentService {
 	return &consentService{stores: registry}
-}
-
-func RecordConsentHistory(ctx context.Context, registry *stores.StoreRegistry, tx dbmodel.TxInterface, consentID, orgID string, actionBy *string, reason string) error {
-	return (&consentService{stores: registry}).recordConsentHistory(ctx, tx, consentID, orgID, actionBy, historyReason(reason))
-}
-
-func (consentService *consentService) recordConsentHistory(
-	ctx context.Context,
-	tx dbmodel.TxInterface,
-	consentID, orgID string,
-	actionBy *string,
-	reason historyReason,
-) error {
-	cfg := config.Get()
-	if cfg == nil || !cfg.Consent.History.Enabled {
-		return nil
-	}
-
-	consent, err := consentService.stores.Consent.GetByIDForUpdate(tx, consentID, orgID)
-	if err != nil {
-		return fmt.Errorf("failed to lock consent for history: %w", err)
-	}
-	if consent == nil {
-		return fmt.Errorf("consent with ID '%s' not found", consentID)
-	}
-
-	snapshot, err := consentService.buildConsentHistorySnapshot(ctx, consent, orgID)
-	if err != nil {
-		return err
-	}
-
-	reasonText := string(reason)
-	history := &model.ConsentHistory{
-		HistoryID:  utils.GenerateUUID(),
-		ConsentID:  consentID,
-		OrgID:      orgID,
-		ActionTime: utils.GetCurrentTimeMillis(),
-		ActionBy:   actionBy,
-		Reason:     &reasonText,
-		Snapshot:   snapshot,
-	}
-	return consentService.stores.Consent.CreateHistory(tx, history)
-}
-
-func (consentService *consentService) buildConsentHistorySnapshot(
-	ctx context.Context,
-	consent *model.Consent,
-	orgID string,
-) ([]byte, error) {
-	output, err := consentService.loadConsentOutput(ctx, consent, orgID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load consent output for history: %w", err)
-	}
-
-	snapshot, err := json.Marshal(consentOutputToResponse(output))
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal consent history snapshot: %w", err)
-	}
-	return snapshot, nil
 }
 
 func (s *consentService) evaluateConsentUpdateChanges(
@@ -171,41 +93,41 @@ func (s *consentService) evaluateConsentUpdateChanges(
 	resolvedLinks []resolvedPurposeLink,
 	orgID string,
 	statusChanged bool,
-) (bool, historyReason, error) {
-	changedReasons := make([]historyReason, 0, 4)
+) (bool, HistoryReason, error) {
+	changedReasons := make([]HistoryReason, 0, 4)
 
 	if consentDetailsChanged(existing, input) {
 		if statusChanged {
-			changedReasons = append(changedReasons, historyReasonConsentDetailsAmendedAndReactivated)
+			changedReasons = append(changedReasons, HistoryReasonConsentDetailsAmendedAndReactivated)
 		} else {
-			changedReasons = append(changedReasons, historyReasonConsentDetailsAmended)
+			changedReasons = append(changedReasons, HistoryReasonConsentDetailsAmended)
 		}
 	}
 
 	if input.Attributes != nil {
 		attributes, err := s.stores.Consent.GetAttributesByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, historyReasonConsentAmended, fmt.Errorf("failed to fetch current attributes: %w", err)
+			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current attributes: %w", err)
 		}
 		currentAttributes := make(map[string]string, len(attributes))
 		for _, attribute := range attributes {
 			currentAttributes[attribute.AttKey] = attribute.AttValue
 		}
 		if !stringMapsEqual(currentAttributes, input.Attributes) {
-			changedReasons = append(changedReasons, historyReasonConsentAttributesAmended)
+			changedReasons = append(changedReasons, HistoryReasonConsentAttributesAmended)
 		}
 	}
 
 	if input.Authorizations != nil {
 		authResources, err := s.stores.AuthResource.GetByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, historyReasonConsentAmended, fmt.Errorf("failed to fetch current authorization resources: %w", err)
+			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current authorization resources: %w", err)
 		}
 		if !authResourcesEqual(authResources, input.Authorizations) {
 			if statusChanged {
-				changedReasons = append(changedReasons, historyReasonConsentAuthorizationsAmendedAndStatus)
+				changedReasons = append(changedReasons, HistoryReasonConsentAuthorizationsAmendedAndStatus)
 			} else {
-				changedReasons = append(changedReasons, historyReasonConsentAuthorizationsAmended)
+				changedReasons = append(changedReasons, HistoryReasonConsentAuthorizationsAmended)
 			}
 		}
 	}
@@ -213,50 +135,43 @@ func (s *consentService) evaluateConsentUpdateChanges(
 	if input.Purposes != nil {
 		purposeRows, err := s.stores.Consent.GetPurposesByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, historyReasonConsentAmended, fmt.Errorf("failed to fetch current purposes: %w", err)
+			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current purposes: %w", err)
 		}
 		approvalRows, err := s.stores.Consent.GetElementApprovalsByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, historyReasonConsentAmended, fmt.Errorf("failed to fetch current purpose approvals: %w", err)
+			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current purpose approvals: %w", err)
 		}
 		if !purposeLinksEqual(purposeRows, approvalRows, resolvedLinks) {
-			changedReasons = append(changedReasons, historyReasonConsentPurposesAmended)
+			changedReasons = append(changedReasons, HistoryReasonConsentPurposesAmended)
 		}
 	}
 
 	if len(changedReasons) == 0 {
-		return false, historyReasonConsentAmended, nil
+		return false, HistoryReasonConsentAmended, nil
 	}
 	if len(changedReasons) == 1 {
 		return true, changedReasons[0], nil
 	}
-	return true, historyReasonConsentAmended, nil
+	return true, HistoryReasonConsentAmended, nil
 }
 
 func consentDetailsChanged(existing *model.Consent, input model.UpdateConsentInput) bool {
 	if input.ConsentType != "" && input.ConsentType != existing.ConsentType {
 		return true
 	}
-	if input.ExpirationTime != nil && !pointersEqual(input.ExpirationTime, existing.ExpirationTime) {
+	if input.ExpirationTime != nil && !utils.PointersEqual(input.ExpirationTime, existing.ExpirationTime) {
 		return true
 	}
-	if input.ConsentFrequency != nil && !pointersEqual(input.ConsentFrequency, existing.ConsentFrequency) {
+	if input.ConsentFrequency != nil && !utils.PointersEqual(input.ConsentFrequency, existing.ConsentFrequency) {
 		return true
 	}
-	if input.RecurringIndicator != nil && !pointersEqual(input.RecurringIndicator, existing.RecurringIndicator) {
+	if input.RecurringIndicator != nil && !utils.PointersEqual(input.RecurringIndicator, existing.RecurringIndicator) {
 		return true
 	}
-	if input.DataAccessValidityDuration != nil && !pointersEqual(input.DataAccessValidityDuration, existing.DataAccessValidityDuration) {
+	if input.DataAccessValidityDuration != nil && !utils.PointersEqual(input.DataAccessValidityDuration, existing.DataAccessValidityDuration) {
 		return true
 	}
 	return false
-}
-
-func pointersEqual[T comparable](a, b *T) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
 }
 
 func stringMapsEqual(a, b map[string]string) bool {
@@ -291,7 +206,7 @@ func authResourcesEqual(current []authmodel.AuthResource, requested []authmodel.
 		}
 		resources := ""
 		if authResource.Resources != nil {
-			resources = canonicalJSONString(*authResource.Resources)
+			resources = utils.CanonicalJSONString(*authResource.Resources)
 		}
 		currentComparable = append(currentComparable, comparableAuthResource{
 			authType:  authResource.AuthType,
@@ -320,7 +235,7 @@ func authResourcesEqual(current []authmodel.AuthResource, requested []authmodel.
 			authType:  authType,
 			userID:    userID,
 			status:    status,
-			resources: canonicalJSONValue(authResource.Resources),
+			resources: utils.CanonicalJSONValue(authResource.Resources),
 		})
 	}
 
@@ -435,29 +350,6 @@ func stringPointerValue(value *string) string {
 		return ""
 	}
 	return *value
-}
-
-func canonicalJSONValue(value interface{}) string {
-	if value == nil {
-		return ""
-	}
-	bytes, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Sprintf("%v", value)
-	}
-	return canonicalJSONString(string(bytes))
-}
-
-func canonicalJSONString(value string) string {
-	var parsed interface{}
-	if err := json.Unmarshal([]byte(value), &parsed); err != nil {
-		return value
-	}
-	bytes, err := json.Marshal(parsed)
-	if err != nil {
-		return value
-	}
-	return string(bytes)
 }
 
 // =============================================================================
@@ -1106,7 +998,7 @@ func (s *consentService) RevokeConsent(ctx context.Context, consentID, orgID str
 	sysRevokedStatus := string(config.Get().Consent.GetSystemRevokedAuthStatus())
 	err = s.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
 		func(tx dbmodel.TxInterface) error {
-			return s.recordConsentHistory(ctx, tx, consentID, orgID, &actionBy, historyReasonConsentRevoked)
+			return s.recordConsentHistory(ctx, tx, consentID, orgID, &actionBy, HistoryReasonConsentRevoked)
 		},
 		func(tx dbmodel.TxInterface) error {
 			return consentStore.UpdateStatus(tx, consentID, orgID, revokedStatus, currentTime)
@@ -1313,7 +1205,7 @@ func (s *consentService) ExpireConsent(ctx context.Context, consent *model.Conse
 				PreviousStatus: &prevStatus,
 				OrgID:          orgID,
 			}
-			return s.recordConsentHistory(ctx, tx, consent.ConsentID, orgID, &actionBy, historyReasonConsentExpired)
+			return s.recordConsentHistory(ctx, tx, consent.ConsentID, orgID, &actionBy, HistoryReasonConsentExpired)
 		},
 		func(tx dbmodel.TxInterface) error {
 			if !shouldExpire {

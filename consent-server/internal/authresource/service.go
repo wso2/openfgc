@@ -472,45 +472,17 @@ func authResourceUpdateChanged(existing *model.AuthResource, input model.UpdateA
 	if input.AuthType != "" && input.AuthType != existing.AuthType {
 		return true
 	}
-	if input.UserID != nil && !stringPointersEqual(input.UserID, existing.UserID) {
+	if input.UserID != nil && !utils.PointersEqual(existing.UserID, input.UserID) {
 		return true
 	}
 	if input.Resources != nil {
-		incomingResources, err := json.Marshal(input.Resources)
-		if err != nil {
-			return true
-		}
 		existingResources := ""
 		if existing.Resources != nil {
-			existingResources = *existing.Resources
+			existingResources = utils.CanonicalJSONString(*existing.Resources)
 		}
-		if canonicalJSONString(string(incomingResources)) != canonicalJSONString(existingResources) {
-			return true
-		}
+		return existingResources != utils.CanonicalJSONValue(input.Resources)
 	}
 	return false
-}
-
-func stringPointersEqual(a, b *string) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
-}
-
-func canonicalJSONString(value string) string {
-	if value == "" {
-		return ""
-	}
-	var decoded interface{}
-	if err := json.Unmarshal([]byte(value), &decoded); err != nil {
-		return value
-	}
-	encoded, err := json.Marshal(decoded)
-	if err != nil {
-		return value
-	}
-	return string(encoded)
 }
 
 func (s *authResourceService) validateAuthIDAndOrgID(authID, orgID string) *serviceerror.ServiceError {
