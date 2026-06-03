@@ -51,6 +51,11 @@ describe('toEpochMilliseconds', () => {
   it('leaves epoch milliseconds unchanged', () => {
     expect(toEpochMilliseconds(1710000000000)).toBe(1710000000000)
   })
+
+  it('documents the seconds-to-milliseconds cutoff boundary', () => {
+    expect(toEpochMilliseconds(99_999_999_999)).toBe(99_999_999_999_000)
+    expect(toEpochMilliseconds(100_000_000_001)).toBe(100_000_000_001)
+  })
 })
 
 describe('formatEpochTimestamp', () => {

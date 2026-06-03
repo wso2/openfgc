@@ -18,6 +18,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { approveMyConsent } from '../features/consent-registry/api/consentsApi'
+import { apiRequest } from '../utils/apiClient'
 
 const fetchMock = vi.fn()
 
@@ -51,5 +52,26 @@ describe('approveMyConsent', () => {
     })
     expect(requestHeaders.get('Accept')).toBe('application/json')
     expect(requestHeaders.get('Content-Type')).toBe('application/json')
+  })
+})
+
+describe('apiRequest', () => {
+  it('rejects successful responses without a JSON body', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 204,
+    })
+
+    await expect(apiRequest<unknown>('/empty')).rejects.toThrow('Use apiRequestNoContent instead')
+  })
+
+  it('rejects absolute paths before sending a request', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiRequest<unknown>('https://example.com/consents')).rejects.toThrow(
+      'apiClient path must be relative',
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

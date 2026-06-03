@@ -148,9 +148,12 @@ const commonEn = {
       sectionAriaLabel: 'Consent filters',
       status: 'Status',
       startDate: 'Start date',
+      startDateAriaLabel: 'Start date filter',
       endDate: 'End date',
+      endDateAriaLabel: 'End date filter',
       consentType: 'Consent type',
       clear: 'Clear',
+      clearAriaLabel: 'Clear all filters',
     },
     messages: {
       loading: 'Loading consents...',

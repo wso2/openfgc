@@ -15,6 +15,7 @@ jobs:
   portal-frontend-ci:
     runs-on: ubuntu-latest
     env:
+      # Used by Vite at build/test time only; CI does not make live API requests.
       VITE_API_BASE_URL: http://localhost:8080
     defaults:
       run:

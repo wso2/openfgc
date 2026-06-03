@@ -28,7 +28,7 @@ import {
   Typography,
 } from '@wso2/oxygen-ui'
 import { CircleCheckBig, Eye, ShieldX } from '@wso2/oxygen-ui-icons-react'
-import { Fragment, type MouseEvent, useMemo, useState } from 'react'
+import { Fragment, type MouseEvent, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
@@ -163,6 +163,41 @@ function ConsentRegistryTable({
     event.stopPropagation()
   }
 
+  const handleRowClick = useCallback(
+    (event: MouseEvent<HTMLElement>): void => {
+      const consentID = event.currentTarget.dataset.consentId
+
+      if (consentID) {
+        navigate(`/consents/${encodeURIComponent(consentID)}`)
+      }
+    },
+    [navigate],
+  )
+
+  const handleApproveClick = useCallback(
+    (event: MouseEvent<HTMLElement>): void => {
+      event.stopPropagation()
+      const consentID = event.currentTarget.dataset.consentId
+
+      if (consentID) {
+        onApprove(consentID)
+      }
+    },
+    [onApprove],
+  )
+
+  const handleRevokeClick = useCallback(
+    (event: MouseEvent<HTMLElement>): void => {
+      event.stopPropagation()
+      const consentID = event.currentTarget.dataset.consentId
+
+      if (consentID) {
+        onRevoke(consentID)
+      }
+    },
+    [onRevoke],
+  )
+
   return (
     <ListingTable.Provider
       density="standard"
@@ -277,9 +312,8 @@ function ConsentRegistryTable({
                         key={row.id}
                         hover
                         variant="table"
-                        onClick={() => {
-                          navigate(`/consents/${encodeURIComponent(row.id)}`)
-                        }}
+                        data-consent-id={row.id}
+                        onClick={handleRowClick}
                         sx={{ cursor: 'pointer' }}
                       >
                         <ListingTable.Cell
@@ -375,10 +409,8 @@ function ConsentRegistryTable({
                                     color="warning"
                                     aria-label={t('consentRegistry.actions.approve')}
                                     disabled={isMutating}
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      onApprove(row.id)
-                                    }}
+                                    data-consent-id={row.id}
+                                    onClick={handleApproveClick}
                                   >
                                     <CircleCheckBig size={16} />
                                   </IconButton>
@@ -392,10 +424,8 @@ function ConsentRegistryTable({
                                     color="error"
                                     disabled={!row.canRevoke || isMutating}
                                     aria-label={t('consentRegistry.actions.revoke')}
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      onRevoke(row.id)
-                                    }}
+                                    data-consent-id={row.id}
+                                    onClick={handleRevokeClick}
                                   >
                                     <ShieldX size={16} />
                                   </IconButton>

@@ -117,8 +117,9 @@ describe('ConsentRegistryPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'All Consents' })).toBeInTheDocument()
     expect(screen.getByLabelText('Consent filters')).toBeInTheDocument()
-    expect(await screen.findByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Clear all filters' })).toBeInTheDocument()
     expect(await screen.findByText('Client: Tesco_Bank_v1')).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
     expect(await screen.findByText('Marketing')).toBeInTheDocument()
     expect(await screen.findByText('Not applicable')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute(

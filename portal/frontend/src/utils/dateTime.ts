@@ -17,7 +17,9 @@
  */
 
 const EMPTY_DATE_PLACEHOLDER = '-'
-const EPOCH_MILLISECONDS_CUTOFF = 100000000000
+// Values below this threshold are treated as epoch seconds, not milliseconds.
+// The cutoff is before all expected consent timestamps.
+const EPOCH_MILLISECONDS_CUTOFF = 100_000_000_000
 
 export function toEpochMilliseconds(epochTimestamp: number | null | undefined): number | null {
   if (epochTimestamp == null || !Number.isFinite(epochTimestamp)) {

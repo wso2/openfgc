@@ -42,6 +42,7 @@ import type {
   ConsentRecord,
   ConsentRegistryFilters,
 } from '../../../types/consent'
+import { isConsentAPIStatus } from '../../../types/consent'
 import {
   toEndOfDayEpochMilliseconds,
   toEpochMilliseconds,
@@ -83,6 +84,10 @@ function toListParams(
 
 function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
   const normalizedStatus = normalizeConsentStatus(consent.status)
+
+  if (!isConsentAPIStatus(normalizedStatus)) {
+    throw new Error(`Unsupported consent status received from API: ${consent.status}`)
+  }
 
   return {
     id: consent.id,

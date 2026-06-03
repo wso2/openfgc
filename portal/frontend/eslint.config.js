@@ -33,7 +33,12 @@ const compat = new FlatCompat({
 })
 
 export default defineConfig([
-  globalIgnores(['dist', 'eslint.config.js']),
+  globalIgnores([
+    'dist',
+    // Ignore this flat config file to avoid linting the config through itself.
+    'eslint.config.js',
+  ]),
+  // TODO: Remove FlatCompat once eslint-config-airbnb supports native flat config.
   ...compat.extends('airbnb', 'airbnb/hooks', 'plugin:prettier/recommended'),
   {
     files: ['**/*.{ts,tsx}'],
@@ -47,7 +52,7 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        project: ['./tsconfig.app.json', './tsconfig.node.json'],
+        project: ['./tsconfig.app.json', './tsconfig.node.json', './tsconfig.test.json'],
       },
     },
     settings: {

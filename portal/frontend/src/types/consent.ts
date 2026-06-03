@@ -18,13 +18,19 @@
 
 export type ConsentStatus = 'Active' | 'Pending' | 'Rejected' | 'Revoked' | 'Expired'
 
-export type ConsentAPIStatus = 'CREATED' | 'ACTIVE' | 'REJECTED' | 'REVOKED' | 'EXPIRED'
+export const CONSENT_API_STATUSES = ['CREATED', 'ACTIVE', 'REJECTED', 'REVOKED', 'EXPIRED'] as const
+
+export type ConsentAPIStatus = (typeof CONSENT_API_STATUSES)[number]
+
+export function isConsentAPIStatus(status: string): status is ConsentAPIStatus {
+  return CONSENT_API_STATUSES.includes(status as ConsentAPIStatus)
+}
 
 export interface ConsentRecord {
   id: string
   clientName: string
   type: string
-  status: string
+  status: ConsentAPIStatus
   purposes: string[]
   updatedAt: string
   expirationTime?: number

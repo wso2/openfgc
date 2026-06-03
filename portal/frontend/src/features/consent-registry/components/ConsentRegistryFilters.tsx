@@ -101,7 +101,14 @@ function ConsentRegistryFilters({
                 startDate: event.target.value,
               })
             }}
-            InputLabelProps={{ shrink: true }}
+            slotProps={{
+              htmlInput: {
+                'aria-label': t('consentRegistry.filters.startDateAriaLabel'),
+              },
+              inputLabel: {
+                shrink: true,
+              },
+            }}
             sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 160 } }}
           />
           <TextField
@@ -115,7 +122,14 @@ function ConsentRegistryFilters({
                 endDate: event.target.value,
               })
             }}
-            InputLabelProps={{ shrink: true }}
+            slotProps={{
+              htmlInput: {
+                'aria-label': t('consentRegistry.filters.endDateAriaLabel'),
+              },
+              inputLabel: {
+                shrink: true,
+              },
+            }}
             sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 160 } }}
           />
         </Stack>
@@ -136,6 +150,7 @@ function ConsentRegistryFilters({
         <Button
           variant="text"
           onClick={onClear}
+          aria-label={t('consentRegistry.filters.clearAriaLabel')}
           sx={{
             width: { xs: '100%', lg: 'auto' },
           }}

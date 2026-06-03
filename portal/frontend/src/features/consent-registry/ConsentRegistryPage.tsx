@@ -50,7 +50,7 @@ const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
   'Expired',
 ]
 
-const TABLE_SKELETON_DEBOUNCE_MS = 50
+const TABLE_SKELETON_DEBOUNCE_MS = 200
 const DEFAULT_PAGE = 0
 const DEFAULT_ROWS_PER_PAGE = 10
 

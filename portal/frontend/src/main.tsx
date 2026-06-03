@@ -22,11 +22,17 @@ import { I18nextProvider } from 'react-i18next'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { OxygenUIThemeProvider, AcrylicOrangeTheme, CssBaseline } from '@wso2/oxygen-ui'
-import App from './App.tsx'
+import App from './App'
 import i18n from './i18n/i18n'
 import queryClient from './utils/queryClient'
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')
+
+if (!rootElement) {
+  throw new Error('Root element not found. Check index.html for <div id="root">.')
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <OxygenUIThemeProvider theme={AcrylicOrangeTheme}>
       <CssBaseline />

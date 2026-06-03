@@ -58,6 +58,10 @@ function buildURL(path: string, query?: RequestOptions['query']): string {
     throw new Error('VITE_API_BASE_URL is required to send API requests.')
   }
 
+  if (/^https?:\/\//i.test(path)) {
+    throw new Error(`apiClient path must be relative, received: "${path}"`)
+  }
+
   const normalizedBase = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const url = new URL(`${normalizedBase}${normalizedPath}`)
@@ -104,7 +108,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (response.status === 204) {
-    return undefined as T
+    throw new Error(
+      `apiRequest received a 204 No Content response for path "${path}". ` +
+        'Use apiRequestNoContent instead for endpoints that return no body.',
+    )
   }
 
   return (await response.json()) as T

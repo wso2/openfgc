@@ -294,6 +294,7 @@ function ConsentApprovalDialog({
           {t('consentRegistry.modals.actions.cancel', 'Cancel')}
         </Button>
         <Button
+          autoFocus
           fullWidth
           variant="contained"
           disabled={loading}
