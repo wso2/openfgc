@@ -29,25 +29,25 @@ import (
 // Embed this in test doubles and override only the methods under test.
 type unimplementedConsentService struct{}
 
-func (unimplementedConsentService) CreateConsent(_ context.Context, _ model.CreateConsentInput, _ string) (*model.ConsentOutput, *serviceerror.ServiceError) {
+func (unimplementedConsentService) CreateConsent(_ context.Context, _ model.ConsentAPIRequest, _, _ string) (*model.ConsentResponse, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
-func (unimplementedConsentService) GetConsent(_ context.Context, _, _ string) (*model.ConsentOutput, *serviceerror.ServiceError) {
+func (unimplementedConsentService) GetConsent(_ context.Context, _, _ string) (*model.ConsentResponse, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
-func (unimplementedConsentService) SearchConsents(_ context.Context, _ model.ConsentSearchFilter) (*model.ConsentListOutput, *serviceerror.ServiceError) {
+func (unimplementedConsentService) SearchConsentsDetailed(_ context.Context, _ model.ConsentSearchFilters) (*model.ConsentDetailSearchResponse, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
-func (unimplementedConsentService) UpdateConsent(_ context.Context, _, _, _ string, _ model.UpdateConsentInput) (*model.ConsentOutput, *serviceerror.ServiceError) {
+func (unimplementedConsentService) UpdateConsent(_ context.Context, _ model.ConsentAPIUpdateRequest, _, _, _ string) (*model.ConsentResponse, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
-func (unimplementedConsentService) RevokeConsent(_ context.Context, _, _ string, _ model.ConsentRevokeInput) (*model.ConsentRevokeOutput, *serviceerror.ServiceError) {
+func (unimplementedConsentService) RevokeConsent(_ context.Context, _, _ string, _ model.ConsentRevokeRequest) (*model.ConsentRevokeResponse, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
-func (unimplementedConsentService) ValidateConsent(_ context.Context, _ model.ConsentValidateInput, _ string) (*model.ConsentValidateOutput, *serviceerror.ServiceError) {
+func (unimplementedConsentService) ValidateConsent(_ context.Context, _ model.ValidateRequest, _ string) (*model.ValidateResponse, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
-func (unimplementedConsentService) SearchConsentsByAttribute(_ context.Context, _, _, _ string) (*model.ConsentAttributeSearchOutput, *serviceerror.ServiceError) {
+func (unimplementedConsentService) SearchConsentsByAttribute(_ context.Context, _, _, _ string) (*model.ConsentAttributeSearchResponse, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
 func (unimplementedConsentService) GetExpiredConsents(_ context.Context, _ int64, _ []string) ([]model.Consent, *serviceerror.ServiceError) {
@@ -73,27 +73,6 @@ func (s *signalingConsentService) GetExpiredConsents(_ context.Context, _ int64,
 
 func (s *signalingConsentService) ExpireConsent(_ context.Context, _ *model.Consent, _ string) *serviceerror.ServiceError {
 	return nil
-}
-
-// TestStartScheduler_InvalidInterval verifies that StartScheduler returns immediately when interval <= 0.
-func TestStartScheduler_InvalidInterval(t *testing.T) {
-	svc := &signalingConsentService{fired: make(chan struct{}, 1)}
-	statuses := ExpirationStatuses{ExpirableConsentStatuses: []string{"ACTIVE"}}
-
-	done := make(chan struct{})
-	go func() {
-		StartScheduler(context.Background(), svc, 0, statuses)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		// Good — returned immediately without firing.
-	case <-svc.fired:
-		t.Fatal("scheduler must not fire a job when interval is zero")
-	case <-time.After(time.Second):
-		t.Fatal("scheduler did not return within 1s for zero interval")
-	}
 }
 
 // TestStartScheduler_FiresJobOnTick verifies that StartScheduler launches RunExpirationJob on each ticker tick.

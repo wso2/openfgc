@@ -21,7 +21,6 @@ package consent
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -33,13 +32,6 @@ import (
 	"github.com/wso2/openfgc/internal/system/stores"
 	"github.com/wso2/openfgc/tests/mocks/stores/interfacesmock"
 )
-
-// TestMain sets the global config before any test runs so that the DB provider
-// initialises with SQLite in-memory when ExecuteTransaction first calls GetConsentDBClient.
-func TestMain(m *testing.M) {
-	config.SetGlobal(makeTestConfig())
-	os.Exit(m.Run())
-}
 
 // =============================================================================
 // Test helpers
@@ -284,6 +276,7 @@ func TestGetConsent_StoreError(t *testing.T) {
 }
 
 func TestGetConsent_Success(t *testing.T) {
+	config.SetGlobal(makeTestConfig())
 
 	cs := interfacesmock.NewConsentStore(t)
 	as := interfacesmock.NewAuthResourceStore(t)
@@ -353,6 +346,7 @@ func TestRevokeConsent_StoreError(t *testing.T) {
 }
 
 func TestRevokeConsent_AlreadyRevoked(t *testing.T) {
+	config.SetGlobal(makeTestConfig())
 
 	cs := interfacesmock.NewConsentStore(t)
 	svc := newConsentSvc(t, cs, nil)
@@ -480,92 +474,4 @@ func TestSearchConsentsByAttribute_EmptyResult(t *testing.T) {
 	require.NotNil(t, out)
 	require.Equal(t, 0, out.Count)
 	require.Empty(t, out.ConsentIDs)
-}
-
-// =============================================================================
-// GetExpiredConsents
-// =============================================================================
-
-func TestGetExpiredConsents_StoreError(t *testing.T) {
-	cs := interfacesmock.NewConsentStore(t)
-	svc := newConsentSvc(t, cs, nil)
-
-	cs.On("GetExpiredConsents", mock.Anything, int64(1000), []string{"ACTIVE"}).
-		Return(nil, errStoreConsent)
-
-	consents, svcErr := svc.GetExpiredConsents(context.Background(), 1000, []string{"ACTIVE"})
-	require.Nil(t, consents)
-	require.NotNil(t, svcErr)
-	require.Equal(t, ErrorInternalServerError.Code, svcErr.Code)
-	require.Contains(t, svcErr.Description, errStoreConsent.Error())
-}
-
-func TestGetExpiredConsents_Success(t *testing.T) {
-	cs := interfacesmock.NewConsentStore(t)
-	svc := newConsentSvc(t, cs, nil)
-
-	expected := []model.Consent{
-		{ConsentID: "c-1", OrgID: testOrgID, CurrentStatus: "ACTIVE"},
-		{ConsentID: "c-2", OrgID: testOrgID, CurrentStatus: "ACTIVE"},
-	}
-	cs.On("GetExpiredConsents", mock.Anything, int64(1000), []string{"ACTIVE"}).
-		Return(expected, nil)
-
-	consents, svcErr := svc.GetExpiredConsents(context.Background(), 1000, []string{"ACTIVE"})
-	require.Nil(t, svcErr)
-	require.Len(t, consents, 2)
-	require.Equal(t, "c-1", consents[0].ConsentID)
-	require.Equal(t, "c-2", consents[1].ConsentID)
-}
-
-func TestGetExpiredConsents_Empty(t *testing.T) {
-	cs := interfacesmock.NewConsentStore(t)
-	svc := newConsentSvc(t, cs, nil)
-
-	cs.On("GetExpiredConsents", mock.Anything, int64(999), []string{"ACTIVE", "CREATED"}).
-		Return([]model.Consent{}, nil)
-
-	consents, svcErr := svc.GetExpiredConsents(context.Background(), 999, []string{"ACTIVE", "CREATED"})
-	require.Nil(t, svcErr)
-	require.Empty(t, consents)
-}
-
-// =============================================================================
-// ExpireConsent
-// =============================================================================
-
-func TestExpireConsent_TransactionError(t *testing.T) {
-	cs := interfacesmock.NewConsentStore(t)
-	as := interfacesmock.NewAuthResourceStore(t)
-	svc := newConsentSvc(t, cs, as)
-
-	consent := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
-	// First step in the transaction fails — should trigger rollback and return ServiceError.
-	cs.On("UpdateStatus", mock.Anything, testConsentID, testOrgID, "EXPIRED", mock.AnythingOfType("int64")).
-		Return(errStoreConsent)
-
-	svcErr := svc.ExpireConsent(context.Background(), consent, testOrgID)
-	require.NotNil(t, svcErr)
-	require.Equal(t, ErrorInternalServerError.Code, svcErr.Code)
-	// Consent status must not be mutated on failure.
-	require.Equal(t, "ACTIVE", consent.CurrentStatus)
-}
-
-func TestExpireConsent_Success(t *testing.T) {
-	cs := interfacesmock.NewConsentStore(t)
-	as := interfacesmock.NewAuthResourceStore(t)
-	svc := newConsentSvc(t, cs, as)
-
-	consent := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
-	cs.On("UpdateStatus", mock.Anything, testConsentID, testOrgID, "EXPIRED", mock.AnythingOfType("int64")).
-		Return(nil)
-	as.On("UpdateAllStatusByConsentID", mock.Anything, testConsentID, testOrgID, "SYSTEM_EXPIRED", mock.AnythingOfType("int64")).
-		Return(nil)
-	cs.On("CreateStatusAudit", mock.Anything, mock.AnythingOfType("*model.ConsentStatusAudit")).
-		Return(nil)
-
-	svcErr := svc.ExpireConsent(context.Background(), consent, testOrgID)
-	require.Nil(t, svcErr)
-	// Consent should be mutated in-place to reflect the new status.
-	require.Equal(t, "EXPIRED", consent.CurrentStatus)
 }

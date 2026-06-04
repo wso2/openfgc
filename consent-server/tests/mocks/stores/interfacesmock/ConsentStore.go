@@ -1167,66 +1167,6 @@ func (_c *ConsentStore_UpdateStatus_Call) RunAndReturn(run func(model.TxInterfac
 	return _c
 }
 
-// GetExpiredConsents provides a mock function with given fields: ctx, currentTimeMs, expirableStatuses
-func (_m *ConsentStore) GetExpiredConsents(ctx context.Context, currentTimeMs int64, expirableStatuses []string) ([]consentmodel.Consent, error) {
-	ret := _m.Called(ctx, currentTimeMs, expirableStatuses)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetExpiredConsents")
-	}
-
-	var r0 []consentmodel.Consent
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, []string) ([]consentmodel.Consent, error)); ok {
-		return rf(ctx, currentTimeMs, expirableStatuses)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, []string) []consentmodel.Consent); ok {
-		r0 = rf(ctx, currentTimeMs, expirableStatuses)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]consentmodel.Consent)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, int64, []string) error); ok {
-		r1 = rf(ctx, currentTimeMs, expirableStatuses)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// ConsentStore_GetExpiredConsents_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetExpiredConsents'
-type ConsentStore_GetExpiredConsents_Call struct {
-	*mock.Call
-}
-
-// GetExpiredConsents is a helper method to define mock.On call
-//   - ctx context.Context
-//   - currentTimeMs int64
-//   - expirableStatuses []string
-func (_e *ConsentStore_Expecter) GetExpiredConsents(ctx interface{}, currentTimeMs interface{}, expirableStatuses interface{}) *ConsentStore_GetExpiredConsents_Call {
-	return &ConsentStore_GetExpiredConsents_Call{Call: _e.mock.On("GetExpiredConsents", ctx, currentTimeMs, expirableStatuses)}
-}
-
-func (_c *ConsentStore_GetExpiredConsents_Call) Run(run func(ctx context.Context, currentTimeMs int64, expirableStatuses []string)) *ConsentStore_GetExpiredConsents_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].([]string))
-	})
-	return _c
-}
-
-func (_c *ConsentStore_GetExpiredConsents_Call) Return(_a0 []consentmodel.Consent, _a1 error) *ConsentStore_GetExpiredConsents_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *ConsentStore_GetExpiredConsents_Call) RunAndReturn(run func(context.Context, int64, []string) ([]consentmodel.Consent, error)) *ConsentStore_GetExpiredConsents_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // NewConsentStore creates a new instance of ConsentStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewConsentStore(t interface {

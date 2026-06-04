@@ -85,56 +85,6 @@ func (_c *MockConsentService_CreateConsent_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// ExpireConsent provides a mock function with given fields: ctx, _a1, orgID
-func (_m *MockConsentService) ExpireConsent(ctx context.Context, _a1 *model.Consent, orgID string) *serviceerror.ServiceError {
-	ret := _m.Called(ctx, _a1, orgID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ExpireConsent")
-	}
-
-	var r0 *serviceerror.ServiceError
-	if rf, ok := ret.Get(0).(func(context.Context, *model.Consent, string) *serviceerror.ServiceError); ok {
-		r0 = rf(ctx, _a1, orgID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*serviceerror.ServiceError)
-		}
-	}
-
-	return r0
-}
-
-// MockConsentService_ExpireConsent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExpireConsent'
-type MockConsentService_ExpireConsent_Call struct {
-	*mock.Call
-}
-
-// ExpireConsent is a helper method to define mock.On call
-//   - ctx context.Context
-//   - _a1 *model.Consent
-//   - orgID string
-func (_e *MockConsentService_Expecter) ExpireConsent(ctx interface{}, _a1 interface{}, orgID interface{}) *MockConsentService_ExpireConsent_Call {
-	return &MockConsentService_ExpireConsent_Call{Call: _e.mock.On("ExpireConsent", ctx, _a1, orgID)}
-}
-
-func (_c *MockConsentService_ExpireConsent_Call) Run(run func(ctx context.Context, _a1 *model.Consent, orgID string)) *MockConsentService_ExpireConsent_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*model.Consent), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockConsentService_ExpireConsent_Call) Return(_a0 *serviceerror.ServiceError) *MockConsentService_ExpireConsent_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockConsentService_ExpireConsent_Call) RunAndReturn(run func(context.Context, *model.Consent, string) *serviceerror.ServiceError) *MockConsentService_ExpireConsent_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetConsent provides a mock function with given fields: ctx, consentID, orgID
 func (_m *MockConsentService) GetConsent(ctx context.Context, consentID string, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError) {
 	ret := _m.Called(ctx, consentID, orgID)
@@ -193,68 +143,6 @@ func (_c *MockConsentService_GetConsent_Call) Return(_a0 *model.ConsentOutput, _
 }
 
 func (_c *MockConsentService_GetConsent_Call) RunAndReturn(run func(context.Context, string, string) (*model.ConsentOutput, *serviceerror.ServiceError)) *MockConsentService_GetConsent_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetExpiredConsents provides a mock function with given fields: ctx, currentTimeMs, expirableStatuses
-func (_m *MockConsentService) GetExpiredConsents(ctx context.Context, currentTimeMs int64, expirableStatuses []string) ([]model.Consent, *serviceerror.ServiceError) {
-	ret := _m.Called(ctx, currentTimeMs, expirableStatuses)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetExpiredConsents")
-	}
-
-	var r0 []model.Consent
-	var r1 *serviceerror.ServiceError
-	if rf, ok := ret.Get(0).(func(context.Context, int64, []string) ([]model.Consent, *serviceerror.ServiceError)); ok {
-		return rf(ctx, currentTimeMs, expirableStatuses)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, []string) []model.Consent); ok {
-		r0 = rf(ctx, currentTimeMs, expirableStatuses)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]model.Consent)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, int64, []string) *serviceerror.ServiceError); ok {
-		r1 = rf(ctx, currentTimeMs, expirableStatuses)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*serviceerror.ServiceError)
-		}
-	}
-
-	return r0, r1
-}
-
-// MockConsentService_GetExpiredConsents_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetExpiredConsents'
-type MockConsentService_GetExpiredConsents_Call struct {
-	*mock.Call
-}
-
-// GetExpiredConsents is a helper method to define mock.On call
-//   - ctx context.Context
-//   - currentTimeMs int64
-//   - expirableStatuses []string
-func (_e *MockConsentService_Expecter) GetExpiredConsents(ctx interface{}, currentTimeMs interface{}, expirableStatuses interface{}) *MockConsentService_GetExpiredConsents_Call {
-	return &MockConsentService_GetExpiredConsents_Call{Call: _e.mock.On("GetExpiredConsents", ctx, currentTimeMs, expirableStatuses)}
-}
-
-func (_c *MockConsentService_GetExpiredConsents_Call) Run(run func(ctx context.Context, currentTimeMs int64, expirableStatuses []string)) *MockConsentService_GetExpiredConsents_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].([]string))
-	})
-	return _c
-}
-
-func (_c *MockConsentService_GetExpiredConsents_Call) Return(_a0 []model.Consent, _a1 *serviceerror.ServiceError) *MockConsentService_GetExpiredConsents_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockConsentService_GetExpiredConsents_Call) RunAndReturn(run func(context.Context, int64, []string) ([]model.Consent, *serviceerror.ServiceError)) *MockConsentService_GetExpiredConsents_Call {
 	_c.Call.Return(run)
 	return _c
 }

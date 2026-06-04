@@ -58,8 +58,6 @@ type resolvedPurposeLink struct {
 // Service interface and constructor
 // =============================================================================
 
-//go:generate mockery --name=ConsentService --output=. --outpkg=consent --filename=ConsentService_mock_test.go --with-expecter --structname=MockConsentService
-
 // ConsentService defines the exported service interface.
 type ConsentService interface {
 	CreateConsent(ctx context.Context, input model.CreateConsentInput, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError)
