@@ -49,8 +49,10 @@ func TestMain(m *testing.M) {
 // =============================================================================
 
 func TestValidateAuthResourceCreateRequest_Success(t *testing.T) {
-	// Type and Status are both optional.
+	// Type and Status are both optional; UserID is required.
+	userID := "user-001"
 	req := model.AuthResourceCreateRequest{
+		UserID: &userID,
 		Type:   "accounts",
 		Status: "authorized",
 	}
@@ -59,16 +61,32 @@ func TestValidateAuthResourceCreateRequest_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestValidateAuthResourceCreateRequest_MissingUserID(t *testing.T) {
+	req := model.AuthResourceCreateRequest{
+		Type:   "accounts",
+		Status: "authorized",
+	}
+
+	err := ValidateAuthResourceCreateRequest(req, "consent-123", "org-123")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "userId is required")
+}
+
 func TestValidateAuthResourceCreateRequest_NoTypeOrStatus(t *testing.T) {
-	// Both Type and Status are optional — empty request is valid.
-	req := model.AuthResourceCreateRequest{}
+	// Both Type and Status are optional — only UserID is required.
+	userID := "user-001"
+	req := model.AuthResourceCreateRequest{
+		UserID: &userID,
+	}
 
 	err := ValidateAuthResourceCreateRequest(req, "consent-123", "org-123")
 	require.NoError(t, err)
 }
 
 func TestValidateAuthResourceCreateRequest_MissingConsentID(t *testing.T) {
+	userID := "user-001"
 	req := model.AuthResourceCreateRequest{
+		UserID: &userID,
 		Type:   "accounts",
 		Status: "authorized",
 	}
@@ -79,7 +97,9 @@ func TestValidateAuthResourceCreateRequest_MissingConsentID(t *testing.T) {
 }
 
 func TestValidateAuthResourceCreateRequest_MissingOrgID(t *testing.T) {
+	userID := "user-001"
 	req := model.AuthResourceCreateRequest{
+		UserID: &userID,
 		Type:   "accounts",
 		Status: "authorized",
 	}
@@ -90,7 +110,9 @@ func TestValidateAuthResourceCreateRequest_MissingOrgID(t *testing.T) {
 }
 
 func TestValidateAuthResourceCreateRequest_SystemReservedStatus(t *testing.T) {
+	userID := "user-001"
 	req := model.AuthResourceCreateRequest{
+		UserID: &userID,
 		Status: "system_expired",
 	}
 
@@ -128,7 +150,9 @@ func TestValidateAuthStatus_SystemExpiredRejected(t *testing.T) {
 // =============================================================================
 
 func TestValidateAuthResourceUpdateRequest_Success(t *testing.T) {
+	userID := "user-001"
 	req := model.AuthResourceUpdateRequest{
+		UserID: &userID,
 		Status: "revoked",
 	}
 
@@ -136,10 +160,23 @@ func TestValidateAuthResourceUpdateRequest_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestValidateAuthResourceUpdateRequest_MissingUserID(t *testing.T) {
+	// userId is required — omitting it must return an error.
+	req := model.AuthResourceUpdateRequest{
+		Status: "revoked",
+	}
+
+	err := ValidateAuthResourceUpdateRequest(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "userId is required")
+}
+
 func TestValidateAuthResourceUpdateRequest_WithUserID(t *testing.T) {
+	// UserID alone is not sufficient — at least one other field must also be present.
 	userID := "user-123"
 	req := model.AuthResourceUpdateRequest{
 		UserID: &userID,
+		Status: "authorized",
 	}
 
 	err := ValidateAuthResourceUpdateRequest(req)
@@ -147,7 +184,9 @@ func TestValidateAuthResourceUpdateRequest_WithUserID(t *testing.T) {
 }
 
 func TestValidateAuthResourceUpdateRequest_WithResources(t *testing.T) {
+	userID := "user-001"
 	req := model.AuthResourceUpdateRequest{
+		UserID:    &userID,
 		Resources: map[string]interface{}{"key": "value"},
 	}
 
@@ -156,7 +195,20 @@ func TestValidateAuthResourceUpdateRequest_WithResources(t *testing.T) {
 }
 
 func TestValidateAuthResourceUpdateRequest_EmptyRequest(t *testing.T) {
+	// Neither UserID nor any other field provided — userId is checked first.
 	req := model.AuthResourceUpdateRequest{}
+
+	err := ValidateAuthResourceUpdateRequest(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "userId is required")
+}
+
+func TestValidateAuthResourceUpdateRequest_UserIDButNoOtherField(t *testing.T) {
+	// UserID present but no status/type/resources — must require at least one more field.
+	userID := "user-001"
+	req := model.AuthResourceUpdateRequest{
+		UserID: &userID,
+	}
 
 	err := ValidateAuthResourceUpdateRequest(req)
 	require.Error(t, err)

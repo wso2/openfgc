@@ -52,8 +52,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "update status — new status returned",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-status")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{Status: "CREATED"})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "APPROVED"}
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "CREATED"})
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "APPROVED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
@@ -66,9 +66,9 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-type")
 				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{
-					Type: "accounts", Status: "APPROVED",
+					UserID: strPtr("user-001"), Type: "accounts", Status: "APPROVED",
 				})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Type: "payments"}
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Type: "payments"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
@@ -83,7 +83,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{
 					UserID: strPtr("original-user"),
 				})
-				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("updated-user")}
+				// Update userId alongside a status field (userId alone doesn't satisfy "at least one content field").
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("updated-user"), Status: "APPROVED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
@@ -96,9 +97,10 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-res")
 				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{
-					Resources: "original",
+					UserID: strPtr("user-001"), Resources: "original",
 				})
 				return consentID, ar.ID, AuthResourceUpdateRequest{
+					UserID:    strPtr("user-001"),
 					Resources: map[string]interface{}{"newKey": "newValue"},
 				}
 			},
@@ -115,8 +117,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "updating auth status from CREATED to APPROVED — consent becomes ACTIVE",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-derive")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{Status: "CREATED"})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "APPROVED"}
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "CREATED"})
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "APPROVED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(orgID, consentID string, _ *AuthResourceResponse) {
@@ -128,8 +130,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "updating auth status from APPROVED to REJECTED — consent becomes REJECTED",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-reject")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{Status: "APPROVED"})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "REJECTED"}
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "APPROVED"})
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "REJECTED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(orgID, consentID string, _ *AuthResourceResponse) {
@@ -145,8 +147,18 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "empty body — no fields provided → 400 AR-4002",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-empty")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentID, ar.ID, AuthResourceUpdateRequest{}
+			},
+			wantStatus:    http.StatusBadRequest,
+			wantErrorCode: "AR-4002",
+		},
+		{
+			name: "missing userId on update → 400 AR-4002",
+			setup: func(orgID string) (string, string, any) {
+				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-nuid")
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
+				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "APPROVED"}
 			},
 			wantStatus:    http.StatusBadRequest,
 			wantErrorCode: "AR-4002",
@@ -155,8 +167,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "system-reserved status 'SYS_EXPIRED' → 400 AR-4002",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-sysexp")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "SYS_EXPIRED"}
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "SYS_EXPIRED"}
 			},
 			wantStatus:    http.StatusBadRequest,
 			wantErrorCode: "AR-4002",
@@ -165,8 +177,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "system-reserved status 'SYS_REVOKED' → 400 AR-4002",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-sysrev")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "SYS_REVOKED"}
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "SYS_REVOKED"}
 			},
 			wantStatus:    http.StatusBadRequest,
 			wantErrorCode: "AR-4002",
@@ -175,7 +187,7 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "malformed JSON body → 400 AR-4001",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-json")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentID, ar.ID, `{bad-json`
 			},
 			wantStatus:    http.StatusBadRequest,
@@ -190,7 +202,7 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-nf")
 				return consentID, "00000000-0000-0000-0000-000000000000",
-					AuthResourceUpdateRequest{Status: "APPROVED"}
+					AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "APPROVED"}
 			},
 			wantStatus:    http.StatusNotFound,
 			wantErrorCode: "AR-4040",
@@ -203,8 +215,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "auth created under org A — updating with org B's header → 404 AR-4040",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-org")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "APPROVED"}
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "APPROVED"}
 			},
 			useAltOrg:     true,
 			wantStatus:    http.StatusNotFound,
@@ -218,8 +230,8 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource() {
 			name: "missing org-id header → 400 AR-4007",
 			setup: func(orgID string) (string, string, any) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-hdr")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
-				return consentID, ar.ID, AuthResourceUpdateRequest{Status: "APPROVED"}
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
+				return consentID, ar.ID, AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "APPROVED"}
 			},
 			omitOrgID:     true,
 			wantStatus:    http.StatusBadRequest,
@@ -283,7 +295,7 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource_NotFoundUniformMessag
 			setup: func(orgID string) (string, string, string) {
 				consentA := ts.mustCreateConsent(orgID, "grp-ar-upd-msg-ca")
 				consentB := ts.mustCreateConsent(orgID, "grp-ar-upd-msg-cb")
-				ar := ts.mustCreateAuthResource(orgID, consentA, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentA, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentB, ar.ID, orgID
 			},
 		},
@@ -291,7 +303,7 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource_NotFoundUniformMessag
 			name: "auth exists but org-id header belongs to a different org — description is opaque",
 			setup: func(orgID string) (string, string, string) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-upd-msg-org")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentID, ar.ID, freshOrgID()
 			},
 		},
@@ -307,7 +319,7 @@ func (ts *AuthResourceAPITestSuite) TestUpdateAuthResource_NotFoundUniformMessag
 				http.MethodPut,
 				"/api/v1/consents/"+consentID+"/authorizations/"+authID,
 				orgForReq,
-				AuthResourceUpdateRequest{Status: "APPROVED"},
+				AuthResourceUpdateRequest{UserID: strPtr("user-001"), Status: "APPROVED"},
 			)
 
 			ts.Equal(http.StatusNotFound, status)

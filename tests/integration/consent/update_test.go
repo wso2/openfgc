@@ -161,14 +161,14 @@ func (ts *ConsentAPITestSuite) TestUpdateConsent() {
 				c := ts.mustCreateConsent(orgID, "grp-upd-auth", ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Type: "old", Status: "REJECTED"},
+						{UserID: "user-001", Type: "old", Status: "REJECTED"},
 					},
 				})
 				return c.ID, "grp-upd-auth", c
 			},
 			req: ConsentUpdateRequest{
 				Authorizations: []AuthorizationRequest{
-					{Type: "new", Status: "APPROVED"},
+					{UserID: "user-001", Type: "new", Status: "APPROVED"},
 				},
 			},
 			wantStatus: http.StatusOK,
@@ -185,7 +185,7 @@ func (ts *ConsentAPITestSuite) TestUpdateConsent() {
 			setup: func(orgID string) (string, string, *ConsentResponse) {
 				c := ts.mustCreateConsent(orgID, "grp-upd-auth-clear", ConsentCreateRequest{
 					Type: "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 				})
 				return c.ID, "grp-upd-auth-clear", c
 			},
@@ -203,12 +203,12 @@ func (ts *ConsentAPITestSuite) TestUpdateConsent() {
 			setup: func(orgID string) (string, string, *ConsentResponse) {
 				c := ts.mustCreateConsent(orgID, "grp-upd-auth-ids", ConsentCreateRequest{
 					Type: "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 				})
 				return c.ID, "grp-upd-auth-ids", c
 			},
 			req: ConsentUpdateRequest{
-				Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+				Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(orgID, consentID string, original *ConsentResponse, updated *ConsentResponse) {

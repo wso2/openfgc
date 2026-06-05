@@ -91,7 +91,7 @@ func (ts *AuthResourceAPITestSuite) TestGetAuthResource() {
 			setup: func(orgID string) (string, string) {
 				consentA := ts.mustCreateConsent(orgID, "grp-ar-cross-a")
 				consentB := ts.mustCreateConsent(orgID, "grp-ar-cross-b")
-				ar := ts.mustCreateAuthResource(orgID, consentA, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentA, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				// Return consentB's path but authA's ID — server must reject this.
 				return consentB, ar.ID
 			},
@@ -106,7 +106,7 @@ func (ts *AuthResourceAPITestSuite) TestGetAuthResource() {
 			name: "auth created under org A, fetched with org B's header → 404 AR-4040",
 			setup: func(orgID string) (string, string) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-get-org")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentID, ar.ID
 			},
 			useAltOrg:     true,
@@ -202,7 +202,7 @@ func (ts *AuthResourceAPITestSuite) TestListAuthResources() {
 			setup: func(orgID string) string {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-list-one")
 				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{
-					Type: "accounts", Status: "APPROVED",
+					UserID: strPtr("user-001"), Type: "accounts", Status: "APPROVED",
 				})
 				return consentID
 			},
@@ -218,9 +218,9 @@ func (ts *AuthResourceAPITestSuite) TestListAuthResources() {
 			name: "consent with three auth resources — all returned with distinct IDs",
 			setup: func(orgID string) string {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-list-multi")
-				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{Type: "a", Status: "APPROVED"})
-				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{Type: "b", Status: "CREATED"})
-				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{Type: "c", Status: "REJECTED"})
+				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001"), Type: "a", Status: "APPROVED"})
+				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001"), Type: "b", Status: "CREATED"})
+				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001"), Type: "c", Status: "REJECTED"})
 				return consentID
 			},
 			wantStatus: http.StatusOK,
@@ -242,7 +242,7 @@ func (ts *AuthResourceAPITestSuite) TestListAuthResources() {
 			name: "auth resources created under org A — listing under org B returns empty array",
 			setup: func(orgID string) string {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-list-org")
-				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
+				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentID
 			},
 			useAltOrg:  true,
@@ -325,7 +325,7 @@ func (ts *AuthResourceAPITestSuite) TestGetAuthResource_NotFoundUniformMessage()
 			setup: func(orgID string) (string, string, string) {
 				consentA := ts.mustCreateConsent(orgID, "grp-ar-msg-ca")
 				consentB := ts.mustCreateConsent(orgID, "grp-ar-msg-cb")
-				ar := ts.mustCreateAuthResource(orgID, consentA, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentA, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentB, ar.ID, orgID
 			},
 		},
@@ -333,7 +333,7 @@ func (ts *AuthResourceAPITestSuite) TestGetAuthResource_NotFoundUniformMessage()
 			name: "auth exists but org-id header belongs to a different org — description is opaque",
 			setup: func(orgID string) (string, string, string) {
 				consentID := ts.mustCreateConsent(orgID, "grp-ar-msg-org")
-				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{})
+				ar := ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{UserID: strPtr("user-001")})
 				return consentID, ar.ID, freshOrgID()
 			},
 		},

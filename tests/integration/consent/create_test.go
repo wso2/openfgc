@@ -99,10 +99,10 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 			name:    "authorization type and status default when absent",
 			groupID: "grp-auth-defaults",
 			buildBody: func(_ string) any {
-				// Neither type nor status — server defaults type to "default" and status to "APPROVED"
+				// Only userId provided — server defaults type to "default" and status to "APPROVED"
 				return ConsentCreateRequest{
 					Type:           "accounts",
-					Authorizations: []AuthorizationRequest{{}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001"}},
 				}
 			},
 			wantStatus: http.StatusCreated,
@@ -112,6 +112,18 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				ts.Equal("APPROVED", resp.Authorizations[0].Status)
 				ts.NotEmpty(resp.Authorizations[0].ID, "authorization id must not be empty")
 			},
+		},
+		{
+			name:    "authorization without userId → 400 CS-4002",
+			groupID: "grp-auth-no-user",
+			buildBody: func(_ string) any {
+				return ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{Type: "accounts", Status: "APPROVED"}},
+				}
+			},
+			wantStatus:    http.StatusBadRequest,
+			wantErrorCode: "CS-4002",
 		},
 		{
 			name:    "single authorization with type, status, and userId",
@@ -142,8 +154,8 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				return ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Type: "accounts", Status: "APPROVED"},
-						{Type: "savings", Status: "CREATED"},
+						{UserID: "user-001", Type: "accounts", Status: "APPROVED"},
+						{UserID: "user-002", Type: "savings", Status: "CREATED"},
 					},
 				}
 			},
@@ -165,6 +177,7 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
 						{
+							UserID:    "user-001",
 							Type:      "accounts",
 							Status:    "APPROVED",
 							Resources: map[string]interface{}{"accountIds": []string{"acc-1", "acc-2"}},
@@ -200,8 +213,8 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				return ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Status: "APPROVED"},
-						{Status: "APPROVED"},
+						{UserID: "user-001", Status: "APPROVED"},
+						{UserID: "user-002", Status: "APPROVED"},
 					},
 				}
 			},
@@ -217,8 +230,8 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				return ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Status: "APPROVED"},
-						{Status: "REJECTED"},
+						{UserID: "user-001", Status: "APPROVED"},
+						{UserID: "user-002", Status: "REJECTED"},
 					},
 				}
 			},
@@ -234,8 +247,8 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				return ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Status: "CREATED"},
-						{Status: "CREATED"},
+						{UserID: "user-001", Status: "CREATED"},
+						{UserID: "user-002", Status: "CREATED"},
 					},
 				}
 			},
@@ -251,8 +264,8 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				return ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Status: "APPROVED"},
-						{Status: "CREATED"},
+						{UserID: "user-001", Status: "APPROVED"},
+						{UserID: "user-002", Status: "CREATED"},
 					},
 				}
 			},
@@ -525,7 +538,7 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 					RecurringIndicator:         boolPtr(true),
 					DataAccessValidityDuration: int64Ptr(3_600_000),
 					Attributes:                 map[string]string{"k": "v"},
-					Authorizations:             []AuthorizationRequest{{Type: "accounts", Status: "APPROVED"}},
+					Authorizations:             []AuthorizationRequest{{UserID: "user-001", Type: "accounts", Status: "APPROVED"}},
 					Purposes: []PurposeRefRequest{
 						{
 							Name:     "cs-full-purpose",
@@ -669,7 +682,7 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				return ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Type: "accounts", Status: "SYS_EXPIRED"},
+						{UserID: "user-001", Type: "accounts", Status: "SYS_EXPIRED"},
 					},
 				}
 			},
@@ -683,7 +696,7 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				return ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Type: "accounts", Status: "SYS_REVOKED"},
+						{UserID: "user-001", Type: "accounts", Status: "SYS_REVOKED"},
 					},
 				}
 			},
@@ -1102,7 +1115,7 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 				})
 				return ConsentCreateRequest{
 					Type:           "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 					Purposes: []PurposeRefRequest{{
 						Name:     "ev-val-purp",
 						Elements: []ElementApprovalRequest{{Name: "ev-val-elem", Approved: true, Value: "in-validate"}},

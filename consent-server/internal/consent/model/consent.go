@@ -325,10 +325,13 @@ type ConsentPurposeRefRequest struct {
 }
 
 // AuthorizationRequest is one authorization entry in a consent create/update body.
+// UserID is required — it identifies the user who performed the authorization.
+// Type is optional and defaults to "default" when absent.
+// Status is optional and defaults to "APPROVED" when absent.
 type AuthorizationRequest struct {
-	UserID    string      `json:"userId,omitempty"`
-	Type      string      `json:"type,omitempty"` // optional; defaults to "default" when absent
-	Status    string      `json:"status,omitempty"` // defaults to "APPROVED" when absent
+	UserID    string      `json:"userId"`
+	Type      string      `json:"type,omitempty"`
+	Status    string      `json:"status,omitempty"`
 	Resources interface{} `json:"resources,omitempty"`
 }
 

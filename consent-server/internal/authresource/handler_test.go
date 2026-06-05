@@ -258,8 +258,10 @@ func TestHandleUpdate_Success(t *testing.T) {
 	mockService := NewMockAuthResourceService(t)
 	handler := newAuthResourceHandler(mockService)
 
+	userID := "user-001"
 	updateReq := model.AuthResourceUpdateRequest{
-		Type: "re-authorisation",
+		UserID: &userID,
+		Type:   "re-authorisation",
 	}
 	expectedOutput := &model.AuthResourceOutput{
 		AuthID:     testAuthID,
@@ -289,8 +291,10 @@ func TestHandleUpdate_ServiceError(t *testing.T) {
 	mockService := NewMockAuthResourceService(t)
 	handler := newAuthResourceHandler(mockService)
 
+	userID := "user-001"
 	updateReq := model.AuthResourceUpdateRequest{
-		Type: "re-authorisation",
+		UserID: &userID,
+		Type:   "re-authorisation",
 	}
 	svcErr := &ErrorAuthResourceNotFound
 
@@ -308,6 +312,26 @@ func TestHandleUpdate_ServiceError(t *testing.T) {
 	handler.handleUpdate(rr, req)
 
 	require.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestHandleUpdate_MissingUserID(t *testing.T) {
+	mockService := NewMockAuthResourceService(t)
+	handler := newAuthResourceHandler(mockService)
+
+	// userId is required — omitting it must yield 400.
+	updateReq := model.AuthResourceUpdateRequest{
+		Status: "revoked",
+	}
+	body, _ := json.Marshal(updateReq)
+	req := httptest.NewRequest(http.MethodPut, "/consents/"+testConsentID+"/authorizations/"+testAuthID, bytes.NewBuffer(body))
+	req.Header.Set(constants.HeaderOrgID, testOrgID)
+	req.SetPathValue("consentId", testConsentID)
+	req.SetPathValue("authorizationId", testAuthID)
+	rr := httptest.NewRecorder()
+
+	handler.handleUpdate(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
 func TestHandleUpdate_MissingOrgID(t *testing.T) {

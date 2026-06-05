@@ -71,6 +71,9 @@ func ValidateConsentCreateRequest(req model.ConsentCreateRequest, groupID, orgID
 	}
 
 	for i, authReq := range req.Authorizations {
+		if authReq.UserID == "" {
+			return fmt.Errorf("authorizations[%d]: userId is required", i)
+		}
 		if authReq.Status != "" {
 			cfg := config.Get()
 			if cfg == nil {
@@ -117,6 +120,9 @@ func ValidateConsentUpdateRequest(req model.ConsentUpdateRequest) error {
 	}
 
 	for i, authReq := range req.Authorizations {
+		if authReq.UserID == "" {
+			return fmt.Errorf("authorizations[%d]: userId is required", i)
+		}
 		if authReq.Status != "" {
 			cfg := config.Get()
 			if cfg == nil {

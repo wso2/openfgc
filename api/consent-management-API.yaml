@@ -2510,6 +2510,8 @@ components:
         - `created`: Authorization is created but not yet approved → consent will be "created"
         - `rejected`: Authorization was rejected → consent will be "rejected"
         - Custom values: Will be resolved via extension point to one of the known consent statuses
+      required:
+        - userId
       properties:
         userId:
           description: The unique ID of the user who performed this authorization.
@@ -2649,6 +2651,8 @@ components:
         - `CREATED`: Authorization is created but not yet approved → consent will be CREATED
         - `REJECTED`: Authorization was rejected → consent will be REJECTED
         - Custom states: Will be resolved via extension point to determine final consent status
+      required:
+        - userId
       properties:
         userId:
           description: The unique ID of the user who performed this authorization.
@@ -2687,6 +2691,7 @@ components:
       description: Represents a detaild authorization object.
       required:
         - id
+        - userId
         - type
         - updatedTime
       properties:
@@ -3285,6 +3290,7 @@ components:
       description: Represents a specific authorization action taken on a consent by a user.
       required:
         - id
+        - userId
         - type
         - updatedTime
       properties:

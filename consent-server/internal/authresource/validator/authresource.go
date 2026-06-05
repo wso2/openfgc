@@ -27,12 +27,16 @@ import (
 
 // ValidateAuthResourceCreateRequest validates an auth resource creation request.
 // Type is optional — the service defaults it to "default" when absent.
+// UserID is required — it identifies the user who performed the authorization.
 func ValidateAuthResourceCreateRequest(req model.AuthResourceCreateRequest, consentID, orgID string) error {
 	if consentID == "" {
 		return fmt.Errorf("consentID is required")
 	}
 	if orgID == "" {
 		return fmt.Errorf("orgID is required")
+	}
+	if req.UserID == nil || *req.UserID == "" {
+		return fmt.Errorf("userId is required")
 	}
 
 	// Validate status if provided (empty status is allowed; service applies the default).
@@ -59,9 +63,14 @@ func ValidateAuthStatus(status string, mappings config.AuthStatusMappings) error
 }
 
 // ValidateAuthResourceUpdateRequest validates an auth resource update request.
+// UserID is required — it identifies the user who performed the authorization.
 func ValidateAuthResourceUpdateRequest(req model.AuthResourceUpdateRequest) error {
-	// At least one field must be provided.
-	if req.Status == "" && req.Type == "" && req.UserID == nil && req.Resources == nil {
+	if req.UserID == nil || *req.UserID == "" {
+		return fmt.Errorf("userId is required")
+	}
+
+	// At least one other field must also be provided.
+	if req.Status == "" && req.Type == "" && req.Resources == nil {
 		return fmt.Errorf("at least one field must be provided for update")
 	}
 

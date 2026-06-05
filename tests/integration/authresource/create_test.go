@@ -54,18 +54,27 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		// Defaults
 		// -----------------------------------------------------------------------
 		{
-			name: "all defaults — type becomes 'default', status becomes 'APPROVED'",
+			name: "type and status default — type becomes 'default', status becomes 'APPROVED'",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001")}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
 				ts.assertAuthResourceResponse(resp)
 				ts.Equal("default", resp.Type)
 				ts.Equal("APPROVED", resp.Status)
-				ts.Nil(resp.UserID, "userId must be absent when not provided")
+				ts.Require().NotNil(resp.UserID)
+				ts.Equal("user-001", *resp.UserID)
 				ts.Nil(resp.Resources, "resources must be absent when not provided")
 			},
+		},
+		{
+			name: "missing userId → 400 AR-4002",
+			buildBody: func(_, _ string) any {
+				return AuthResourceCreateRequest{Type: "accounts", Status: "APPROVED"}
+			},
+			wantStatus:    http.StatusBadRequest,
+			wantErrorCode: "AR-4002",
 		},
 
 		// -----------------------------------------------------------------------
@@ -85,7 +94,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "with explicit type — returned in response",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Type: "payments"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Type: "payments"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
@@ -95,7 +104,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "status CREATED — stored and returned",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Status: "CREATED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "CREATED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
@@ -105,7 +114,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "status REJECTED — stored and returned",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Status: "REJECTED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "REJECTED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
@@ -120,6 +129,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 			name: "resources as JSON object — returned in response",
 			buildBody: func(_, _ string) any {
 				return AuthResourceCreateRequest{
+					UserID:    strPtr("user-001"),
 					Resources: map[string]interface{}{"accountIds": []string{"acc-1", "acc-2"}},
 				}
 			},
@@ -131,7 +141,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "resources as plain string — round-trips correctly",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Resources: "read-only"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Resources: "read-only"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
@@ -143,6 +153,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 			name: "resources as JSON array — returned in response",
 			buildBody: func(_, _ string) any {
 				return AuthResourceCreateRequest{
+					UserID:    strPtr("user-001"),
 					Resources: []string{"scope:read", "scope:write"},
 				}
 			},
@@ -158,7 +169,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "APPROVED auth on empty consent — consent status becomes ACTIVE",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Status: "APPROVED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "APPROVED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(orgID, consentID string, _ *AuthResourceResponse) {
@@ -169,7 +180,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "REJECTED auth on empty consent — consent status becomes REJECTED",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Status: "REJECTED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "REJECTED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(orgID, consentID string, _ *AuthResourceResponse) {
@@ -180,7 +191,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "CREATED auth on empty consent — consent status stays CREATED",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Status: "CREATED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "CREATED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(orgID, consentID string, _ *AuthResourceResponse) {
@@ -196,9 +207,9 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 			name: "second auth resource for same consent — both are returned by list",
 			buildBody: func(orgID, consentID string) any {
 				ts.mustCreateAuthResource(orgID, consentID, AuthResourceCreateRequest{
-					Type: "primary", Status: "APPROVED",
+					UserID: strPtr("user-001"), Type: "primary", Status: "APPROVED",
 				})
-				return AuthResourceCreateRequest{Type: "secondary", Status: "CREATED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-002"), Type: "secondary", Status: "CREATED"}
 			},
 			wantStatus: http.StatusOK,
 			checkResult: func(orgID, consentID string, _ *AuthResourceResponse) {
@@ -213,7 +224,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "system-reserved status 'SYS_EXPIRED' → 400 AR-4002",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Status: "SYS_EXPIRED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "SYS_EXPIRED"}
 			},
 			wantStatus:    http.StatusBadRequest,
 			wantErrorCode: "AR-4002",
@@ -221,7 +232,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 		{
 			name: "system-reserved status 'SYS_REVOKED' → 400 AR-4002",
 			buildBody: func(_, _ string) any {
-				return AuthResourceCreateRequest{Status: "SYS_REVOKED"}
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "SYS_REVOKED"}
 			},
 			wantStatus:    http.StatusBadRequest,
 			wantErrorCode: "AR-4002",

@@ -105,8 +105,8 @@ func (ts *ConsentAPITestSuite) TestRevokeConsent() {
 				c := ts.mustCreateConsent(orgID, "grp-rev-auth-status", ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Type: "accounts", Status: "APPROVED"},
-						{Type: "savings", Status: "CREATED"},
+						{UserID: "user-001", Type: "accounts", Status: "APPROVED"},
+						{UserID: "user-002", Type: "savings", Status: "CREATED"},
 					},
 				})
 				return c.ID

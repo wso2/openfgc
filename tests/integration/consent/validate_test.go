@@ -65,7 +65,7 @@ func (ts *ConsentAPITestSuite) TestValidateConsent() {
 				c := ts.mustCreateConsent(orgID, "grp-val-active", ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Type: "accounts", Status: "APPROVED"},
+						{UserID: "user-001", Type: "accounts", Status: "APPROVED"},
 					},
 				})
 				return c.ID, orgID
@@ -88,7 +88,7 @@ func (ts *ConsentAPITestSuite) TestValidateConsent() {
 					RecurringIndicator:         boolPtr(true),
 					DataAccessValidityDuration: int64Ptr(3600000),
 					Attributes:                 map[string]string{"k": "v"},
-					Authorizations:             []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations:             []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 				})
 				return c.ID, orgID
 			},
@@ -119,7 +119,7 @@ func (ts *ConsentAPITestSuite) TestValidateConsent() {
 				ts.mustCreatePurpose(orgID, "val-enrich-purp", "val-enrich-elem")
 				c := ts.mustCreateConsent(orgID, "grp-val-enrich", ConsentCreateRequest{
 					Type: "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 					Purposes: []PurposeRefRequest{
 						{
 							Name:     "val-enrich-purp",
@@ -168,7 +168,7 @@ func (ts *ConsentAPITestSuite) TestValidateConsent() {
 			setup: func(orgID string) (string, string) {
 				c := ts.mustCreateConsent(orgID, "grp-val-rev", ConsentCreateRequest{
 					Type:           "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 				})
 				ts.doRevokeConsent(orgID, c.ID, ConsentRevokeRequest{ActionBy: "tester"})
 				return c.ID, orgID
@@ -190,7 +190,7 @@ func (ts *ConsentAPITestSuite) TestValidateConsent() {
 				c := ts.mustCreateConsent(orgID, "grp-val-exp", ConsentCreateRequest{
 					Type:           "accounts",
 					ExpirationTime: &past,
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 				})
 				return c.ID, orgID
 			},
@@ -218,7 +218,7 @@ func (ts *ConsentAPITestSuite) TestValidateConsent() {
 				})
 				c := ts.mustCreateConsent(orgID, "grp-mand-ok", ConsentCreateRequest{
 					Type:           "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 					Purposes: []PurposeRefRequest{
 						{
 							Name:     "val-mand-purp",
@@ -244,7 +244,7 @@ func (ts *ConsentAPITestSuite) TestValidateConsent() {
 				})
 				c := ts.mustCreateConsent(orgID, "grp-mand-fail", ConsentCreateRequest{
 					Type:           "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 					Purposes: []PurposeRefRequest{
 						{
 							Name: "val-mand2-purp",

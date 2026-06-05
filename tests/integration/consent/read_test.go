@@ -54,7 +54,7 @@ func (ts *ConsentAPITestSuite) TestGetConsent() {
 					DataAccessValidityDuration: int64Ptr(86400000),
 					Attributes:                 map[string]string{"k": "v"},
 					Authorizations: []AuthorizationRequest{
-						{Type: "accounts", Status: "APPROVED"},
+						{UserID: "user-001", Type: "accounts", Status: "APPROVED"},
 					},
 				})
 				return c.ID, orgID
@@ -303,7 +303,7 @@ func (ts *ConsentAPITestSuite) TestListConsents() {
 				// ACTIVE consent: all auths APPROVED
 				ts.mustCreateConsent(orgID, "grp-cs-active", ConsentCreateRequest{
 					Type:           "accounts",
-					Authorizations: []AuthorizationRequest{{Status: "APPROVED"}},
+					Authorizations: []AuthorizationRequest{{UserID: "user-001", Status: "APPROVED"}},
 				})
 				// CREATED consent: no auth
 				ts.mustCreateConsent(orgID, "grp-cs-created", ConsentCreateRequest{Type: "accounts"})

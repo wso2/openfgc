@@ -346,7 +346,7 @@ func (ts *ConsentAPITestSuite) TestSearchConsents() {
 				ts.mustCreateConsent(orgID, "grp-combo-active", ConsentCreateRequest{
 					Type: "accounts",
 					Authorizations: []AuthorizationRequest{
-						{Type: "accounts", Status: "APPROVED"},
+						{UserID: "user-001", Type: "accounts", Status: "APPROVED"},
 					},
 					Purposes: []PurposeRefRequest{
 						{Name: "search-combo-purp", Elements: []ElementApprovalRequest{{Name: "search-combo-elem", Approved: true}}},

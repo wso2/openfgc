@@ -32,23 +32,34 @@ import (
 // =============================================================================
 
 func TestValidateConsentCreateRequest_Success(t *testing.T) {
-	// Status omitted — it is optional; service applies the default.
+	// Status omitted — it is optional; service applies the default. UserID is required.
 	req := model.ConsentCreateRequest{
 		Type:           "accounts",
-		Authorizations: []model.AuthorizationRequest{{Type: "accounts"}},
+		Authorizations: []model.AuthorizationRequest{{UserID: "user-001", Type: "accounts"}},
 	}
 	err := ValidateConsentCreateRequest(req, "grp-1", "org-1")
 	require.NoError(t, err)
 }
 
 func TestValidateConsentCreateRequest_AuthTypeOptional(t *testing.T) {
-	// Authorization type is optional — service defaults to "default"
+	// Authorization type is optional — service defaults to "default". UserID is required.
 	req := model.ConsentCreateRequest{
 		Type:           "accounts",
-		Authorizations: []model.AuthorizationRequest{{}},
+		Authorizations: []model.AuthorizationRequest{{UserID: "user-001"}},
 	}
 	err := ValidateConsentCreateRequest(req, "grp-1", "org-1")
 	require.NoError(t, err)
+}
+
+func TestValidateConsentCreateRequest_MissingAuthUserID(t *testing.T) {
+	// Omitting userId in an authorization object must return a validation error.
+	req := model.ConsentCreateRequest{
+		Type:           "accounts",
+		Authorizations: []model.AuthorizationRequest{{Type: "accounts"}},
+	}
+	err := ValidateConsentCreateRequest(req, "grp-1", "org-1")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "authorizations[0]: userId is required")
 }
 
 func TestValidateConsentCreateRequest_MissingType(t *testing.T) {
@@ -158,12 +169,23 @@ func TestValidateConsentUpdateRequest_NegativeFrequency(t *testing.T) {
 }
 
 func TestValidateConsentUpdateRequest_AuthTypeOptional(t *testing.T) {
-	// Authorization type is optional in update too; status omitted to avoid config dependency in tests.
+	// Authorization type is optional in update too; status omitted to avoid config dependency.
+	// UserID is required.
 	req := model.ConsentUpdateRequest{
-		Authorizations: []model.AuthorizationRequest{{}},
+		Authorizations: []model.AuthorizationRequest{{UserID: "user-001"}},
 	}
 	err := ValidateConsentUpdateRequest(req)
 	require.NoError(t, err)
+}
+
+func TestValidateConsentUpdateRequest_MissingAuthUserID(t *testing.T) {
+	// Omitting userId in an authorization object must return a validation error.
+	req := model.ConsentUpdateRequest{
+		Authorizations: []model.AuthorizationRequest{{Type: "accounts"}},
+	}
+	err := ValidateConsentUpdateRequest(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "authorizations[0]: userId is required")
 }
 
 // =============================================================================
