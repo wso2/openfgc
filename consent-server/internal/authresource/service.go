@@ -424,14 +424,6 @@ func (s *authResourceService) UpdateAuthResource(
 		updatedAuthResource.Resources = &resourcesStr
 	}
 
-	if !authResourceUpdateChanged(existingAuthResource, request) {
-		logger.Debug("Auth resource update contains no effective changes",
-			log.String("auth_id", authID),
-			log.String("consent_id", consentID),
-		)
-		return s.buildResponse(existingAuthResource), nil
-	}
-
 	// Fetch all auth resources and consent outside transaction if status changed
 	var allAuthResources []model.AuthResource
 	var currentConsent *consentModel.Consent
@@ -693,23 +685,6 @@ func (s *authResourceService) validateOrgID(orgID string) *serviceerror.ServiceE
 		)
 	}
 	return nil
-}
-
-func authResourceUpdateChanged(existing *model.AuthResource, request *model.UpdateRequest) bool {
-	if request.AuthStatus != "" && existing.AuthStatus != request.AuthStatus {
-		return true
-	}
-	if request.UserID != nil && !utils.PointersEqual(existing.UserID, request.UserID) {
-		return true
-	}
-	if request.Resources != nil {
-		existingResources := ""
-		if existing.Resources != nil {
-			existingResources = utils.CanonicalJSONString(*existing.Resources)
-		}
-		return existingResources != utils.CanonicalJSONValue(request.Resources)
-	}
-	return false
 }
 
 func (s *authResourceService) buildResponse(authResource *model.AuthResource) *model.Response {

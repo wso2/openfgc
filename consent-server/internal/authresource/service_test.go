@@ -148,37 +148,3 @@ func TestUpdateRequestOptionalFields(t *testing.T) {
 	require.Nil(t, updateReq.UserID)
 	require.Nil(t, updateReq.Resources)
 }
-
-func TestAuthResourceUpdateChangedReturnsFalseForEquivalentUpdate(t *testing.T) {
-	userID := "user-123"
-	resources := `{"accounts":["acc1","acc2"],"limit":2}`
-	existing := &model.AuthResource{
-		AuthStatus: "authorized",
-		UserID:     &userID,
-		Resources:  &resources,
-	}
-	request := &model.UpdateRequest{
-		AuthStatus: "authorized",
-		UserID:     &userID,
-		Resources:  map[string]interface{}{"limit": float64(2), "accounts": []interface{}{"acc1", "acc2"}},
-	}
-
-	require.False(t, authResourceUpdateChanged(existing, request))
-}
-
-func TestAuthResourceUpdateChangedDetectsMutableFieldChanges(t *testing.T) {
-	userID := "user-123"
-	updatedUserID := "user-456"
-	resources := `{"accounts":["acc1","acc2"]}`
-	existing := &model.AuthResource{
-		AuthStatus: "authorized",
-		UserID:     &userID,
-		Resources:  &resources,
-	}
-
-	require.True(t, authResourceUpdateChanged(existing, &model.UpdateRequest{AuthStatus: "revoked"}))
-	require.True(t, authResourceUpdateChanged(existing, &model.UpdateRequest{UserID: &updatedUserID}))
-	require.True(t, authResourceUpdateChanged(existing, &model.UpdateRequest{
-		Resources: map[string]interface{}{"accounts": []interface{}{"acc1", "acc3"}},
-	}))
-}
