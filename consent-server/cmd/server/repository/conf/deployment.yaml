@@ -20,7 +20,7 @@ database:
 logging:
   level: info
 
-# Consent status configuration
+# Consent configuration
 consent:
   # Periodical expiration job configuration.
   # When enabled, the scheduler runs at the given frequency and marks eligible
@@ -58,5 +58,5 @@ consent:
     # Authorization state indicating authorization was system-revoked due to consent revocation
     system_revoked_state: SYS_REVOKED
   history:
-    # Enables full consent amendment history snapshots.
+    # Enables full consent history snapshots.
     enabled: false

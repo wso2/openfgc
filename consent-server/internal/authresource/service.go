@@ -288,13 +288,6 @@ func (s *authResourceService) UpdateAuthResource(
 		return nil, serviceerror.CustomServiceError(ErrorAuthResourceNotFound,
 			"the authorization resource does not exist, does not belong to the specified consent, or is not accessible in this organization")
 	}
-	if !authResourceUpdateChanged(existing, input) {
-		logger.Debug("Auth resource update contains no effective changes",
-			log.String("auth_id", authID),
-			log.String("consent_id", consentID))
-		return buildAuthResourceOutput(existing), nil
-	}
-
 	updated := *existing
 	updated.UpdatedTime = utils.GetCurrentTimeMillis()
 
@@ -463,26 +456,6 @@ func buildAuthResourceOutput(ar *model.AuthResource) *model.AuthResourceOutput {
 		Resources:   resources,
 		OrgID:       ar.OrgID,
 	}
-}
-
-func authResourceUpdateChanged(existing *model.AuthResource, input model.UpdateAuthResourceInput) bool {
-	if input.AuthStatus != "" && input.AuthStatus != existing.AuthStatus {
-		return true
-	}
-	if input.AuthType != "" && input.AuthType != existing.AuthType {
-		return true
-	}
-	if input.UserID != nil && !utils.PointersEqual(existing.UserID, input.UserID) {
-		return true
-	}
-	if input.Resources != nil {
-		existingResources := ""
-		if existing.Resources != nil {
-			existingResources = utils.CanonicalJSONString(*existing.Resources)
-		}
-		return existingResources != utils.CanonicalJSONValue(input.Resources)
-	}
-	return false
 }
 
 func (s *authResourceService) validateAuthIDAndOrgID(authID, orgID string) *serviceerror.ServiceError {

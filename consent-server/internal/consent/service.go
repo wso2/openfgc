@@ -93,7 +93,7 @@ func (s *consentService) evaluateConsentUpdateChanges(
 	resolvedLinks []resolvedPurposeLink,
 	orgID string,
 	statusChanged bool,
-) (bool, HistoryReason, error) {
+) (HistoryReason, error) {
 	changedReasons := make([]HistoryReason, 0, 4)
 
 	if consentDetailsChanged(existing, input) {
@@ -107,7 +107,7 @@ func (s *consentService) evaluateConsentUpdateChanges(
 	if input.Attributes != nil {
 		attributes, err := s.stores.Consent.GetAttributesByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current attributes: %w", err)
+			return HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current attributes: %w", err)
 		}
 		currentAttributes := make(map[string]string, len(attributes))
 		for _, attribute := range attributes {
@@ -121,7 +121,7 @@ func (s *consentService) evaluateConsentUpdateChanges(
 	if input.Authorizations != nil {
 		authResources, err := s.stores.AuthResource.GetByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current authorization resources: %w", err)
+			return HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current authorization resources: %w", err)
 		}
 		if !authResourcesEqual(authResources, input.Authorizations) {
 			if statusChanged {
@@ -135,11 +135,11 @@ func (s *consentService) evaluateConsentUpdateChanges(
 	if input.Purposes != nil {
 		purposeRows, err := s.stores.Consent.GetPurposesByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current purposes: %w", err)
+			return HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current purposes: %w", err)
 		}
 		approvalRows, err := s.stores.Consent.GetElementApprovalsByConsentID(ctx, existing.ConsentID, orgID)
 		if err != nil {
-			return false, HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current purpose approvals: %w", err)
+			return HistoryReasonConsentAmended, fmt.Errorf("failed to fetch current purpose approvals: %w", err)
 		}
 		if !purposeLinksEqual(purposeRows, approvalRows, resolvedLinks) {
 			changedReasons = append(changedReasons, HistoryReasonConsentPurposesAmended)
@@ -147,12 +147,12 @@ func (s *consentService) evaluateConsentUpdateChanges(
 	}
 
 	if len(changedReasons) == 0 {
-		return false, HistoryReasonConsentAmended, nil
+		return HistoryReasonConsentAmended, nil
 	}
 	if len(changedReasons) == 1 {
-		return true, changedReasons[0], nil
+		return changedReasons[0], nil
 	}
-	return true, HistoryReasonConsentAmended, nil
+	return HistoryReasonConsentAmended, nil
 }
 
 func consentDetailsChanged(existing *model.Consent, input model.UpdateConsentInput) bool {
@@ -807,19 +807,11 @@ func (s *consentService) UpdateConsent(ctx context.Context, consentID, groupID, 
 		}
 	}
 
-	hasChanges, historyReason, err := s.evaluateConsentUpdateChanges(ctx, existing, input, resolvedLinks, orgID, statusChanged)
+	// Evaluate changes to determine the history reason
+	historyReason, err := s.evaluateConsentUpdateChanges(ctx, existing, input, resolvedLinks, orgID, statusChanged)
 	if err != nil {
 		logger.Error("Failed to evaluate consent update changes", log.Error(err))
 		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
-	}
-	if !hasChanges {
-		logger.Debug("Consent update contains no effective changes", log.String("consent_id", consentID))
-		out, err := s.loadConsentOutput(ctx, existing, orgID)
-		if err != nil {
-			logger.Error("Failed to load consent output for no-op update", log.Error(err))
-			return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
-		}
-		return out, nil
 	}
 
 	historyActionBy := groupID
