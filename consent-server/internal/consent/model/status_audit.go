@@ -45,13 +45,11 @@ type ConsentStatusAuditCreateRequest struct {
 // ConsentStatusAuditResponse represents the response for status audit operations
 type ConsentStatusAuditResponse struct {
 	StatusAuditID  string  `json:"statusAuditId"`
-	ConsentID      string  `json:"consentId"`
+	PreviousStatus *string `json:"previousStatus,omitempty"`
 	CurrentStatus  string  `json:"currentStatus"`
 	ActionTime     int64   `json:"actionTime"`
-	Reason         *string `json:"reason,omitempty"`
 	ActionBy       *string `json:"actionBy,omitempty"`
-	PreviousStatus *string `json:"previousStatus,omitempty"`
-	OrgID          string  `json:"orgId"`
+	Reason         *string `json:"reason,omitempty"`
 }
 
 // ConsentStatusAuditListResponse represents the list of audit entries
@@ -63,12 +61,10 @@ type ConsentStatusAuditListResponse struct {
 func (a ConsentStatusAudit) ToResponse() ConsentStatusAuditResponse {
 	return ConsentStatusAuditResponse{
 		StatusAuditID:  a.StatusAuditID,
-		ConsentID:      a.ConsentID,
+		PreviousStatus: a.PreviousStatus,
 		CurrentStatus:  a.CurrentStatus,
 		ActionTime:     a.ActionTime,
-		Reason:         a.Reason,
 		ActionBy:       a.ActionBy,
-		PreviousStatus: a.PreviousStatus,
-		OrgID:          a.OrgID,
+		Reason:         a.Reason,
 	}
 }

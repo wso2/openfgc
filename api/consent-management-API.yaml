@@ -410,8 +410,8 @@ paths:
     get:
       summary: Retrieve consent amendment history
       description: |
-        Fetches amendment history for a specific consent. Snapshot payloads are excluded by default
-        and can be included on demand with `includeSnapshots=true`.
+        Retrieves the complete history for a specific consent. Each history entry represents a pre-mutation snapshot captured immediately before a modification to the consent. Snapshot payloads are excluded by default
+        and can be included by setting `includeSnapshots=true`.
       operationId: consents-history-GET
       tags:
         - Consents
@@ -2741,11 +2741,11 @@ components:
           description: Consent status audit history. Included only when `includeStatusHistory=true`.
           type: array
           items:
-            $ref: "#/components/schemas/ConsentStatusHistoryItem"
+            $ref: "#/components/schemas/ConsentStatusAuditItem"
         modifiedResponse:
           description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
           type: object
-    ConsentStatusHistoryItem:
+    ConsentStatusAuditItem:
       type: object
       description: A single consent status audit history entry.
       properties:
@@ -2753,10 +2753,6 @@ components:
           type: string
           description: Unique identifier of the status audit entry.
           example: "s3c4d5e6-f7a8-9012-abcd-ef1234567890"
-        consentId:
-          type: string
-          description: Unique identifier of the consent.
-          example: "123e4567-e89b-12d3-a456-426614174000"
         previousStatus:
           type: string
           nullable: true
@@ -2781,10 +2777,6 @@ components:
           nullable: true
           description: Human-readable status transition reason.
           example: "All authorizations approved"
-        orgId:
-          type: string
-          description: Organization identifier.
-          example: "ORG-001"
     ConsentHistoryResponse:
       type: object
       description: Consent amendment history response.
