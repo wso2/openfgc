@@ -51,6 +51,7 @@ func (ts *PurposeAPITestSuite) TestCreatePurpose() {
 		omitOrgID     bool
 		wantStatus    int
 		wantErrorCode string
+		wantErrorDesc string // optional: assert Description contains this substring
 		checkResult   func(orgID string, resp *PurposeResponse)
 	}
 
@@ -239,6 +240,27 @@ func (ts *PurposeAPITestSuite) TestCreatePurpose() {
 			wantErrorCode: "CP-4041",
 		},
 		{
+			name: "org-level duplicate (group-id omitted) → description says 'already exists in this org'",
+			setup: func(orgID string) {
+				ts.mustCreatePurpose(orgID, "cp-dup-org-msg")
+			},
+			rawBody:       `{"name":"cp-dup-org-msg","elements":[{"name":"any"}]}`,
+			wantStatus:    http.StatusConflict,
+			wantErrorCode: "CP-4041",
+			wantErrorDesc: "already exists in this org",
+		},
+		{
+			name: "group-scoped duplicate (explicit group-id) → description says 'already exists in this group'",
+			setup: func(orgID string) {
+				ts.mustCreatePurposeWith(orgID, "grp-dup", CreatePurposeRequest{Name: "cp-dup-grp-msg"})
+			},
+			groupID:       "grp-dup",
+			rawBody:       `{"name":"cp-dup-grp-msg","elements":[{"name":"any"}]}`,
+			wantStatus:    http.StatusConflict,
+			wantErrorCode: "CP-4041",
+			wantErrorDesc: "already exists in this group",
+		},
+		{
 			name: "same name + different groupId → 201 allowed",
 			setup: func(orgID string) {
 				ts.mustCreatePurposeWith(orgID, "grp-a", CreatePurposeRequest{Name: "cp-shared-name"})
@@ -383,7 +405,10 @@ func (ts *PurposeAPITestSuite) TestCreatePurpose() {
 			ts.Require().Equal(tc.wantStatus, status)
 
 			if tc.wantErrorCode != "" {
-				ts.assertAPIError(body, tc.wantErrorCode)
+				errResp := ts.assertAPIError(body, tc.wantErrorCode)
+				if tc.wantErrorDesc != "" {
+					ts.Contains(errResp.Description, tc.wantErrorDesc, "error description mismatch")
+				}
 				return
 			}
 
