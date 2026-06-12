@@ -32,7 +32,7 @@ import (
 )
 
 // dbType holds the database type for the current test run ("sqlite" or "mysql").
-// Populated from the DB_TYPE environment variable; defaults to "sqlite".
+// Populated from the DB_TYPE environment variable; defaults to "mysql".
 var dbType = func() string {
 	if t := os.Getenv("DB_TYPE"); t != "" {
 		return t
