@@ -567,11 +567,11 @@ paths:
                       - historyId: "m3c4d5e6-f7a8-9012-abcd-ef1234567890"
                         actionTime: 1745200000000
                         actionBy: "user-001"
-                        reason: "Consent authorizations amended and status updated"
+                        reason: "Consent authorizations updated"
                       - historyId: "m2b3c4d5-e6f7-8901-abcd-ef1234567890"
                         actionTime: 1745100000000
                         actionBy: "user-001"
-                        reason: "Consent details amended"
+                        reason: "Consent updated"
                 withSnapshots:
                   summary: Consent history with snapshots
                   value:
@@ -580,7 +580,7 @@ paths:
                       - historyId: "m3c4d5e6-f7a8-9012-abcd-ef1234567890"
                         actionTime: 1745200000000
                         actionBy: "user-001"
-                        reason: "Consent authorizations amended and status updated"
+                        reason: "Consent authorizations updated"
                         snapshot:
                           id: "30000001-0003-0003-0003-000000000002"
                           purposes:
@@ -615,7 +615,7 @@ paths:
                       - historyId: "m2b3c4d5-e6f7-8901-abcd-ef1234567890"
                         actionTime: 1745100000000
                         actionBy: "user-001"
-                        reason: "Consent details amended"
+                        reason: "Consent updated"
                         snapshot:
                           id: "30000001-0003-0003-0003-000000000002"
                           purposes:
@@ -3346,7 +3346,7 @@ components:
           type: string
           nullable: true
           description: Server-generated history reason.
-          example: "Consent amended"
+          example: "Consent updated"
         snapshot:
           description: Full pre-mutation consent response snapshot. Included only when `includeSnapshots=true`.
           allOf:

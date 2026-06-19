@@ -147,14 +147,9 @@ func (s *authResourceService) CreateAuthResource(
 	}
 	derivedConsentStatus := validator.EvaluateConsentStatusFromAuthStatuses(authStatuses)
 
-	historyReason := consenthistory.HistoryReasonConsentAuthorizationsAmended
-	if currentConsent.CurrentStatus != derivedConsentStatus {
-		historyReason = consenthistory.HistoryReasonConsentAuthorizationsAmendedAndStatus
-	}
-
 	err = s.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
 		func(tx dbmodel.TxInterface) error {
-			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, historyReason)
+			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, consenthistory.HistoryReasonConsentAuthorizationsAdded)
 		},
 		func(tx dbmodel.TxInterface) error {
 			return store.Create(tx, authResource)
@@ -350,14 +345,9 @@ func (s *authResourceService) UpdateAuthResource(
 		derivedConsentStatus = validator.EvaluateConsentStatusFromAuthStatuses(authStatuses)
 	}
 
-	historyReason := consenthistory.HistoryReasonConsentAuthorizationsAmended
-	if statusChanged && currentConsent.CurrentStatus != derivedConsentStatus {
-		historyReason = consenthistory.HistoryReasonConsentAuthorizationsAmendedAndStatus
-	}
-
 	txSteps := []func(tx dbmodel.TxInterface) error{
 		func(tx dbmodel.TxInterface) error {
-			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, historyReason)
+			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, consenthistory.HistoryReasonConsentAuthorizationsUpdated)
 		},
 		func(tx dbmodel.TxInterface) error { return store.Update(tx, &updated) },
 	}

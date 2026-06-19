@@ -22,13 +22,9 @@ package consent
 type HistoryReason string
 
 const (
-	HistoryReasonConsentAmended                        HistoryReason = "Consent amended"
-	HistoryReasonConsentDetailsAmended                 HistoryReason = "Consent details amended"
-	HistoryReasonConsentAttributesAmended              HistoryReason = "Consent attributes amended"
-	HistoryReasonConsentAuthorizationsAmended          HistoryReason = "Consent authorizations amended"
-	HistoryReasonConsentPurposesAmended                HistoryReason = "Consent purposes amended"
-	HistoryReasonConsentRevoked                        HistoryReason = "Consent revoked"
-	HistoryReasonConsentExpired                        HistoryReason = "Consent expired"
-	HistoryReasonConsentDetailsAmendedAndReactivated   HistoryReason = "Consent details amended and reactivated"
-	HistoryReasonConsentAuthorizationsAmendedAndStatus HistoryReason = "Consent authorizations amended and status updated"
+	HistoryReasonConsentUpdated               HistoryReason = "Consent updated"
+	HistoryReasonConsentAuthorizationsAdded   HistoryReason = "Consent authorizations added"
+	HistoryReasonConsentAuthorizationsUpdated HistoryReason = "Consent authorizations updated"
+	HistoryReasonConsentRevoked               HistoryReason = "Consent revoked"
+	HistoryReasonConsentExpired               HistoryReason = "Consent expired"
 )
