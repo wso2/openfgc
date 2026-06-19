@@ -134,14 +134,14 @@ func (h *consentHandler) getConsentHistory(w http.ResponseWriter, r *http.Reques
 	}
 
 	includeSnapshots := r.URL.Query().Get("includeSnapshots") == "true"
-	response, serviceErr := h.service.GetConsentHistory(ctx, consentID, orgID, includeSnapshots)
+	out, serviceErr := h.service.GetConsentHistory(ctx, consentID, orgID, includeSnapshots)
 	if serviceErr != nil {
 		utils.SendError(w, r, serviceErr)
 		return
 	}
 
 	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(consentHistoryOutputToResponse(out))
 }
 
 // listConsents handles GET /consents
@@ -582,7 +582,7 @@ func consentOutputToResponse(out *model.ConsentOutput) *model.ConsentResponse {
 
 	statusHistory := make([]model.ConsentStatusAuditResponse, 0, len(out.StatusHistory))
 	for _, audit := range out.StatusHistory {
-		statusHistory = append(statusHistory, audit.ToResponse())
+		statusHistory = append(statusHistory, statusAuditOutputToResponse(audit))
 	}
 
 	return &model.ConsentResponse{
@@ -618,6 +618,41 @@ func consentListOutputToResponse(out *model.ConsentListOutput) *model.ConsentLis
 			Count:  out.Count,
 			Limit:  out.Limit,
 		},
+	}
+}
+
+// consentHistoryOutputToResponse converts a ConsentHistoryListOutput to the JSON-ready ConsentHistoryListResponse.
+func consentHistoryOutputToResponse(out *model.ConsentHistoryListOutput) *model.ConsentHistoryListResponse {
+	if out == nil {
+		return nil
+	}
+
+	history := make([]model.ConsentHistoryResponse, 0, len(out.History))
+	for _, item := range out.History {
+		history = append(history, model.ConsentHistoryResponse{
+			HistoryID:  item.HistoryID,
+			ActionTime: item.ActionTime,
+			ActionBy:   item.ActionBy,
+			Reason:     item.Reason,
+			Snapshot:   item.Snapshot,
+		})
+	}
+
+	return &model.ConsentHistoryListResponse{
+		ID:      out.ID,
+		History: history,
+	}
+}
+
+// statusAuditOutputToResponse converts a StatusAuditOutput to the JSON-ready ConsentStatusAuditResponse.
+func statusAuditOutputToResponse(out model.StatusAuditOutput) model.ConsentStatusAuditResponse {
+	return model.ConsentStatusAuditResponse{
+		StatusAuditID:  out.StatusAuditID,
+		PreviousStatus: out.PreviousStatus,
+		CurrentStatus:  out.CurrentStatus,
+		ActionTime:     out.ActionTime,
+		ActionBy:       out.ActionBy,
+		Reason:         out.Reason,
 	}
 }
 

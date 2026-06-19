@@ -75,15 +75,3 @@ type ConsentStatusAuditResponse struct {
 	ActionBy       *string `json:"actionBy,omitempty"`
 	Reason         *string `json:"reason,omitempty"`
 }
-
-// ToResponse converts a status audit row to an API response row.
-func (a ConsentStatusAudit) ToResponse() ConsentStatusAuditResponse {
-	return ConsentStatusAuditResponse{
-		StatusAuditID:  a.StatusAuditID,
-		PreviousStatus: a.PreviousStatus,
-		CurrentStatus:  a.CurrentStatus,
-		ActionTime:     a.ActionTime,
-		ActionBy:       a.ActionBy,
-		Reason:         a.Reason,
-	}
-}

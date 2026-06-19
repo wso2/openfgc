@@ -66,7 +66,7 @@ type ConsentService interface {
 	CreateConsent(ctx context.Context, input model.CreateConsentInput, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError)
 	GetConsent(ctx context.Context, consentID, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError)
 	GetConsentWithStatusHistory(ctx context.Context, consentID, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError)
-	GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListResponse, *serviceerror.ServiceError)
+	GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError)
 	SearchConsents(ctx context.Context, filters model.ConsentSearchFilter) (*model.ConsentListOutput, *serviceerror.ServiceError)
 	UpdateConsent(ctx context.Context, consentID, groupID, orgID string, input model.UpdateConsentInput) (*model.ConsentOutput, *serviceerror.ServiceError)
 	RevokeConsent(ctx context.Context, consentID, orgID string, input model.ConsentRevokeInput) (*model.ConsentRevokeOutput, *serviceerror.ServiceError)
@@ -631,12 +631,12 @@ func (s *consentService) GetConsentWithStatusHistory(ctx context.Context, consen
 			log.String("consent_id", consentID))
 		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
 	}
-	out.StatusHistory = audits
+	out.StatusHistory = statusAuditsToOutput(audits)
 	return out, nil
 }
 
 // GetConsentHistory retrieves history for a consent.
-func (s *consentService) GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListResponse, *serviceerror.ServiceError) {
+func (s *consentService) GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError) {
 	logger := log.GetLogger().WithContext(ctx)
 
 	consent, err := s.stores.Consent.GetByID(ctx, consentID, orgID)
@@ -659,15 +659,47 @@ func (s *consentService) GetConsentHistory(ctx context.Context, consentID, orgID
 		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
 	}
 
-	responseItems := make([]model.ConsentHistoryResponse, 0, len(history))
+	historyItems := make([]model.ConsentHistoryOutput, 0, len(history))
 	for _, item := range history {
-		responseItems = append(responseItems, item.ToResponse(includeSnapshots))
+		historyItems = append(historyItems, consentHistoryToOutput(item, includeSnapshots))
 	}
 
-	return &model.ConsentHistoryListResponse{
+	return &model.ConsentHistoryListOutput{
 		ID:      consentID,
-		History: responseItems,
+		History: historyItems,
 	}, nil
+}
+
+func statusAuditsToOutput(audits []model.ConsentStatusAudit) []model.StatusAuditOutput {
+	output := make([]model.StatusAuditOutput, 0, len(audits))
+	for _, audit := range audits {
+		output = append(output, model.StatusAuditOutput{
+			StatusAuditID:  audit.StatusAuditID,
+			ConsentID:      audit.ConsentID,
+			CurrentStatus:  audit.CurrentStatus,
+			ActionTime:     audit.ActionTime,
+			Reason:         audit.Reason,
+			ActionBy:       audit.ActionBy,
+			PreviousStatus: audit.PreviousStatus,
+			OrgID:          audit.OrgID,
+		})
+	}
+	return output
+}
+
+func consentHistoryToOutput(history model.ConsentHistory, includeSnapshot bool) model.ConsentHistoryOutput {
+	output := model.ConsentHistoryOutput{
+		HistoryID:  history.HistoryID,
+		ConsentID:  history.ConsentID,
+		OrgID:      history.OrgID,
+		ActionTime: history.ActionTime,
+		ActionBy:   history.ActionBy,
+		Reason:     history.Reason,
+	}
+	if includeSnapshot {
+		output.Snapshot = history.Snapshot
+	}
+	return output
 }
 
 // =============================================================================

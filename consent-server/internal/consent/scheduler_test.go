@@ -35,6 +35,12 @@ func (unimplementedConsentService) CreateConsent(_ context.Context, _ model.Crea
 func (unimplementedConsentService) GetConsent(_ context.Context, _, _ string) (*model.ConsentOutput, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
+func (unimplementedConsentService) GetConsentWithStatusHistory(_ context.Context, _, _ string) (*model.ConsentOutput, *serviceerror.ServiceError) {
+	panic("not implemented")
+}
+func (unimplementedConsentService) GetConsentHistory(_ context.Context, _, _ string, _ bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError) {
+	panic("not implemented")
+}
 func (unimplementedConsentService) SearchConsents(_ context.Context, _ model.ConsentSearchFilter) (*model.ConsentListOutput, *serviceerror.ServiceError) {
 	panic("not implemented")
 }

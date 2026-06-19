@@ -22,13 +22,30 @@ import "encoding/json"
 
 // ConsentHistory represents the CONSENT_HISTORY table.
 type ConsentHistory struct {
-	HistoryID  string          `db:"HISTORY_ID" json:"historyId"`
-	ConsentID  string          `db:"CONSENT_ID" json:"consentId"`
-	OrgID      string          `db:"ORG_ID" json:"orgId"`
-	ActionTime int64           `db:"ACTION_TIME" json:"actionTime"`
-	ActionBy   *string         `db:"ACTION_BY" json:"actionBy,omitempty"`
-	Reason     *string         `db:"REASON" json:"reason,omitempty"`
-	Snapshot   json.RawMessage `db:"SNAPSHOT" json:"snapshot,omitempty"`
+	HistoryID  string          `db:"HISTORY_ID"`
+	ConsentID  string          `db:"CONSENT_ID"`
+	OrgID      string          `db:"ORG_ID"`
+	ActionTime int64           `db:"ACTION_TIME"`
+	ActionBy   *string         `db:"ACTION_BY"`
+	Reason     *string         `db:"REASON"`
+	Snapshot   json.RawMessage `db:"SNAPSHOT"`
+}
+
+// ConsentHistoryOutput is the service-layer representation of one history entry.
+type ConsentHistoryOutput struct {
+	HistoryID  string
+	ConsentID  string
+	OrgID      string
+	ActionTime int64
+	ActionBy   *string
+	Reason     *string
+	Snapshot   json.RawMessage
+}
+
+// ConsentHistoryListOutput is the service-layer representation of consent history.
+type ConsentHistoryListOutput struct {
+	ID      string
+	History []ConsentHistoryOutput
 }
 
 // ConsentHistoryResponse represents a single history response item.
@@ -44,18 +61,4 @@ type ConsentHistoryResponse struct {
 type ConsentHistoryListResponse struct {
 	ID      string                   `json:"id"`
 	History []ConsentHistoryResponse `json:"history"`
-}
-
-// ToResponse converts a database history row to an API response row.
-func (h ConsentHistory) ToResponse(includeSnapshot bool) ConsentHistoryResponse {
-	response := ConsentHistoryResponse{
-		HistoryID:  h.HistoryID,
-		ActionTime: h.ActionTime,
-		ActionBy:   h.ActionBy,
-		Reason:     h.Reason,
-	}
-	if includeSnapshot {
-		response.Snapshot = h.Snapshot
-	}
-	return response
 }

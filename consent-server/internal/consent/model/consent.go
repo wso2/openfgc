@@ -243,7 +243,7 @@ type ConsentOutput struct {
 	Attributes                 map[string]string
 	Purposes                   []ConsentPurposeOutput
 	Authorizations             []authmodel.AuthResourceOutput
-	StatusHistory              []ConsentStatusAudit
+	StatusHistory              []StatusAuditOutput
 }
 
 // ConsentListOutput is the return type from SearchConsents.
