@@ -1001,6 +1001,7 @@ func (s *consentService) ExpireConsent(ctx context.Context, consent *model.Conse
 
 	reason := "Consent expired based on expirationTime"
 	actionBy := "SYSTEM"
+	// For Re-check after locking as expiry can be triggered by multiple request paths and the cron job.
 	shouldExpire := true
 	var audit *model.ConsentStatusAudit
 
