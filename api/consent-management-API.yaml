@@ -333,6 +333,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConsentRetrievalResponse"
+              examples:
+                withoutStatusHistory:
+                  summary: Consent response without status history
+                  value:
+                    id: "30000001-0003-0003-0003-000000000002"
+                    purposes:
+                      - name: "Account management"
+                        version: "v1"
+                        elements:
+                          - name: "User email"
+                            namespace: "default"
+                            approved: false
+                          - name: "User address"
+                            namespace: "default"
+                            approved: false
+                    createdTime: 1702900000
+                    updatedTime: 1702900000
+                    groupId: "app-group-001"
+                    type: "Account management"
+                    status: "ACTIVE"
+                    validityTime: 1798741800
+                    recurringIndicator: true
+                    dataAccessValidityDuration: 0
+                    attributes:
+                      department: "customer_service"
+                      gdpr_compliant: "true"
+                      region: "EU"
+                    authorizations:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+                        userId: "user2@example.com"
+                        type: "authorisation"
+                        status: "APPROVED"
+                        updatedTime: 1702900000
+                        resources:
+                          accountIds:
+                            - "acc-789"
+                            - "acc-101"
+                withStatusHistory:
+                  summary: Consent response with status history
+                  value:
+                    id: "30000001-0003-0003-0003-000000000002"
+                    purposes:
+                      - name: "Account management"
+                        version: "v1"
+                        elements:
+                          - name: "User email"
+                            namespace: "default"
+                            approved: false
+                    createdTime: 1702900000
+                    updatedTime: 1702900000
+                    groupId: "app-group-001"
+                    type: "Account management"
+                    status: "ACTIVE"
+                    validityTime: 1798741800
+                    recurringIndicator: true
+                    dataAccessValidityDuration: 0
+                    attributes:
+                      department: "customer_service"
+                      gdpr_compliant: "true"
+                      region: "EU"
+                    authorizations:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+                        userId: "user2@example.com"
+                        type: "authorisation"
+                        status: "APPROVED"
+                        updatedTime: 1702900000
+                        resources:
+                          accountIds:
+                            - "acc-789"
+                            - "acc-101"
+                    statusHistory:
+                      - statusAuditId: "s3c4d5e6-f7a8-9012-abcd-ef1234567890"
+                        previousStatus: "CREATED"
+                        currentStatus: "ACTIVE"
+                        actionTime: 1745050000000
+                        actionBy: "user-001"
+                        reason: "All authorizations approved"
+                      - statusAuditId: "s1a2b3c4-d5e6-7890-abcd-ef1234567890"
+                        currentStatus: "CREATED"
+                        actionTime: 1745000000000
+                        actionBy: "client-app-123"
+                        reason: "Consent created"
         "400":
           description: Bad Request. The request was invalid, possibly due to a malformed `consentID` or missing headers.
           content:
@@ -476,6 +558,95 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConsentHistoryResponse"
+              examples:
+                withoutSnapshots:
+                  summary: Consent history without snapshots
+                  value:
+                    id: "30000001-0003-0003-0003-000000000002"
+                    history:
+                      - historyId: "m3c4d5e6-f7a8-9012-abcd-ef1234567890"
+                        actionTime: 1745200000000
+                        actionBy: "user-001"
+                        reason: "Consent authorizations amended and status updated"
+                      - historyId: "m2b3c4d5-e6f7-8901-abcd-ef1234567890"
+                        actionTime: 1745100000000
+                        actionBy: "user-001"
+                        reason: "Consent details amended"
+                withSnapshots:
+                  summary: Consent history with snapshots
+                  value:
+                    id: "30000001-0003-0003-0003-000000000002"
+                    history:
+                      - historyId: "m3c4d5e6-f7a8-9012-abcd-ef1234567890"
+                        actionTime: 1745200000000
+                        actionBy: "user-001"
+                        reason: "Consent authorizations amended and status updated"
+                        snapshot:
+                          id: "30000001-0003-0003-0003-000000000002"
+                          purposes:
+                            - name: "Account management"
+                              version: "v1"
+                              elements:
+                                - name: "User email"
+                                  namespace: "default"
+                                  approved: false
+                          createdTime: 1702900000
+                          updatedTime: 1702900000
+                          groupId: "app-group-001"
+                          type: "Account management"
+                          status: "CREATED"
+                          validityTime: 1798741800
+                          recurringIndicator: true
+                          dataAccessValidityDuration: 0
+                          attributes:
+                            department: "customer_service"
+                            gdpr_compliant: "true"
+                            region: "EU"
+                          authorizations:
+                            - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+                              userId: "user2@example.com"
+                              type: "authorisation"
+                              status: "APPROVED"
+                              updatedTime: 1702900000
+                              resources:
+                                accountIds:
+                                  - "acc-789"
+                                  - "acc-101"
+                      - historyId: "m2b3c4d5-e6f7-8901-abcd-ef1234567890"
+                        actionTime: 1745100000000
+                        actionBy: "user-001"
+                        reason: "Consent details amended"
+                        snapshot:
+                          id: "30000001-0003-0003-0003-000000000002"
+                          purposes:
+                            - name: "Account management"
+                              version: "v1"
+                              elements:
+                                - name: "User email"
+                                  namespace: "default"
+                                  approved: false
+                          createdTime: 1702900000
+                          updatedTime: 1702900000
+                          groupId: "app-group-001"
+                          type: "Account management"
+                          status: "ACTIVE"
+                          validityTime: 1798741800
+                          recurringIndicator: true
+                          dataAccessValidityDuration: 0
+                          attributes:
+                            department: "customer_service"
+                            gdpr_compliant: "true"
+                            region: "EU"
+                          authorizations:
+                            - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+                              userId: "user2@example.com"
+                              type: "authorisation"
+                              status: "APPROVED"
+                              updatedTime: 1702900000
+                              resources:
+                                accountIds:
+                                  - "acc-789"
+                                  - "acc-101"
         "400":
           description: Bad Request. The request was invalid, possibly due to a malformed `consentID` or missing headers.
           content:
@@ -3109,9 +3280,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ConsentStatusAuditItem"
-        modifiedResponse:
-          description: Optional field used to provide an alternative payload that overrides the original `consentPurpose` during consent processing.
-          type: object
     ConsentStatusAuditItem:
       type: object
       description: A single consent status audit history entry.
@@ -3122,8 +3290,7 @@ components:
           example: "s3c4d5e6-f7a8-9012-abcd-ef1234567890"
         previousStatus:
           type: string
-          nullable: true
-          description: Consent status before the transition.
+          description: Consent status before the transition. Omitted for the initial status audit entry.
           example: "CREATED"
         currentStatus:
           type: string
