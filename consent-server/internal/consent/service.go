@@ -86,6 +86,82 @@ func newConsentService(registry *stores.StoreRegistry) ConsentService {
 	return &consentService{stores: registry}
 }
 
+// RecordConsentHistory records a pre-mutation consent snapshot using a shared store registry.
+func RecordConsentHistory(
+	ctx context.Context,
+	registry *stores.StoreRegistry,
+	tx dbmodel.TxInterface,
+	consentID, orgID string,
+	actionBy *string,
+	reason HistoryReason,
+) error {
+	return (&consentService{stores: registry}).recordConsentHistory(
+		ctx,
+		tx,
+		consentID,
+		orgID,
+		actionBy,
+		reason,
+	)
+}
+
+func (s *consentService) recordConsentHistory(
+	ctx context.Context,
+	tx dbmodel.TxInterface,
+	consentID, orgID string,
+	actionBy *string,
+	reason HistoryReason,
+) error {
+	cfg := config.Get()
+	if cfg == nil || !cfg.Consent.History.Enabled {
+		return nil
+	}
+
+	consent, err := s.stores.Consent.GetByIDForUpdate(tx, consentID, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to lock consent for history: %w", err)
+	}
+	if consent == nil {
+		return fmt.Errorf("consent with ID '%s' not found", consentID)
+	}
+
+	snapshot, err := s.buildConsentHistorySnapshot(ctx, consent, orgID)
+	if err != nil {
+		return err
+	}
+
+	reasonText := string(reason)
+	history := &model.ConsentHistory{
+		HistoryID:  utils.GenerateUUID(),
+		ConsentID:  consentID,
+		OrgID:      orgID,
+		ActionTime: utils.GetCurrentTimeMillis(),
+		ActionBy:   actionBy,
+		Reason:     &reasonText,
+		Snapshot:   snapshot,
+	}
+
+	return s.stores.Consent.CreateHistory(tx, history)
+}
+
+func (s *consentService) buildConsentHistorySnapshot(
+	ctx context.Context,
+	consent *model.Consent,
+	orgID string,
+) ([]byte, error) {
+	output, err := s.loadConsentOutput(ctx, consent, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load consent output for history: %w", err)
+	}
+
+	snapshot, err := json.Marshal(consentOutputToResponse(output))
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal consent history snapshot: %w", err)
+	}
+
+	return snapshot, nil
+}
+
 func (s *consentService) evaluateConsentUpdateChanges(
 	ctx context.Context,
 	existing *model.Consent,
