@@ -65,7 +65,7 @@ type ConsentStore interface {
 	CreateStatusAudit(tx dbmodel.TxInterface, audit *consentModel.ConsentStatusAudit) error
 	// CreateHistory inserts a CONSENT_HISTORY row within a transaction.
 	CreateHistory(tx dbmodel.TxInterface, history *consentModel.ConsentHistory) error
-	// GetHistoryByConsentID returns consent amendment history for a consent.
+	// GetHistoryByConsentID returns consent history for a consent.
 	GetHistoryByConsentID(ctx context.Context, consentID, orgID string, includeSnapshots bool) ([]consentModel.ConsentHistory, error)
 	// GetStatusAuditsByConsentID returns status audit history for a consent.
 	GetStatusAuditsByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentStatusAudit, error)

@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS CONSENT_STATUS_AUDIT (
     ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Full amendment history table for pre-mutation consent snapshots
+-- Full consent history table for pre-mutation consent snapshots
 CREATE TABLE IF NOT EXISTS CONSENT_HISTORY (
   HISTORY_ID       CHAR(36)     NOT NULL,
   CONSENT_ID       CHAR(36)     NOT NULL,

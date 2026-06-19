@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS CONSENT_STATUS_AUDIT (
 CREATE INDEX IF NOT EXISTS idx_status_audit_consent_id  ON CONSENT_STATUS_AUDIT (CONSENT_ID);
 CREATE INDEX IF NOT EXISTS idx_status_audit_action_time ON CONSENT_STATUS_AUDIT (ACTION_TIME);
 
--- Full amendment history table for pre-mutation consent snapshots
+-- Full consent history table for pre-mutation consent snapshots
 CREATE TABLE IF NOT EXISTS CONSENT_HISTORY (
   HISTORY_ID       CHAR(36)     NOT NULL,
   CONSENT_ID       CHAR(36)     NOT NULL,

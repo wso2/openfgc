@@ -441,7 +441,7 @@ paths:
         - basicAuth: []
   /consents/{consentId}/history:
     get:
-      summary: Retrieve consent amendment history
+      summary: Retrieve consent history
       description: |
         Retrieves the complete history for a specific consent. Each history entry represents a pre-mutation snapshot captured immediately before a modification to the consent. Snapshot payloads are excluded by default
         and can be included by setting `includeSnapshots=true`.
@@ -471,7 +471,7 @@ paths:
             default: false
       responses:
         "200":
-          description: OK. Consent amendment history is returned in descending action time order.
+          description: OK. Consent history is returned in descending action time order.
           content:
             application/json:
               schema:
@@ -3138,7 +3138,7 @@ components:
           type: string
           nullable: true
           description: Actor that triggered the transition, when available.
-          example: "client-tpp-001"
+          example: "client-app-123"
         reason:
           type: string
           nullable: true
@@ -3146,7 +3146,7 @@ components:
           example: "All authorizations approved"
     ConsentHistoryResponse:
       type: object
-      description: Consent amendment history response.
+      description: Consent history response.
       properties:
         id:
           type: string
@@ -3154,31 +3154,31 @@ components:
           example: "123e4567-e89b-12d3-a456-426614174000"
         history:
           type: array
-          description: Consent amendment history entries in descending action time order.
+          description: Consent history entries in descending action time order.
           items:
             $ref: "#/components/schemas/ConsentHistoryItem"
     ConsentHistoryItem:
       type: object
-      description: A single consent amendment history entry.
+      description: A single consent history entry.
       properties:
         historyId:
           type: string
-          description: Unique identifier of the amendment history entry.
+          description: Unique identifier of the history entry.
           example: "m3c4d5e6-f7a8-9012-abcd-ef1234567890"
         actionTime:
           type: integer
           format: int64
-          description: Time at which the amendment occurred.
+          description: Time at which the history event occurred.
           example: 1745200000000
         actionBy:
           type: string
           nullable: true
-          description: Actor that triggered the amendment, when available.
-          example: "client-tpp-001"
+          description: Actor that triggered the history event, when available.
+          example: "client-app-123"
         reason:
           type: string
           nullable: true
-          description: Server-generated amendment reason.
+          description: Server-generated history reason.
           example: "Consent amended"
         snapshot:
           description: Full pre-mutation consent response snapshot. Included only when `includeSnapshots=true`.

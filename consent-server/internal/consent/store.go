@@ -619,7 +619,7 @@ func (s *store) IsPurposeUsedInConsents(ctx context.Context, purposeID, orgID st
 	return extractCount(rows[0]) > 0, nil
 }
 
-// GetHistoryByConsentID retrieves consent amendment history.
+// GetHistoryByConsentID retrieves consent history.
 func (s *store) GetHistoryByConsentID(ctx context.Context, consentID, orgID string, includeSnapshots bool) ([]model.ConsentHistory, error) {
 	dbClient, err := s.getDBClient()
 	if err != nil {

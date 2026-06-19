@@ -18,7 +18,7 @@
 
 package consent
 
-// HistoryReason is the server-generated reason attached to consent amendment history.
+// HistoryReason is the server-generated reason attached to consent history.
 type HistoryReason string
 
 const (

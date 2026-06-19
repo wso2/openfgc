@@ -635,7 +635,7 @@ func (s *consentService) GetConsentWithStatusHistory(ctx context.Context, consen
 	return out, nil
 }
 
-// GetConsentHistory retrieves amendment history for a consent.
+// GetConsentHistory retrieves history for a consent.
 func (s *consentService) GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListResponse, *serviceerror.ServiceError) {
 	logger := log.GetLogger().WithContext(ctx)
 

@@ -40,7 +40,7 @@ type ConsentHistoryResponse struct {
 	Snapshot   json.RawMessage `json:"snapshot,omitempty"`
 }
 
-// ConsentHistoryListResponse represents consent amendment history.
+// ConsentHistoryListResponse represents consent history.
 type ConsentHistoryListResponse struct {
 	ID      string                   `json:"id"`
 	History []ConsentHistoryResponse `json:"history"`
