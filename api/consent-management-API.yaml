@@ -348,12 +348,12 @@ paths:
                           - name: "User address"
                             namespace: "default"
                             approved: false
-                    createdTime: 1702900000
-                    updatedTime: 1702900000
+                    createdTime: 1702900000000
+                    updatedTime: 1702900000000
                     groupId: "app-group-001"
                     type: "Account management"
                     status: "ACTIVE"
-                    validityTime: 1798741800
+                    expirationTime: 1798741800000
                     recurringIndicator: true
                     dataAccessValidityDuration: 0
                     attributes:
@@ -365,7 +365,7 @@ paths:
                         userId: "user2@example.com"
                         type: "authorisation"
                         status: "APPROVED"
-                        updatedTime: 1702900000
+                        updatedTime: 1702900000000
                         resources:
                           accountIds:
                             - "acc-789"
@@ -381,12 +381,12 @@ paths:
                           - name: "User email"
                             namespace: "default"
                             approved: false
-                    createdTime: 1702900000
-                    updatedTime: 1702900000
+                    createdTime: 1702900000000
+                    updatedTime: 1702900000000
                     groupId: "app-group-001"
                     type: "Account management"
                     status: "ACTIVE"
-                    validityTime: 1798741800
+                    expirationTime: 1798741800000
                     recurringIndicator: true
                     dataAccessValidityDuration: 0
                     attributes:
@@ -398,7 +398,7 @@ paths:
                         userId: "user2@example.com"
                         type: "authorisation"
                         status: "APPROVED"
-                        updatedTime: 1702900000
+                        updatedTime: 1702900000000
                         resources:
                           accountIds:
                             - "acc-789"
@@ -590,12 +590,12 @@ paths:
                                 - name: "User email"
                                   namespace: "default"
                                   approved: false
-                          createdTime: 1702900000
-                          updatedTime: 1702900000
+                          createdTime: 1702900000000
+                          updatedTime: 1702900000000
                           groupId: "app-group-001"
                           type: "Account management"
                           status: "CREATED"
-                          validityTime: 1798741800
+                          expirationTime: 1798741800000
                           recurringIndicator: true
                           dataAccessValidityDuration: 0
                           attributes:
@@ -607,7 +607,7 @@ paths:
                               userId: "user2@example.com"
                               type: "authorisation"
                               status: "APPROVED"
-                              updatedTime: 1702900000
+                              updatedTime: 1702900000000
                               resources:
                                 accountIds:
                                   - "acc-789"
@@ -625,12 +625,12 @@ paths:
                                 - name: "User email"
                                   namespace: "default"
                                   approved: false
-                          createdTime: 1702900000
-                          updatedTime: 1702900000
+                          createdTime: 1702900000000
+                          updatedTime: 1702900000000
                           groupId: "app-group-001"
                           type: "Account management"
                           status: "ACTIVE"
-                          validityTime: 1798741800
+                          expirationTime: 1798741800000
                           recurringIndicator: true
                           dataAccessValidityDuration: 0
                           attributes:
@@ -642,7 +642,7 @@ paths:
                               userId: "user2@example.com"
                               type: "authorisation"
                               status: "APPROVED"
-                              updatedTime: 1702900000
+                              updatedTime: 1702900000000
                               resources:
                                 accountIds:
                                   - "acc-789"
