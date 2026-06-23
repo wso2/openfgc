@@ -53,6 +53,8 @@ type ConsentStore interface {
 	DeleteAttributesByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
 	// GetAttributesByConsentID returns all attributes for a single consent.
 	GetAttributesByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentAttribute, error)
+	// GetAttributesByConsentIDTx returns all attributes for a single consent within a transaction.
+	GetAttributesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]consentModel.ConsentAttribute, error)
 	// GetAttributesByConsentIDs returns attributes for multiple consents in one query,
 	// keyed by consent ID then attribute key.
 	GetAttributesByConsentIDs(ctx context.Context, consentIDs []string, orgID string) (map[string]map[string]string, error)
@@ -76,6 +78,8 @@ type ConsentStore interface {
 	DeletePurposesByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
 	// GetPurposesByConsentID returns purpose rows joined with PURPOSE metadata for a consent.
 	GetPurposesByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentPurposeRow, error)
+	// GetPurposesByConsentIDTx returns purpose rows joined with PURPOSE metadata within a transaction.
+	GetPurposesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]consentModel.ConsentPurposeRow, error)
 	// IsPurposeUsedInConsents reports whether any version of a logical purpose is referenced by any consent.
 	// Returns true → caller must reject the purpose delete with 409 Conflict.
 	IsPurposeUsedInConsents(ctx context.Context, purposeID, orgID string) (bool, error)
@@ -86,12 +90,18 @@ type ConsentStore interface {
 	DeleteElementApprovalsByConsentID(tx dbmodel.TxInterface, consentID, orgID string) error
 	// GetElementApprovalsByConsentID returns approval rows joined with ELEMENT metadata for a consent.
 	GetElementApprovalsByConsentID(ctx context.Context, consentID, orgID string) ([]consentModel.ConsentApprovalRow, error)
+	// GetElementApprovalsByConsentIDTx returns approval rows joined with ELEMENT metadata within a transaction.
+	GetElementApprovalsByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]consentModel.ConsentApprovalRow, error)
 	// GetElementPropertiesByConsentID returns element properties for all elements in a consent,
 	// keyed by element version ID then attribute key.
 	GetElementPropertiesByConsentID(ctx context.Context, consentID, orgID string) (map[string]map[string]string, error)
+	// GetElementPropertiesByConsentIDTx returns element properties within a transaction.
+	GetElementPropertiesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) (map[string]map[string]string, error)
 	// GetPurposePropertiesByConsentID returns purpose properties for all purposes in a consent,
 	// keyed by purpose version ID then attribute key.
 	GetPurposePropertiesByConsentID(ctx context.Context, consentID, orgID string) (map[string]map[string]string, error)
+	// GetPurposePropertiesByConsentIDTx returns purpose properties within a transaction.
+	GetPurposePropertiesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) (map[string]map[string]string, error)
 }
 
 // AuthResourceStore defines the interface for authorization resource data operations.
@@ -122,6 +132,8 @@ type AuthResourceStore interface {
 	// GetByConsentID returns all auth resource rows for a consent.
 	// Used when deriving the aggregate consent status from individual auth statuses.
 	GetByConsentID(ctx context.Context, consentID, orgID string) ([]authResourceModel.AuthResource, error)
+	// GetByConsentIDTx returns all auth resource rows for a consent within a transaction.
+	GetByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]authResourceModel.AuthResource, error)
 
 	// GetByConsentIDs returns auth resource rows for multiple consents in one query.
 	// Used for batch-loading auth resources during consent list/search responses.

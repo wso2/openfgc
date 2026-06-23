@@ -124,7 +124,7 @@ func (s *consentService) recordConsentHistory(
 		return fmt.Errorf("consent with ID '%s' not found", consentID)
 	}
 
-	snapshot, err := s.buildConsentHistorySnapshot(ctx, consent, orgID)
+	snapshot, err := s.buildConsentHistorySnapshot(ctx, tx, consent, orgID)
 	if err != nil {
 		return err
 	}
@@ -145,10 +145,11 @@ func (s *consentService) recordConsentHistory(
 
 func (s *consentService) buildConsentHistorySnapshot(
 	ctx context.Context,
+	tx dbmodel.TxInterface,
 	consent *model.Consent,
 	orgID string,
 ) ([]byte, error) {
-	output, err := s.loadConsentOutput(ctx, consent, orgID)
+	output, err := s.loadConsentOutputForHistory(ctx, tx, consent, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load consent output for history: %w", err)
 	}
@@ -1231,6 +1232,54 @@ func (s *consentService) loadConsentOutput(ctx context.Context, consent *model.C
 	attrMap := make(map[string]string, len(attrs))
 	for _, a := range attrs {
 		attrMap[a.AttKey] = a.AttValue
+	}
+
+	return buildConsentOutput(consent, purposeRows, approvalRows, attrMap, authResources, elementProps, purposeProps), nil
+}
+
+// loadConsentOutputForHistory reads the same consent shape through the active transaction
+// so the history snapshot stays consistent with the pre-mutation state.
+func (s *consentService) loadConsentOutputForHistory(
+	ctx context.Context,
+	tx dbmodel.TxInterface,
+	consent *model.Consent,
+	orgID string,
+) (*model.ConsentOutput, error) {
+	if tx == nil {
+		return s.loadConsentOutput(ctx, consent, orgID)
+	}
+
+	consentStore := s.stores.Consent
+	authResourceStore := s.stores.AuthResource
+
+	attrs, err := consentStore.GetAttributesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load attributes: %w", err)
+	}
+	authResources, err := authResourceStore.GetByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load auth resources: %w", err)
+	}
+	purposeRows, err := consentStore.GetPurposesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load purpose rows: %w", err)
+	}
+	approvalRows, err := consentStore.GetElementApprovalsByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load approval rows: %w", err)
+	}
+	elementProps, err := consentStore.GetElementPropertiesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load element properties: %w", err)
+	}
+	purposeProps, err := consentStore.GetPurposePropertiesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load purpose properties: %w", err)
+	}
+
+	attrMap := make(map[string]string, len(attrs))
+	for _, attr := range attrs {
+		attrMap[attr.AttKey] = attr.AttValue
 	}
 
 	return buildConsentOutput(consent, purposeRows, approvalRows, attrMap, authResources, elementProps, purposeProps), nil

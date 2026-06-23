@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/wso2/openfgc/internal/authresource/model"
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
@@ -136,6 +137,51 @@ func (s *store) UpdateAllStatusByConsentID(tx dbmodel.TxInterface, consentID, or
 // =============================================================================
 // Read operations
 // =============================================================================
+
+func queryRowsInTx(tx dbmodel.TxInterface, query dbmodel.DBQuery, args ...interface{}) ([]map[string]interface{}, error) {
+	rows, err := tx.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		values := make([]interface{}, len(columns))
+		pointers := make([]interface{}, len(columns))
+		for i := range values {
+			pointers[i] = &values[i]
+		}
+		if err := rows.Scan(pointers...); err != nil {
+			return nil, err
+		}
+
+		row := make(map[string]interface{}, len(columns))
+		for i, column := range columns {
+			row[strings.ToLower(column)] = values[i]
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
+// GetByConsentIDTx returns all auth resource rows for a consent within a transaction.
+func (s *store) GetByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]model.AuthResource, error) {
+	rows, err := queryRowsInTx(tx, QueryGetAuthResourcesByConsentID, consentID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	authResources := make([]model.AuthResource, 0, len(rows))
+	for _, row := range rows {
+		authResources = append(authResources, *mapToAuthResource(row))
+	}
+	return authResources, nil
+}
 
 // GetByID returns the CONSENT_AUTH_RESOURCE row for the given AUTH_ID, or nil if not found.
 func (s *store) GetByID(ctx context.Context, authID, orgID string) (*model.AuthResource, error) {

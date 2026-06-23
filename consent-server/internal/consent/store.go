@@ -416,6 +416,114 @@ func (s *store) GetByIDForUpdate(tx dbmodel.TxInterface, consentID, orgID string
 	return mapToConsent(row), rows.Err()
 }
 
+func queryRowsInTx(tx dbmodel.TxInterface, query dbmodel.DBQuery, args ...interface{}) ([]map[string]interface{}, error) {
+	rows, err := tx.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		values := make([]interface{}, len(columns))
+		pointers := make([]interface{}, len(columns))
+		for i := range values {
+			pointers[i] = &values[i]
+		}
+		if err := rows.Scan(pointers...); err != nil {
+			return nil, err
+		}
+
+		row := make(map[string]interface{}, len(columns))
+		for i, column := range columns {
+			row[strings.ToLower(column)] = values[i]
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
+// GetAttributesByConsentIDTx retrieves all attributes for a single consent within a transaction.
+func (s *store) GetAttributesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]model.ConsentAttribute, error) {
+	rows, err := queryRowsInTx(tx, QueryGetAttributesByConsentID, consentID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	attrs := make([]model.ConsentAttribute, 0, len(rows))
+	for _, row := range rows {
+		if attr := mapToConsentAttribute(row); attr != nil {
+			attrs = append(attrs, *attr)
+		}
+	}
+	return attrs, nil
+}
+
+// GetPurposesByConsentIDTx returns purpose rows joined with PURPOSE metadata within a transaction.
+func (s *store) GetPurposesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]model.ConsentPurposeRow, error) {
+	rows, err := queryRowsInTx(tx, QueryGetConsentPurposesByConsentID, consentID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]model.ConsentPurposeRow, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, mapToConsentPurposeRow(row))
+	}
+	return result, nil
+}
+
+// GetElementApprovalsByConsentIDTx returns approval rows joined with ELEMENT metadata within a transaction.
+func (s *store) GetElementApprovalsByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) ([]model.ConsentApprovalRow, error) {
+	rows, err := queryRowsInTx(tx, QueryGetElementApprovalsByConsentID, consentID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]model.ConsentApprovalRow, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, mapToConsentApprovalRow(row))
+	}
+	return result, nil
+}
+
+// GetElementPropertiesByConsentIDTx returns element properties within a transaction.
+func (s *store) GetElementPropertiesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) (map[string]map[string]string, error) {
+	rows, err := queryRowsInTx(tx, QueryGetElementPropertiesByConsentID, consentID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return mapPropertiesByVersionID(rows, "element_version_id"), nil
+}
+
+// GetPurposePropertiesByConsentIDTx returns purpose properties within a transaction.
+func (s *store) GetPurposePropertiesByConsentIDTx(tx dbmodel.TxInterface, consentID, orgID string) (map[string]map[string]string, error) {
+	rows, err := queryRowsInTx(tx, QueryGetPurposePropertiesByConsentID, consentID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return mapPropertiesByVersionID(rows, "purpose_version_id"), nil
+}
+
+func mapPropertiesByVersionID(rows []map[string]interface{}, versionColumn string) map[string]map[string]string {
+	result := make(map[string]map[string]string)
+	for _, row := range rows {
+		versionID := getString(row, versionColumn)
+		key := getString(row, "att_key")
+		value := getString(row, "att_value")
+		if versionID == "" || key == "" {
+			continue
+		}
+		if result[versionID] == nil {
+			result[versionID] = make(map[string]string)
+		}
+		result[versionID][key] = value
+	}
+	return result
+}
+
 // GetAttributesByConsentID retrieves all attributes for a single consent.
 func (s *store) GetAttributesByConsentID(ctx context.Context, consentID, orgID string) ([]model.ConsentAttribute, error) {
 	dbClient, err := s.getDBClient()
