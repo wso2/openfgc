@@ -179,6 +179,66 @@ func (_c *AuthResourceStore_GetByConsentID_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetByConsentIDTx provides a mock function with given fields: tx, consentID, orgID
+func (_m *AuthResourceStore) GetByConsentIDTx(tx model.TxInterface, consentID string, orgID string) ([]authresourcemodel.AuthResource, error) {
+	ret := _m.Called(tx, consentID, orgID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByConsentIDTx")
+	}
+
+	var r0 []authresourcemodel.AuthResource
+	var r1 error
+	if rf, ok := ret.Get(0).(func(model.TxInterface, string, string) ([]authresourcemodel.AuthResource, error)); ok {
+		return rf(tx, consentID, orgID)
+	}
+	if rf, ok := ret.Get(0).(func(model.TxInterface, string, string) []authresourcemodel.AuthResource); ok {
+		r0 = rf(tx, consentID, orgID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]authresourcemodel.AuthResource)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(model.TxInterface, string, string) error); ok {
+		r1 = rf(tx, consentID, orgID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// AuthResourceStore_GetByConsentIDTx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByConsentIDTx'
+type AuthResourceStore_GetByConsentIDTx_Call struct {
+	*mock.Call
+}
+
+// GetByConsentIDTx is a helper method to define mock.On call
+//   - tx model.TxInterface
+//   - consentID string
+//   - orgID string
+func (_e *AuthResourceStore_Expecter) GetByConsentIDTx(tx interface{}, consentID interface{}, orgID interface{}) *AuthResourceStore_GetByConsentIDTx_Call {
+	return &AuthResourceStore_GetByConsentIDTx_Call{Call: _e.mock.On("GetByConsentIDTx", tx, consentID, orgID)}
+}
+
+func (_c *AuthResourceStore_GetByConsentIDTx_Call) Run(run func(tx model.TxInterface, consentID string, orgID string)) *AuthResourceStore_GetByConsentIDTx_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(model.TxInterface), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *AuthResourceStore_GetByConsentIDTx_Call) Return(_a0 []authresourcemodel.AuthResource, _a1 error) *AuthResourceStore_GetByConsentIDTx_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *AuthResourceStore_GetByConsentIDTx_Call) RunAndReturn(run func(model.TxInterface, string, string) ([]authresourcemodel.AuthResource, error)) *AuthResourceStore_GetByConsentIDTx_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetByConsentIDs provides a mock function with given fields: ctx, consentIDs, orgID
 func (_m *AuthResourceStore) GetByConsentIDs(ctx context.Context, consentIDs []string, orgID string) ([]authresourcemodel.AuthResource, error) {
 	ret := _m.Called(ctx, consentIDs, orgID)

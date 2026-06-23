@@ -18,6 +18,8 @@
 
 package consent
 
+import "encoding/json"
+
 // =============================================================================
 // Request types — what we send to the server.
 // These mirror the server's internal/consent/model/consent.go API types exactly.
@@ -118,19 +120,45 @@ type PurposeResponse struct {
 
 // ConsentResponse is returned by POST, GET, and PUT /consents.
 type ConsentResponse struct {
-	ID                         string                  `json:"id"`
-	GroupID                    string                  `json:"groupId"`
-	Type                       string                  `json:"type"`
-	Status                     string                  `json:"status"`
-	CreatedTime                int64                   `json:"createdTime"`
-	UpdatedTime                int64                   `json:"updatedTime"`
-	ExpirationTime             *int64                  `json:"expirationTime,omitempty"`
-	Frequency                  *int                    `json:"frequency,omitempty"`
-	RecurringIndicator         *bool                   `json:"recurringIndicator,omitempty"`
-	DataAccessValidityDuration *int64                  `json:"dataAccessValidityDuration,omitempty"`
-	Attributes                 map[string]string       `json:"attributes"`
-	Purposes                   []PurposeResponse       `json:"purposes"`
-	Authorizations             []AuthorizationResponse `json:"authorizations"`
+	ID                         string                       `json:"id"`
+	GroupID                    string                       `json:"groupId"`
+	Type                       string                       `json:"type"`
+	Status                     string                       `json:"status"`
+	CreatedTime                int64                        `json:"createdTime"`
+	UpdatedTime                int64                        `json:"updatedTime"`
+	ExpirationTime             *int64                       `json:"expirationTime,omitempty"`
+	Frequency                  *int                         `json:"frequency,omitempty"`
+	RecurringIndicator         *bool                        `json:"recurringIndicator,omitempty"`
+	DataAccessValidityDuration *int64                       `json:"dataAccessValidityDuration,omitempty"`
+	Attributes                 map[string]string            `json:"attributes"`
+	Purposes                   []PurposeResponse            `json:"purposes"`
+	Authorizations             []AuthorizationResponse      `json:"authorizations"`
+	StatusHistory              []ConsentStatusAuditResponse `json:"statusHistory,omitempty"`
+}
+
+// ConsentStatusAuditResponse is one status audit entry returned when includeStatusHistory=true.
+type ConsentStatusAuditResponse struct {
+	StatusAuditID  string  `json:"statusAuditId"`
+	PreviousStatus *string `json:"previousStatus,omitempty"`
+	CurrentStatus  string  `json:"currentStatus"`
+	ActionTime     int64   `json:"actionTime"`
+	ActionBy       *string `json:"actionBy,omitempty"`
+	Reason         *string `json:"reason,omitempty"`
+}
+
+// ConsentHistoryResponse is one consent history entry.
+type ConsentHistoryResponse struct {
+	HistoryID  string          `json:"historyId"`
+	ActionTime int64           `json:"actionTime"`
+	ActionBy   *string         `json:"actionBy,omitempty"`
+	Reason     *string         `json:"reason,omitempty"`
+	Snapshot   json.RawMessage `json:"snapshot,omitempty"`
+}
+
+// ConsentHistoryListResponse is returned by GET /consents/{consentId}/history.
+type ConsentHistoryListResponse struct {
+	ID      string                   `json:"id"`
+	History []ConsentHistoryResponse `json:"history"`
 }
 
 // ConsentListResponse is returned by GET /consents.

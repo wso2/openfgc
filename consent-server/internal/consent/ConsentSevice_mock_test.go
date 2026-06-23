@@ -197,6 +197,131 @@ func (_c *MockConsentService_GetConsent_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// GetConsentHistory provides a mock function with given fields: ctx, consentID, orgID, includeSnapshots
+func (_m *MockConsentService) GetConsentHistory(ctx context.Context, consentID string, orgID string, includeSnapshots bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError) {
+	ret := _m.Called(ctx, consentID, orgID, includeSnapshots)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConsentHistory")
+	}
+
+	var r0 *model.ConsentHistoryListOutput
+	var r1 *serviceerror.ServiceError
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError)); ok {
+		return rf(ctx, consentID, orgID, includeSnapshots)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) *model.ConsentHistoryListOutput); ok {
+		r0 = rf(ctx, consentID, orgID, includeSnapshots)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ConsentHistoryListOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool) *serviceerror.ServiceError); ok {
+		r1 = rf(ctx, consentID, orgID, includeSnapshots)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*serviceerror.ServiceError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockConsentService_GetConsentHistory_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetConsentHistory'
+type MockConsentService_GetConsentHistory_Call struct {
+	*mock.Call
+}
+
+// GetConsentHistory is a helper method to define mock.On call
+//   - ctx context.Context
+//   - consentID string
+//   - orgID string
+//   - includeSnapshots bool
+func (_e *MockConsentService_Expecter) GetConsentHistory(ctx interface{}, consentID interface{}, orgID interface{}, includeSnapshots interface{}) *MockConsentService_GetConsentHistory_Call {
+	return &MockConsentService_GetConsentHistory_Call{Call: _e.mock.On("GetConsentHistory", ctx, consentID, orgID, includeSnapshots)}
+}
+
+func (_c *MockConsentService_GetConsentHistory_Call) Run(run func(ctx context.Context, consentID string, orgID string, includeSnapshots bool)) *MockConsentService_GetConsentHistory_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(bool))
+	})
+	return _c
+}
+
+func (_c *MockConsentService_GetConsentHistory_Call) Return(_a0 *model.ConsentHistoryListOutput, _a1 *serviceerror.ServiceError) *MockConsentService_GetConsentHistory_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockConsentService_GetConsentHistory_Call) RunAndReturn(run func(context.Context, string, string, bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError)) *MockConsentService_GetConsentHistory_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetConsentWithStatusHistory provides a mock function with given fields: ctx, consentID, orgID
+func (_m *MockConsentService) GetConsentWithStatusHistory(ctx context.Context, consentID string, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError) {
+	ret := _m.Called(ctx, consentID, orgID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConsentWithStatusHistory")
+	}
+
+	var r0 *model.ConsentOutput
+	var r1 *serviceerror.ServiceError
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*model.ConsentOutput, *serviceerror.ServiceError)); ok {
+		return rf(ctx, consentID, orgID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *model.ConsentOutput); ok {
+		r0 = rf(ctx, consentID, orgID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ConsentOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) *serviceerror.ServiceError); ok {
+		r1 = rf(ctx, consentID, orgID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*serviceerror.ServiceError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockConsentService_GetConsentWithStatusHistory_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetConsentWithStatusHistory'
+type MockConsentService_GetConsentWithStatusHistory_Call struct {
+	*mock.Call
+}
+
+// GetConsentWithStatusHistory is a helper method to define mock.On call
+//   - ctx context.Context
+//   - consentID string
+//   - orgID string
+func (_e *MockConsentService_Expecter) GetConsentWithStatusHistory(ctx interface{}, consentID interface{}, orgID interface{}) *MockConsentService_GetConsentWithStatusHistory_Call {
+	return &MockConsentService_GetConsentWithStatusHistory_Call{Call: _e.mock.On("GetConsentWithStatusHistory", ctx, consentID, orgID)}
+}
+
+func (_c *MockConsentService_GetConsentWithStatusHistory_Call) Run(run func(ctx context.Context, consentID string, orgID string)) *MockConsentService_GetConsentWithStatusHistory_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockConsentService_GetConsentWithStatusHistory_Call) Return(_a0 *model.ConsentOutput, _a1 *serviceerror.ServiceError) *MockConsentService_GetConsentWithStatusHistory_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockConsentService_GetConsentWithStatusHistory_Call) RunAndReturn(run func(context.Context, string, string) (*model.ConsentOutput, *serviceerror.ServiceError)) *MockConsentService_GetConsentWithStatusHistory_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetExpiredConsents provides a mock function with given fields: ctx, currentTimeMs, expirableStatuses
 func (_m *MockConsentService) GetExpiredConsents(ctx context.Context, currentTimeMs int64, expirableStatuses []string) ([]model.Consent, *serviceerror.ServiceError) {
 	ret := _m.Called(ctx, currentTimeMs, expirableStatuses)

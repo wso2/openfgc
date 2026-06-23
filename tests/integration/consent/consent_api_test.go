@@ -152,6 +152,29 @@ func (ts *ConsentAPITestSuite) doGetConsent(orgID, consentID string) (int, *Cons
 	return status, &resp
 }
 
+func (ts *ConsentAPITestSuite) doGetConsentWithStatusHistory(orgID, consentID string) (int, *ConsentResponse) {
+	status, body := ts.doRequest(http.MethodGet, "/api/v1/consents/"+consentID+"?includeStatusHistory=true", orgID, "", nil)
+	if status != http.StatusOK {
+		return status, nil
+	}
+	var resp ConsentResponse
+	ts.Require().NoError(json.Unmarshal(body, &resp), "unmarshal ConsentResponse (get with status history)")
+	return status, &resp
+}
+
+func (ts *ConsentAPITestSuite) doGetConsentHistory(orgID, consentID string, includeSnapshots bool) (int, *ConsentHistoryListResponse) {
+	path := "/api/v1/consents/" + consentID + "/history"
+	if includeSnapshots {
+		path += "?includeSnapshots=true"
+	}
+	status, body := ts.doRequest(http.MethodGet, path, orgID, "", nil)
+	if status != http.StatusOK {
+		return status, nil
+	}
+	var resp ConsentHistoryListResponse
+	ts.Require().NoError(json.Unmarshal(body, &resp), "unmarshal ConsentHistoryListResponse")
+	return status, &resp
+}
 func (ts *ConsentAPITestSuite) doListConsents(orgID string, params url.Values) (int, *ConsentListResponse) {
 	path := "/api/v1/consents"
 	if len(params) > 0 {
@@ -215,8 +238,8 @@ func (ts *ConsentAPITestSuite) mustCreateElementFull(orgID string, item map[stri
 	return batchResp.Results[0].Element.ElementID
 }
 
-func (ts *ConsentAPITestSuite) doUpdateConsent(orgID, consentID string, req ConsentUpdateRequest) (int, *ConsentResponse) {
-	status, body := ts.doRequest(http.MethodPut, "/api/v1/consents/"+consentID, orgID, "", req)
+func (ts *ConsentAPITestSuite) doUpdateConsent(orgID, groupID, consentID string, req ConsentUpdateRequest) (int, *ConsentResponse) {
+	status, body := ts.doRequest(http.MethodPut, "/api/v1/consents/"+consentID, orgID, groupID, req)
 	if status != http.StatusOK {
 		return status, nil
 	}
