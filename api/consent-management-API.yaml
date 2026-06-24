@@ -18,7 +18,7 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 servers:
-  - url: http://localhost:3000/api/v1
+  - url: http://localhost:8060/api/v1
 tags:
   - name: Consent Elements
     description: Manage Consent Elements

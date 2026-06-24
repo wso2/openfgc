@@ -1,21 +1,20 @@
 server:
   hostname: localhost
-  port: 3000
+  port: 8060
   readTimeout: 30s
   writeTimeout: 30s
   idleTimeout: 120s
 
 database:
   consent:
-    type: mysql
-    hostname: localhost
-    port: 3306
-    database: consent_mgt
+    type: sqlite
+    # Path to the SQLite database file (relative to the server binary)
+    path: ./repository/database/consent.db
+    # Optional DSN query parameters for additional SQLite pragmas
+    # options: "_pragma=journal_mode(WAL)&_pragma=cache_size(-16000)"
     max_open_conns: 25
     max_idle_conns: 5
     conn_max_lifetime: 5m
-    user: root
-    password: password
 
 logging:
   level: info

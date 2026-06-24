@@ -1,6 +1,6 @@
 server:
   hostname: localhost
-  port: 3000
+  port: 8061
   readTimeout: 30s
   writeTimeout: 30s
   idleTimeout: 120s

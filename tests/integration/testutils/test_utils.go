@@ -92,18 +92,18 @@ func GetServerPort() string {
 	data, err := os.ReadFile(ConfigPath)
 	if err != nil {
 		// Fallback to default port if config file not found
-		fmt.Printf("Warning: Could not read config file: %v, using default port 3000\n", err)
-		return "3000"
+		fmt.Printf("Warning: Could not read config file: %v, using default port 8060\n", err)
+		return "8060"
 	}
 
 	var config ServerConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		fmt.Printf("Warning: Could not parse config file: %v, using default port 3000\n", err)
-		return "3000"
+		fmt.Printf("Warning: Could not parse config file: %v, using default port 8060\n", err)
+		return "8060"
 	}
 
 	if config.Server.Port == 0 {
-		return "3000"
+		return "8060"
 	}
 
 	return fmt.Sprintf("%d", config.Server.Port)
