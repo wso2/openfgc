@@ -1,0 +1,47 @@
+version: '3'
+
+vars:
+  GOLANGCI_LINT_VERSION: v2.12.2
+
+tasks:
+  fmt:
+    desc: Format Go source files
+    cmds:
+      - gofmt -w cmd internal tests
+
+  fmt:check:
+    desc: Check formatting without modifying files
+    cmds:
+      - gofmt -l cmd internal tests
+
+  lint:
+    desc: Run golangci-lint (no global install required)
+    cmds:
+      - go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}} run ./...
+
+  lint:install:
+    desc: Install golangci-lint to GOPATH/bin (optional)
+    cmds:
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./... -v
+
+  build:
+    desc: Build the BFF binary
+    cmds:
+      - go build -o bin/portal-backend{{if eq OS "windows"}}.exe{{end}} ./cmd/server
+
+  run:
+    desc: Run the BFF server
+    cmds:
+      - go run ./cmd/server
+
+  run:env:
+    desc: Run the BFF server with variables loaded from .env
+    dotenv:
+      - .env
+    cmds:
+      - go run ./cmd/server

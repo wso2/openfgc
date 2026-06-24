@@ -1,0 +1,15 @@
+version: "2"
+
+run:
+  timeout: 3m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - revive
+
+formatters:
+  enable:
+    - gofmt

@@ -1,0 +1,370 @@
+openapi: 3.0.3
+info:
+  title: OpenFGC Portal BFF API
+  version: 0.2.0
+  description: >-
+    Stateless portal BFF endpoints, including health checks, portal-facing
+    user routes, and explicit passthrough routes to consent-server. For proxied
+    endpoints in this spec, response payload shape is inherited from the
+    consent-management API.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Health
+  - name: User
+  - name: Passthrough
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service healthy
+  /health/liveness:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service healthy
+  /health/readiness:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service ready
+
+  /me/consents:
+    get:
+      tags: [User]
+      summary: List current user consents
+      description: >-
+        Proxies to consent-server GET /api/v1/consents and always overwrites
+        userIds with trusted identity context. Response payload shape is
+        inherited from consent-management API.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: offset
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /me/consents/{consentId}:
+    get:
+      tags: [User]
+      summary: Get consent by id for current user flow
+      description: >-
+        Aggregates consent details from consent-server by combining
+        GET /api/v1/consents/{consentId} with consent purpose and consent
+        element metadata lookups. Response includes purpose descriptions and
+        enriched element fields such as isMandatory, type, description, and
+        properties.
+      parameters:
+        - in: path
+          name: consentId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Aggregated consent detail response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeConsentDetailAggregatedResponse'
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /me/consents/{consentId}/approve:
+    post:
+      tags: [User]
+      summary: Approve consent for current user flow
+      description: >-
+        Accepts the selected optional purpose/element approvals, fetches the
+        current consent, builds a full consent update payload, and forwards it
+        as PUT /api/v1/consents/{consentId}. The upstream TPP-client-id header
+        is derived from the fetched consent's clientId, mandatory elements are
+        always set to approved, and an existing authorization is updated to
+        APPROVED for the trusted current user identity (falls back to creating
+        one if none exist).
+      parameters:
+        - in: path
+          name: consentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [purposeName, elementName]
+                properties:
+                  purposeName:
+                    type: string
+                  elementName:
+                    type: string
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/ProxyError'
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '413':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /me/consents/{consentId}/revoke:
+    put:
+      tags: [User]
+      summary: Revoke consent for current user flow
+      description: >-
+        Response payload shape is inherited from consent-management API.
+      parameters:
+        - in: path
+          name: consentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/ProxyError'
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '413':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /api/consents:
+    get:
+      tags: [Passthrough]
+      summary: Passthrough search consents
+      description: >-
+        Response payload shape is inherited from consent-management API.
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '405':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+    post:
+      tags: [Passthrough]
+      summary: Passthrough create consent
+      description: >-
+        Response payload shape is inherited from consent-management API.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '405':
+          $ref: '#/components/responses/ProxyError'
+        '413':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+components:
+  schemas:
+    MeConsentDetailAggregatedResponse:
+      type: object
+      required:
+        - id
+        - clientId
+        - type
+        - status
+        - createdTime
+        - updatedTime
+        - purposes
+      properties:
+        id:
+          type: string
+        clientId:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        createdTime:
+          type: integer
+          format: int64
+        updatedTime:
+          type: integer
+          format: int64
+        frequency:
+          type: integer
+        validityTime:
+          type: integer
+          format: int64
+        recurringIndicator:
+          type: boolean
+        dataAccessValidityDuration:
+          type: integer
+          format: int64
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+        authorizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentAuthorizationItem'
+        purposes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeConsentPurposeItem'
+
+    MeConsentPurposeItem:
+      type: object
+      required:
+        - name
+        - description
+        - elements
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        elements:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeConsentElementItem'
+
+    MeConsentElementItem:
+      type: object
+      required:
+        - name
+        - isUserApproved
+        - isMandatory
+      properties:
+        name:
+          type: string
+        isUserApproved:
+          type: boolean
+        isMandatory:
+          type: boolean
+        type:
+          type: string
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        value:
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+              items: {}
+          nullable: true
+
+    ConsentAuthorizationItem:
+      type: object
+      required:
+        - id
+        - type
+        - status
+        - updatedTime
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        updatedTime:
+          type: integer
+          format: int64
+        resources:
+          type: object
+          nullable: true
+
+    ProxyError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: UPSTREAM_UNAVAILABLE
+        message:
+          type: string
+          example: upstream unavailable
+  responses:
+    ProxyError:
+      description: Proxy-layer error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProxyError'

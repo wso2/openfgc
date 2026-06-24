@@ -1,0 +1,44 @@
+name: Portal Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'portal/backend/**'
+      - '.github/workflows/portal-backend-ci.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'portal/backend/**'
+      - '.github/workflows/portal-backend-ci.yml'
+
+jobs:
+  portal-backend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portal/backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: portal/backend/go.mod
+
+      - name: Download deps
+        run: go mod download
+
+      - name: Format check
+        run: |
+          test -z "$(gofmt -l . | tee /dev/stderr)"
+
+      - name: Run tests
+        run: go test ./... -v
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: portal/backend
+          version: v2.12.2
