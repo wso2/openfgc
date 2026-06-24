@@ -1,0 +1,50 @@
+name: Portal Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - 'portal/frontend/**'
+      - '.github/workflows/portal-frontend-ci.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'portal/frontend/**'
+      - '.github/workflows/portal-frontend-ci.yml'
+
+jobs:
+  portal-frontend-ci:
+    runs-on: ubuntu-latest
+    env:
+      # Used by Vite at build/test time only; CI does not make live API requests.
+      VITE_API_BASE_URL: http://localhost:8080
+    defaults:
+      run:
+        working-directory: portal/frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.x
+          cache: pnpm
+          cache-dependency-path: portal/frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
