@@ -25,6 +25,7 @@ import (
 
 	"github.com/wso2/openfgc/internal/authresource/model"
 	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
+	consenthistory "github.com/wso2/openfgc/internal/consent"
 	consentModel "github.com/wso2/openfgc/internal/consent/model"
 	"github.com/wso2/openfgc/internal/consent/validator"
 	"github.com/wso2/openfgc/internal/system/config"
@@ -147,6 +148,9 @@ func (s *authResourceService) CreateAuthResource(
 	derivedConsentStatus := validator.EvaluateConsentStatusFromAuthStatuses(authStatuses)
 
 	err = s.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
+		func(tx dbmodel.TxInterface) error {
+			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, consenthistory.HistoryReasonConsentAuthorizationsAdded)
+		},
 		func(tx dbmodel.TxInterface) error {
 			return store.Create(tx, authResource)
 		},
@@ -279,7 +283,6 @@ func (s *authResourceService) UpdateAuthResource(
 		return nil, serviceerror.CustomServiceError(ErrorAuthResourceNotFound,
 			"the authorization resource does not exist, does not belong to the specified consent, or is not accessible in this organization")
 	}
-
 	updated := *existing
 	updated.UpdatedTime = utils.GetCurrentTimeMillis()
 
@@ -343,6 +346,9 @@ func (s *authResourceService) UpdateAuthResource(
 	}
 
 	txSteps := []func(tx dbmodel.TxInterface) error{
+		func(tx dbmodel.TxInterface) error {
+			return consenthistory.RecordConsentHistory(ctx, s.stores, tx, consentID, orgID, nil, consenthistory.HistoryReasonConsentAuthorizationsUpdated)
+		},
 		func(tx dbmodel.TxInterface) error { return store.Update(tx, &updated) },
 	}
 

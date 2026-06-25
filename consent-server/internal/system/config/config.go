@@ -99,6 +99,12 @@ type ConsentConfig struct {
 	PeriodicalExpiration PeriodicalExpirationConfig `yaml:"periodical_expiration"`
 	StatusMappings       ConsentStatusMappings      `yaml:"status_mappings"`
 	AuthStatusMappings   AuthStatusMappings         `yaml:"auth_status_mappings"`
+	History              ConsentHistoryConfig       `yaml:"history"`
+}
+
+// ConsentHistoryConfig holds consent history related configuration.
+type ConsentHistoryConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // ConsentStatusMappings holds the mapping of specific consent lifecycle states

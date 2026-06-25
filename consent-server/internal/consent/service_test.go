@@ -20,6 +20,9 @@ package consent
 
 import (
 	"context"
+	"database/sql"
+
+	"encoding/json"
 	"errors"
 	"os"
 	"testing"
@@ -30,6 +33,7 @@ import (
 	authmodel "github.com/wso2/openfgc/internal/authresource/model"
 	"github.com/wso2/openfgc/internal/consent/model"
 	"github.com/wso2/openfgc/internal/system/config"
+	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
 	"github.com/wso2/openfgc/internal/system/stores"
 	"github.com/wso2/openfgc/tests/mocks/stores/interfacesmock"
 )
@@ -51,6 +55,13 @@ const (
 )
 
 var errStoreConsent = errors.New("store error")
+
+type noopTx struct{}
+
+func (noopTx) Exec(dbmodel.DBQuery, ...any) (sql.Result, error) { return nil, nil }
+func (noopTx) Query(dbmodel.DBQuery, ...any) (*sql.Rows, error) { return nil, nil }
+func (noopTx) Commit() error                                    { return nil }
+func (noopTx) Rollback() error                                  { return nil }
 
 func newConsentSvc(t *testing.T, cs *interfacesmock.ConsentStore, as *interfacesmock.AuthResourceStore) *consentService {
 	t.Helper()
@@ -540,7 +551,8 @@ func TestExpireConsent_TransactionError(t *testing.T) {
 	svc := newConsentSvc(t, cs, as)
 
 	consent := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
-	// First step in the transaction fails — should trigger rollback and return ServiceError.
+	cs.On("GetByIDForUpdate", mock.Anything, testConsentID, testOrgID).Return(consent, nil)
+	// Mutation step in the transaction fails — should trigger rollback and return ServiceError.
 	cs.On("UpdateStatus", mock.Anything, testConsentID, testOrgID, "EXPIRED", mock.AnythingOfType("int64")).
 		Return(errStoreConsent)
 
@@ -557,6 +569,7 @@ func TestExpireConsent_Success(t *testing.T) {
 	svc := newConsentSvc(t, cs, as)
 
 	consent := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
+	cs.On("GetByIDForUpdate", mock.Anything, testConsentID, testOrgID).Return(consent, nil)
 	cs.On("UpdateStatus", mock.Anything, testConsentID, testOrgID, "EXPIRED", mock.AnythingOfType("int64")).
 		Return(nil)
 	as.On("UpdateAllStatusByConsentID", mock.Anything, testConsentID, testOrgID, "SYSTEM_EXPIRED", mock.AnythingOfType("int64")).
@@ -568,4 +581,279 @@ func TestExpireConsent_Success(t *testing.T) {
 	require.Nil(t, svcErr)
 	// Consent should be mutated in-place to reflect the new status.
 	require.Equal(t, "EXPIRED", consent.CurrentStatus)
+}
+
+// =============================================================================
+// Consent History
+// =============================================================================
+
+func setConsentHistoryEnabled(t *testing.T, enabled bool) {
+	t.Helper()
+	cfg := config.Get()
+	require.NotNil(t, cfg)
+	previous := cfg.Consent.History.Enabled
+	cfg.Consent.History.Enabled = enabled
+	t.Cleanup(func() { cfg.Consent.History.Enabled = previous })
+}
+
+func mockConsentSnapshotLoad(
+	cs *interfacesmock.ConsentStore,
+	as *interfacesmock.AuthResourceStore,
+	consentID string,
+	orgID string,
+) {
+	value := `{"level":"gold"}`
+	userID := "user-001"
+	resources := `{"accountIds":["acc-1"]}`
+	cs.On("GetAttributesByConsentIDTx", mock.Anything, consentID, orgID).
+		Return([]model.ConsentAttribute{{ConsentID: consentID, AttKey: "region", AttValue: "EU", OrgID: orgID}}, nil)
+	as.On("GetByConsentIDTx", mock.Anything, consentID, orgID).
+		Return([]authmodel.AuthResource{{
+			AuthID:      "auth-001",
+			ConsentID:   consentID,
+			AuthType:    "authorisation",
+			UserID:      &userID,
+			AuthStatus:  "APPROVED",
+			UpdatedTime: 1200,
+			Resources:   &resources,
+			OrgID:       orgID,
+		}}, nil)
+	cs.On("GetPurposesByConsentIDTx", mock.Anything, consentID, orgID).
+		Return([]model.ConsentPurposeRow{{
+			ConsentID:        consentID,
+			PurposeVersionID: "purpose-version-001",
+			PurposeID:        "purpose-001",
+			PurposeName:      "beneficiary-access",
+			PurposeGroupID:   "group-001",
+			PurposeVersion:   1,
+			OrgID:            orgID,
+		}}, nil)
+	cs.On("GetElementApprovalsByConsentIDTx", mock.Anything, consentID, orgID).
+		Return([]model.ConsentApprovalRow{{
+			ConsentID:         consentID,
+			PurposeVersionID:  "purpose-version-001",
+			ElementVersionID:  "element-version-001",
+			ElementID:         "element-001",
+			ElementName:       "payee-id",
+			ElementNamespace:  "payments",
+			ElementVersionNum: 1,
+			ElementType:       "json",
+			Mandatory:         true,
+			Approved:          true,
+			Value:             &value,
+			OrgID:             orgID,
+		}}, nil)
+	cs.On("GetElementPropertiesByConsentIDTx", mock.Anything, consentID, orgID).
+		Return(map[string]map[string]string{}, nil)
+	cs.On("GetPurposePropertiesByConsentIDTx", mock.Anything, consentID, orgID).
+		Return(map[string]map[string]string{}, nil)
+}
+
+func TestRecordConsentHistory_BuildsFullSnapshot(t *testing.T) {
+	setConsentHistoryEnabled(t, true)
+
+	cs := interfacesmock.NewConsentStore(t)
+	as := interfacesmock.NewAuthResourceStore(t)
+	svc := newConsentSvc(t, cs, as)
+
+	frequency := 5
+	recurring := true
+	dataAccessDuration := int64(3600)
+	consent := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
+	consent.ConsentFrequency = &frequency
+	consent.RecurringIndicator = &recurring
+	consent.DataAccessValidityDuration = &dataAccessDuration
+	actionBy := "group-001"
+
+	cs.On("GetByIDForUpdate", mock.Anything, testConsentID, testOrgID).Return(consent, nil)
+	mockConsentSnapshotLoad(cs, as, testConsentID, testOrgID)
+
+	var captured *model.ConsentHistory
+	cs.On("CreateHistory", mock.Anything, mock.AnythingOfType("*model.ConsentHistory")).
+		Run(func(args mock.Arguments) {
+			captured = args.Get(1).(*model.ConsentHistory)
+		}).
+		Return(nil)
+
+	err := svc.recordConsentHistory(context.Background(), noopTx{}, testConsentID, testOrgID, &actionBy, HistoryReasonConsentUpdated)
+	require.NoError(t, err)
+	require.NotNil(t, captured)
+	require.Equal(t, testConsentID, captured.ConsentID)
+	require.Equal(t, testOrgID, captured.OrgID)
+	require.Equal(t, actionBy, *captured.ActionBy)
+	require.Equal(t, string(HistoryReasonConsentUpdated), *captured.Reason)
+
+	var snapshot map[string]interface{}
+	require.NoError(t, json.Unmarshal(captured.Snapshot, &snapshot))
+	require.Equal(t, testConsentID, snapshot["id"])
+	require.Equal(t, "GENERAL", snapshot["type"])
+	require.Equal(t, "ACTIVE", snapshot["status"])
+	require.Equal(t, "EU", snapshot["attributes"].(map[string]interface{})["region"])
+	require.Len(t, snapshot["purposes"].([]interface{}), 1)
+	require.Len(t, snapshot["authorizations"].([]interface{}), 1)
+}
+
+func TestGetConsentHistory_MapsStoreRecordsToOutput(t *testing.T) {
+	cs := interfacesmock.NewConsentStore(t)
+	svc := newConsentSvc(t, cs, nil)
+
+	actionBy := "user-001"
+	reason := string(HistoryReasonConsentRevoked)
+	items := []model.ConsentHistory{{
+		HistoryID:  "history-001",
+		ConsentID:  testConsentID,
+		OrgID:      testOrgID,
+		ActionTime: 1700000000000,
+		ActionBy:   &actionBy,
+		Reason:     &reason,
+	}}
+
+	cs.On("GetByID", mock.Anything, testConsentID, testOrgID).Return(makeTestConsent(testConsentID, testOrgID, "ACTIVE"), nil)
+	cs.On("GetHistoryByConsentID", mock.Anything, testConsentID, testOrgID, false).Return(items, nil)
+
+	out, svcErr := svc.GetConsentHistory(context.Background(), testConsentID, testOrgID, false)
+	require.Nil(t, svcErr)
+	require.NotNil(t, out)
+	require.Equal(t, testConsentID, out.ID)
+	require.Len(t, out.History, 1)
+	require.Equal(t, "history-001", out.History[0].HistoryID)
+	require.Equal(t, testConsentID, out.History[0].ConsentID)
+	require.Equal(t, testOrgID, out.History[0].OrgID)
+	require.Equal(t, int64(1700000000000), out.History[0].ActionTime)
+	require.Equal(t, actionBy, *out.History[0].ActionBy)
+	require.Equal(t, reason, *out.History[0].Reason)
+}
+
+func TestGetConsentHistory_ExcludesSnapshotsWhenDisabled(t *testing.T) {
+	cs := interfacesmock.NewConsentStore(t)
+	svc := newConsentSvc(t, cs, nil)
+
+	items := []model.ConsentHistory{{
+		HistoryID: "history-001",
+		ConsentID: testConsentID,
+		OrgID:     testOrgID,
+		Snapshot:  []byte(`{"id":"old"}`),
+	}}
+	cs.On("GetByID", mock.Anything, testConsentID, testOrgID).Return(makeTestConsent(testConsentID, testOrgID, "ACTIVE"), nil)
+	cs.On("GetHistoryByConsentID", mock.Anything, testConsentID, testOrgID, false).Return(items, nil)
+
+	out, svcErr := svc.GetConsentHistory(context.Background(), testConsentID, testOrgID, false)
+	require.Nil(t, svcErr)
+	require.Len(t, out.History, 1)
+	require.Empty(t, out.History[0].Snapshot)
+}
+
+func TestGetConsentHistory_IncludesSnapshotsWhenRequested(t *testing.T) {
+	cs := interfacesmock.NewConsentStore(t)
+	svc := newConsentSvc(t, cs, nil)
+
+	snapshot := []byte(`{"id":"old"}`)
+	items := []model.ConsentHistory{{
+		HistoryID: "history-001",
+		ConsentID: testConsentID,
+		OrgID:     testOrgID,
+		Snapshot:  snapshot,
+	}}
+	cs.On("GetByID", mock.Anything, testConsentID, testOrgID).Return(makeTestConsent(testConsentID, testOrgID, "ACTIVE"), nil)
+	cs.On("GetHistoryByConsentID", mock.Anything, testConsentID, testOrgID, true).Return(items, nil)
+
+	out, svcErr := svc.GetConsentHistory(context.Background(), testConsentID, testOrgID, true)
+	require.Nil(t, svcErr)
+	require.Len(t, out.History, 1)
+	require.JSONEq(t, string(snapshot), string(out.History[0].Snapshot))
+}
+
+func TestRecordConsentHistory_SkipsWhenHistoryDisabled(t *testing.T) {
+	setConsentHistoryEnabled(t, false)
+
+	cs := interfacesmock.NewConsentStore(t)
+	svc := newConsentSvc(t, cs, nil)
+
+	err := svc.recordConsentHistory(context.Background(), nil, testConsentID, testOrgID, nil, HistoryReasonConsentUpdated)
+	require.NoError(t, err)
+	cs.AssertNotCalled(t, "GetByIDForUpdate", mock.Anything, mock.Anything, mock.Anything)
+	cs.AssertNotCalled(t, "CreateHistory", mock.Anything, mock.Anything)
+}
+
+func TestUpdateConsent_HistoryInsertFailureAbortsUpdate(t *testing.T) {
+	setConsentHistoryEnabled(t, true)
+
+	cs := interfacesmock.NewConsentStore(t)
+	as := interfacesmock.NewAuthResourceStore(t)
+	svc := newConsentSvc(t, cs, as)
+
+	existing := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
+	cs.On("GetByID", mock.Anything, testConsentID, testOrgID).Return(existing, nil).Once()
+	cs.On("GetByIDForUpdate", mock.Anything, testConsentID, testOrgID).Return(existing, nil)
+	mockConsentSnapshotLoad(cs, as, testConsentID, testOrgID)
+
+	var captured *model.ConsentHistory
+	cs.On("CreateHistory", mock.Anything, mock.AnythingOfType("*model.ConsentHistory")).
+		Run(func(args mock.Arguments) {
+			captured = args.Get(1).(*model.ConsentHistory)
+		}).
+		Return(errStoreConsent)
+
+	out, svcErr := svc.UpdateConsent(context.Background(), testConsentID, "group-001", testOrgID, model.UpdateConsentInput{ConsentType: "UPDATED"})
+	require.Nil(t, out)
+	require.NotNil(t, svcErr)
+	require.NotNil(t, captured)
+	require.Equal(t, string(HistoryReasonConsentUpdated), *captured.Reason)
+	require.Equal(t, "group-001", *captured.ActionBy)
+	cs.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestRevokeConsent_UsesRevokedHistoryReason(t *testing.T) {
+	setConsentHistoryEnabled(t, true)
+
+	cs := interfacesmock.NewConsentStore(t)
+	as := interfacesmock.NewAuthResourceStore(t)
+	svc := newConsentSvc(t, cs, as)
+
+	existing := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
+	cs.On("GetByID", mock.Anything, testConsentID, testOrgID).Return(existing, nil)
+	cs.On("GetByIDForUpdate", mock.Anything, testConsentID, testOrgID).Return(existing, nil)
+	mockConsentSnapshotLoad(cs, as, testConsentID, testOrgID)
+
+	var captured *model.ConsentHistory
+	cs.On("CreateHistory", mock.Anything, mock.AnythingOfType("*model.ConsentHistory")).
+		Run(func(args mock.Arguments) {
+			captured = args.Get(1).(*model.ConsentHistory)
+		}).
+		Return(errStoreConsent)
+
+	out, svcErr := svc.RevokeConsent(context.Background(), testConsentID, testOrgID, model.ConsentRevokeInput{ActionBy: "admin-user", Reason: "user request"})
+	require.Nil(t, out)
+	require.NotNil(t, svcErr)
+	require.NotNil(t, captured)
+	require.Equal(t, string(HistoryReasonConsentRevoked), *captured.Reason)
+	require.Equal(t, "admin-user", *captured.ActionBy)
+	cs.AssertNotCalled(t, "UpdateStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestExpireConsent_UsesExpiredHistoryReason(t *testing.T) {
+	setConsentHistoryEnabled(t, true)
+
+	cs := interfacesmock.NewConsentStore(t)
+	as := interfacesmock.NewAuthResourceStore(t)
+	svc := newConsentSvc(t, cs, as)
+
+	consent := makeTestConsent(testConsentID, testOrgID, "ACTIVE")
+	cs.On("GetByIDForUpdate", mock.Anything, testConsentID, testOrgID).Return(consent, nil)
+	mockConsentSnapshotLoad(cs, as, testConsentID, testOrgID)
+
+	var captured *model.ConsentHistory
+	cs.On("CreateHistory", mock.Anything, mock.AnythingOfType("*model.ConsentHistory")).
+		Run(func(args mock.Arguments) {
+			captured = args.Get(1).(*model.ConsentHistory)
+		}).
+		Return(errStoreConsent)
+
+	svcErr := svc.ExpireConsent(context.Background(), consent, testOrgID)
+	require.NotNil(t, svcErr)
+	require.NotNil(t, captured)
+	require.Equal(t, string(HistoryReasonConsentExpired), *captured.Reason)
+	require.Equal(t, "SYSTEM", *captured.ActionBy)
+	cs.AssertNotCalled(t, "UpdateStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	as.AssertNotCalled(t, "UpdateAllStatusByConsentID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }

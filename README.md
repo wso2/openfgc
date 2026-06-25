@@ -140,7 +140,31 @@ openfgc/
 
 ## Quick Start
 
-### 1. Setup Database
+### 1. Build
+
+**Using build.sh (Recommended)**
+
+```bash
+# Build the application (binary only)
+./build.sh build
+
+# Create distribution package (binary + zip archive)
+./build.sh package
+```
+
+Build artifacts are created in `target/server/`. Configs in `target/server/repository/conf/`
+
+### 2. Setup Database
+
+**SQLite:**
+
+```bash
+# Create the database directory
+mkdir -p target/server/repository/database
+
+# Initialize the SQLite database with the schema
+sqlite3 target/server/repository/database/consent.db < consent-server/dbscripts/db_schema_sqlite.sql
+```
 
 **MySQL:**
 
@@ -162,81 +186,98 @@ psql -U postgres -c "CREATE DATABASE consent_mgt;"
 psql -U postgres -d consent_mgt -f consent-server/dbscripts/db_schema_postgres.sql
 ```
 
-### 2. Build
-
-**Using build.sh (Recommended)**
-
-```bash
-# Build the application (binary only)
-./build.sh build
-
-# Create distribution package (binary + zip archive)
-./build.sh package
-```
-
-Build artifacts are created in `target/server/`:
-- `target/server/consent-server` (binary)
-- `target/server/repository/conf/` (config directory)
-- `target/server/api/` (API specs)
-- `target/server/dbscripts/` (database scripts)
-
 ### 3. Configure Application
 
-Update configuration file at `target/server/repository/conf/deployment.yaml`:
+The default configuration uses SQLite. Update configuration file at `target/server/repository/conf/deployment.yaml`:
 
 ```yaml
-    server:
-      hostname: 0.0.0.0
-      port: 3000
-      readTimeout: 30s
-      writeTimeout: 30s
-      idleTimeout: 120s
+server:
+  hostname: 0.0.0.0
+  port: 8060
+  readTimeout: 30s
+  writeTimeout: 30s
+  idleTimeout: 120s
 
-    database:
-      consent:
-        type: ${OPENFGC_DB_TYPE}
-        hostname: ${OPENFGC_DB_HOSTNAME}
-        port: ${OPENFGC_DB_PORT}
-        database: ${OPENFGC_DB_NAME}
-        max_open_conns: 25
-        max_idle_conns: 5
-        conn_max_lifetime: 5m
-        user: ${OPENFGC_DB_USER}
-        password: ${OPENFGC_DB_PASSWORD}
+database:
+  consent:
+    type: sqlite
+    path: ${OPENFGC_DB_PATH}  #e.g. ./repository/database/consent.db
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: 5m
+    options: ""               # e.g. _pragma=journal_mode(WAL)&_pragma=cache_size(-16000)
 
-    logging:
-      level: info
+logging:
+  level: info
+
+consent:
+  periodical_expiration:
+    enabled: false
+    frequency: "1h"
+    eligible_statuses: ["ACTIVE"]
+  status_mappings:
+    active_status: ACTIVE
+    expired_status: EXPIRED
+    revoked_status: REVOKED
+    created_status: CREATED
+    rejected_status: REJECTED
+  auth_status_mappings:
+    approved_state: APPROVED
+    rejected_state: REJECTED
+    created_state: CREATED
+    system_expired_state: SYS_EXPIRED
+    system_revoked_state: SYS_REVOKED
+  history:
+    enabled: false
 ```
 
-For PostgreSQL, set `type: postgres` and use the default port `5432`:
+For MySQL, set `type: mysql` and set the following database parameters:
 
 ```yaml
-    database:
-      consent:
-        type: ${OPENFGC_DB_TYPE}
-        hostname: ${OPENFGC_DB_HOSTNAME}
-        port: ${OPENFGC_DB_PORT}
-        database: ${OPENFGC_DB_NAME}
-        max_open_conns: 25
-        max_idle_conns: 5
-        conn_max_lifetime: 5m
-        user: ${OPENFGC_DB_USER}
-        password: ${OPENFGC_DB_PASSWORD}
-        sslmode: disable        # use verify-full for production
-        options: ""             # e.g. sslrootcert=/path/to/ca.crt for production TLS
+database:
+  consent:
+    type: ${OPENFGC_DB_TYPE}
+    hostname: ${OPENFGC_DB_HOSTNAME}
+    port: ${OPENFGC_DB_PORT}
+    database: ${OPENFGC_DB_NAME}
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: 5m
+    user: ${OPENFGC_DB_USER}
+    password: ${OPENFGC_DB_PASSWORD}
 ```
 
-Either change the configuration file directly in `deployment.yaml` or set the following environment variables before starting the server:
+For PostgreSQL, set `type: postgres` and set the following database parameters:
+
+```yaml
+database:
+  consent:
+    type: ${OPENFGC_DB_TYPE}
+    hostname: ${OPENFGC_DB_HOSTNAME}
+    port: ${OPENFGC_DB_PORT}
+    database: ${OPENFGC_DB_NAME}
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: 5m
+    user: ${OPENFGC_DB_USER}
+    password: ${OPENFGC_DB_PASSWORD}
+    sslmode: disable        # use verify-full for production
+    options: ""             # e.g. sslrootcert=/path/to/ca.crt for production TLS
+```
+
+Configuration values are read from `deployment.yaml`. Environment variables are substitued where the file contains `${VARIABLE_NAME}` placeholders. You can either replace those placeholders with literal values or set the variables before starting the server.
 
 | Variable | Description | Example Values |
-|----------|-------------|---------|
+|----------|-------------|----------------|
 | `OPENFGC_DB_TYPE` | Database type | `mysql`, `sqlite`, `postgres` |
-| `OPENFGC_DB_HOSTNAME` | Database hostname | `localhost` |
-| `OPENFGC_DB_PORT` | Database port | `3306` for MySQL, `5432` for PostgreSQL |
-| `OPENFGC_DB_NAME` | Database name |  |
-| `OPENFGC_DB_USER` | Database user |  |
-| `OPENFGC_DB_PASSWORD` | Database password |  |
-
+| `OPENFGC_DB_HOSTNAME` | Database hostname for MySQL/PostgreSQL | `localhost` |
+| `OPENFGC_DB_PORT` | Database port for MySQL/PostgreSQL | `3306`, `5432` |
+| `OPENFGC_DB_NAME` | Database name for MySQL/PostgreSQL | `consent_mgt` |
+| `OPENFGC_DB_USER` | Database user for MySQL/PostgreSQL | `root`, `postgres` |
+| `OPENFGC_DB_PASSWORD` | Database password for MySQL/PostgreSQL | `password` |
+| `OPENFGC_DB_PATH` | SQLite database file path | `./repository/database/consent.db` |
+| `OPENFGC_DB_SSLMODE` | PostgreSQL SSL mode | `disable`, `verify-full` |
+| `OPENFGC_DB_OPTIONS` | Optional DB-specific connection options | `_pragma=journal_mode(WAL)&_pragma=cache_size(-16000)` |
 
 ### 4. Run
 
@@ -249,12 +290,12 @@ cd target/server
 ./start.sh --debug
 
 # Run in debug mode with custom port
-./start.sh --debug --debug-port 3000
+./start.sh --debug --debug-port 3456
 ```
 
-Server starts at `http://localhost:3000`
+Server starts at `http://localhost:8060`
 
-Health check: `curl http://localhost:3000/health`
+Health check: `curl http://localhost:8060/health`
 
 ## API Endpoints
 
@@ -305,31 +346,4 @@ cd tests/integration
 
 # Run all tests
 go test ./... -v
-```
-
-### Using SQLite for Local Testing
-
-**1. Initialize the database**
-
-```bash
-# Create the database directory
-mkdir -p target/server/repository/database
-
-# Initialize the SQLite database with the schema
-sqlite3 target/server/repository/database/consent.db < consent-server/dbscripts/db_schema_sqlite.sql
-```
-
-**2. Update `target/server/repository/conf/deployment.yaml`**
-
-```yaml
-database:
-  consent:
-    type: sqlite
-    # Path to the SQLite database file (relative to the server binary)
-    path: ./repository/database/consent.db
-    # Optional DSN query parameters for additional SQLite pragmas
-    # options: "_pragma=journal_mode(WAL)&_pragma=cache_size(-16000)"
-    max_open_conns: 25
-    max_idle_conns: 5
-    conn_max_lifetime: 5m
 ```

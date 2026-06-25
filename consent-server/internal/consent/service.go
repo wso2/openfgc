@@ -64,6 +64,8 @@ type resolvedPurposeLink struct {
 type ConsentService interface {
 	CreateConsent(ctx context.Context, input model.CreateConsentInput, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError)
 	GetConsent(ctx context.Context, consentID, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError)
+	GetConsentWithStatusHistory(ctx context.Context, consentID, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError)
+	GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError)
 	SearchConsents(ctx context.Context, filters model.ConsentSearchFilter) (*model.ConsentListOutput, *serviceerror.ServiceError)
 	UpdateConsent(ctx context.Context, consentID, groupID, orgID string, input model.UpdateConsentInput) (*model.ConsentOutput, *serviceerror.ServiceError)
 	RevokeConsent(ctx context.Context, consentID, orgID string, input model.ConsentRevokeInput) (*model.ConsentRevokeOutput, *serviceerror.ServiceError)
@@ -81,6 +83,83 @@ type consentService struct {
 // newConsentService creates a new consent service.
 func newConsentService(registry *stores.StoreRegistry) ConsentService {
 	return &consentService{stores: registry}
+}
+
+// RecordConsentHistory records a pre-mutation consent snapshot using a shared store registry.
+func RecordConsentHistory(
+	ctx context.Context,
+	registry *stores.StoreRegistry,
+	tx dbmodel.TxInterface,
+	consentID, orgID string,
+	actionBy *string,
+	reason HistoryReason,
+) error {
+	return (&consentService{stores: registry}).recordConsentHistory(
+		ctx,
+		tx,
+		consentID,
+		orgID,
+		actionBy,
+		reason,
+	)
+}
+
+func (s *consentService) recordConsentHistory(
+	ctx context.Context,
+	tx dbmodel.TxInterface,
+	consentID, orgID string,
+	actionBy *string,
+	reason HistoryReason,
+) error {
+	cfg := config.Get()
+	if cfg == nil || !cfg.Consent.History.Enabled {
+		return nil
+	}
+
+	consent, err := s.stores.Consent.GetByIDForUpdate(tx, consentID, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to lock consent for history: %w", err)
+	}
+	if consent == nil {
+		return fmt.Errorf("consent with ID '%s' not found", consentID)
+	}
+
+	snapshot, err := s.buildConsentHistorySnapshot(ctx, tx, consent, orgID)
+	if err != nil {
+		return err
+	}
+
+	reasonText := string(reason)
+	history := &model.ConsentHistory{
+		HistoryID:  utils.GenerateUUID(),
+		ConsentID:  consentID,
+		OrgID:      orgID,
+		ActionTime: utils.GetCurrentTimeMillis(),
+		ActionBy:   actionBy,
+		Reason:     &reasonText,
+		Snapshot:   snapshot,
+	}
+
+	return s.stores.Consent.CreateHistory(tx, history)
+}
+
+func (s *consentService) buildConsentHistorySnapshot(
+	ctx context.Context,
+	tx dbmodel.TxInterface,
+	consent *model.Consent,
+	orgID string,
+) ([]byte, error) {
+	output, err := s.loadConsentOutputForHistory(ctx, tx, consent, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load consent output for history: %w", err)
+	}
+
+	snapshot, err := json.Marshal(consentOutputToResponse(output))
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal consent history snapshot: %w", err)
+	}
+
+	return snapshot, nil
 }
 
 // =============================================================================
@@ -270,6 +349,91 @@ func (s *consentService) GetConsent(ctx context.Context, consentID, orgID string
 		log.String("consent_id", consentID),
 		log.String("status", consent.CurrentStatus))
 	return out, nil
+}
+
+// GetConsentWithStatusHistory retrieves a consent by ID with status audit history appended.
+func (s *consentService) GetConsentWithStatusHistory(ctx context.Context, consentID, orgID string) (*model.ConsentOutput, *serviceerror.ServiceError) {
+	out, serviceErr := s.GetConsent(ctx, consentID, orgID)
+	if serviceErr != nil {
+		return nil, serviceErr
+	}
+
+	audits, err := s.stores.Consent.GetStatusAuditsByConsentID(ctx, consentID, orgID)
+	if err != nil {
+		log.GetLogger().WithContext(ctx).Error("Failed to retrieve consent status history",
+			log.Error(err),
+			log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+	out.StatusHistory = statusAuditsToOutput(audits)
+	return out, nil
+}
+
+// GetConsentHistory retrieves history for a consent.
+func (s *consentService) GetConsentHistory(ctx context.Context, consentID, orgID string, includeSnapshots bool) (*model.ConsentHistoryListOutput, *serviceerror.ServiceError) {
+	logger := log.GetLogger().WithContext(ctx)
+
+	consent, err := s.stores.Consent.GetByID(ctx, consentID, orgID)
+	if err != nil {
+		logger.Error("Failed to retrieve consent before history lookup",
+			log.Error(err),
+			log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+	if consent == nil {
+		logger.Warn("Consent not found for history lookup", log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorConsentNotFound, fmt.Sprintf("consent with ID '%s' not found", consentID))
+	}
+
+	history, err := s.stores.Consent.GetHistoryByConsentID(ctx, consentID, orgID, includeSnapshots)
+	if err != nil {
+		logger.Error("Failed to retrieve consent history",
+			log.Error(err),
+			log.String("consent_id", consentID))
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+
+	historyItems := make([]model.ConsentHistoryOutput, 0, len(history))
+	for _, item := range history {
+		historyItems = append(historyItems, consentHistoryToOutput(item, includeSnapshots))
+	}
+
+	return &model.ConsentHistoryListOutput{
+		ID:      consentID,
+		History: historyItems,
+	}, nil
+}
+
+func statusAuditsToOutput(audits []model.ConsentStatusAudit) []model.StatusAuditOutput {
+	output := make([]model.StatusAuditOutput, 0, len(audits))
+	for _, audit := range audits {
+		output = append(output, model.StatusAuditOutput{
+			StatusAuditID:  audit.StatusAuditID,
+			ConsentID:      audit.ConsentID,
+			CurrentStatus:  audit.CurrentStatus,
+			ActionTime:     audit.ActionTime,
+			Reason:         audit.Reason,
+			ActionBy:       audit.ActionBy,
+			PreviousStatus: audit.PreviousStatus,
+			OrgID:          audit.OrgID,
+		})
+	}
+	return output
+}
+
+func consentHistoryToOutput(history model.ConsentHistory, includeSnapshot bool) model.ConsentHistoryOutput {
+	output := model.ConsentHistoryOutput{
+		HistoryID:  history.HistoryID,
+		ConsentID:  history.ConsentID,
+		OrgID:      history.OrgID,
+		ActionTime: history.ActionTime,
+		ActionBy:   history.ActionBy,
+		Reason:     history.Reason,
+	}
+	if includeSnapshot {
+		output.Snapshot = history.Snapshot
+	}
+	return output
 }
 
 // =============================================================================
@@ -476,7 +640,20 @@ func (s *consentService) UpdateConsent(ctx context.Context, consentID, groupID, 
 		updatedConsent.DataAccessValidityDuration = input.DataAccessValidityDuration
 	}
 
+	var resolvedLinks []resolvedPurposeLink
+	if input.Purposes != nil && len(input.Purposes) > 0 {
+		resolvedLinks, err = s.validatePurposesAndResolve(ctx, input.Purposes, existing.GroupID, orgID)
+		if err != nil {
+			logger.Error("Purpose resolution failed on update", log.Error(err))
+			return nil, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error())
+		}
+	}
+
+	historyActionBy := groupID
 	queries := []func(tx dbmodel.TxInterface) error{
+		func(tx dbmodel.TxInterface) error {
+			return s.recordConsentHistory(ctx, tx, consentID, orgID, &historyActionBy, HistoryReasonConsentUpdated)
+		},
 		func(tx dbmodel.TxInterface) error { return consentStore.Update(tx, updatedConsent) },
 	}
 
@@ -539,14 +716,6 @@ func (s *consentService) UpdateConsent(ctx context.Context, consentID, groupID, 
 
 	// Replace purpose links and approvals if purposes provided
 	if input.Purposes != nil {
-		var resolvedLinks []resolvedPurposeLink
-		if len(input.Purposes) > 0 {
-			resolvedLinks, err = s.validatePurposesAndResolve(ctx, input.Purposes, existing.GroupID, orgID)
-			if err != nil {
-				logger.Error("Purpose resolution failed on update", log.Error(err))
-				return nil, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error())
-			}
-		}
 		queries = append(queries, func(tx dbmodel.TxInterface) error {
 			return consentStore.DeletePurposesByConsentID(tx, consentID, orgID)
 		})
@@ -655,6 +824,9 @@ func (s *consentService) RevokeConsent(ctx context.Context, consentID, orgID str
 
 	sysRevokedStatus := string(config.Get().Consent.GetSystemRevokedAuthStatus())
 	err = s.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
+		func(tx dbmodel.TxInterface) error {
+			return s.recordConsentHistory(ctx, tx, consentID, orgID, &actionBy, HistoryReasonConsentRevoked)
+		},
 		func(tx dbmodel.TxInterface) error {
 			return consentStore.UpdateStatus(tx, consentID, orgID, revokedStatus, currentTime)
 		},
@@ -830,29 +1002,55 @@ func (s *consentService) ExpireConsent(ctx context.Context, consent *model.Conse
 
 	reason := "Consent expired based on expirationTime"
 	actionBy := "SYSTEM"
-	prevStatus := consent.CurrentStatus
-	audit := &model.ConsentStatusAudit{
-		StatusAuditID:  utils.GenerateUUID(),
-		ConsentID:      consent.ConsentID,
-		CurrentStatus:  expiredStatus,
-		ActionTime:     currentTime,
-		Reason:         &reason,
-		ActionBy:       &actionBy,
-		PreviousStatus: &prevStatus,
-		OrgID:          orgID,
-	}
+	// For Re-check after locking as expiry can be triggered by multiple request paths and the cron job.
+	shouldExpire := true
+	var audit *model.ConsentStatusAudit
 
 	consentStore := s.stores.Consent
 	authResourceStore := s.stores.AuthResource
 
 	err := s.stores.ExecuteTransaction([]func(tx dbmodel.TxInterface) error{
 		func(tx dbmodel.TxInterface) error {
+			lockedConsent, err := consentStore.GetByIDForUpdate(tx, consent.ConsentID, orgID)
+			if err != nil {
+				return err
+			}
+			if lockedConsent == nil {
+				return fmt.Errorf("consent with ID '%s' not found", consent.ConsentID)
+			}
+			if lockedConsent.CurrentStatus == expiredStatus {
+				shouldExpire = false
+				return nil
+			}
+			prevStatus := lockedConsent.CurrentStatus
+			audit = &model.ConsentStatusAudit{
+				StatusAuditID:  utils.GenerateUUID(),
+				ConsentID:      consent.ConsentID,
+				CurrentStatus:  expiredStatus,
+				ActionTime:     currentTime,
+				Reason:         &reason,
+				ActionBy:       &actionBy,
+				PreviousStatus: &prevStatus,
+				OrgID:          orgID,
+			}
+			return s.recordConsentHistory(ctx, tx, consent.ConsentID, orgID, &actionBy, HistoryReasonConsentExpired)
+		},
+		func(tx dbmodel.TxInterface) error {
+			if !shouldExpire {
+				return nil
+			}
 			return consentStore.UpdateStatus(tx, consent.ConsentID, orgID, expiredStatus, currentTime)
 		},
 		func(tx dbmodel.TxInterface) error {
+			if !shouldExpire {
+				return nil
+			}
 			return authResourceStore.UpdateAllStatusByConsentID(tx, consent.ConsentID, orgID, sysExpiredAuthStatus, currentTime)
 		},
 		func(tx dbmodel.TxInterface) error {
+			if !shouldExpire {
+				return nil
+			}
 			return consentStore.CreateStatusAudit(tx, audit)
 		},
 	})
@@ -861,6 +1059,12 @@ func (s *consentService) ExpireConsent(ctx context.Context, consent *model.Conse
 			log.Error(err),
 			log.String("consent_id", consent.ConsentID))
 		return serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+
+	if !shouldExpire {
+		logger.Debug("Consent already expired; skipping expiration",
+			log.String("consent_id", consent.ConsentID))
+		return nil
 	}
 
 	consent.CurrentStatus = expiredStatus
@@ -1028,6 +1232,54 @@ func (s *consentService) loadConsentOutput(ctx context.Context, consent *model.C
 	attrMap := make(map[string]string, len(attrs))
 	for _, a := range attrs {
 		attrMap[a.AttKey] = a.AttValue
+	}
+
+	return buildConsentOutput(consent, purposeRows, approvalRows, attrMap, authResources, elementProps, purposeProps), nil
+}
+
+// loadConsentOutputForHistory reads the same consent shape through the active transaction
+// so the history snapshot stays consistent with the pre-mutation state.
+func (s *consentService) loadConsentOutputForHistory(
+	ctx context.Context,
+	tx dbmodel.TxInterface,
+	consent *model.Consent,
+	orgID string,
+) (*model.ConsentOutput, error) {
+	if tx == nil {
+		return s.loadConsentOutput(ctx, consent, orgID)
+	}
+
+	consentStore := s.stores.Consent
+	authResourceStore := s.stores.AuthResource
+
+	attrs, err := consentStore.GetAttributesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load attributes: %w", err)
+	}
+	authResources, err := authResourceStore.GetByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load auth resources: %w", err)
+	}
+	purposeRows, err := consentStore.GetPurposesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load purpose rows: %w", err)
+	}
+	approvalRows, err := consentStore.GetElementApprovalsByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load approval rows: %w", err)
+	}
+	elementProps, err := consentStore.GetElementPropertiesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load element properties: %w", err)
+	}
+	purposeProps, err := consentStore.GetPurposePropertiesByConsentIDTx(tx, consent.ConsentID, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load purpose properties: %w", err)
+	}
+
+	attrMap := make(map[string]string, len(attrs))
+	for _, attr := range attrs {
+		attrMap[attr.AttKey] = attr.AttValue
 	}
 
 	return buildConsentOutput(consent, purposeRows, approvalRows, attrMap, authResources, elementProps, purposeProps), nil

@@ -1,6 +1,6 @@
 server:
   hostname: localhost
-  port: 3000
+  port: 8061
   readTimeout: 30s
   writeTimeout: 30s
   idleTimeout: 120s
@@ -37,3 +37,5 @@ consent:
     created_state: CREATED
     system_expired_state: SYS_EXPIRED
     system_revoked_state: SYS_REVOKED
+  history:
+    enabled: true
