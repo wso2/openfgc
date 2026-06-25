@@ -24,158 +24,219 @@ import (
 	"time"
 )
 
+// TestConsentHistory covers consent history and status-history read surfaces.
+//
+// Isolation: every sub-test gets a fresh org via freshOrgID() and no DB cleanup is needed.
+//
+// Layout:
+//   - setup creates any required consent/auth-resource state for the scenario.
+//   - check performs the request flow and assertions for the scenario.
+//   - History assertions intentionally read through the public API surface rather than
+//     inspecting storage directly, so these tests verify contract shape as well as data.
 func (ts *ConsentAPITestSuite) TestConsentHistory() {
-	ts.Run("new consent has empty history", func() {
-		orgID := freshOrgID()
-		created := ts.mustCreateConsent(orgID, "grp-hist-empty", ConsentCreateRequest{Type: "accounts"})
+	type testCase struct {
+		name  string
+		setup func(orgID string) *ConsentResponse
+		check func(orgID string, created *ConsentResponse)
+	}
 
-		status, history := ts.doGetConsentHistory(orgID, created.ID, false)
-
-		ts.Equal(http.StatusOK, status)
-		ts.Require().NotNil(history)
-		ts.Equal(created.ID, history.ID)
-		ts.Empty(history.History)
-	})
-
-	ts.Run("consent PUT creates history with pre-update snapshot", func() {
-		orgID := freshOrgID()
-		groupID := "grp-hist-put"
-		created := ts.mustCreateConsent(orgID, groupID, ConsentCreateRequest{
-			Type:       "accounts",
-			Attributes: map[string]string{"region": "EU"},
-			Authorizations: []AuthorizationRequest{
-				{UserID: "user-001", Type: "authorisation", Status: "APPROVED"},
+	cases := []testCase{
+		// -----------------------------------------------------------------------
+		// History list basics
+		// -----------------------------------------------------------------------
+		{
+			name: "new consent has empty history",
+			setup: func(orgID string) *ConsentResponse {
+				return ts.mustCreateConsent(orgID, "grp-hist-empty", ConsentCreateRequest{Type: "accounts"})
 			},
-		})
+			check: func(orgID string, created *ConsentResponse) {
+				status, history := ts.doGetConsentHistory(orgID, created.ID, false)
 
-		status, updated := ts.doUpdateConsent(orgID, groupID, created.ID, ConsentUpdateRequest{
-			Type:       "payments",
-			Attributes: map[string]string{"region": "LK"},
-		})
-		ts.Equal(http.StatusOK, status)
-		ts.Require().NotNil(updated)
-
-		_, historyWithoutSnapshots := ts.doGetConsentHistory(orgID, created.ID, false)
-		ts.Require().Len(historyWithoutSnapshots.History, 1)
-		entry := historyWithoutSnapshots.History[0]
-		ts.Require().NotNil(entry.Reason)
-		ts.Equal("Consent updated", *entry.Reason)
-		ts.Require().NotNil(entry.ActionBy)
-		ts.Equal(groupID, *entry.ActionBy)
-		ts.Empty(entry.Snapshot)
-		ts.assertHistorySnapshotFieldPresence(orgID, created.ID, false, false)
-
-		_, historyWithSnapshots := ts.doGetConsentHistory(orgID, created.ID, true)
-		ts.Require().Len(historyWithSnapshots.History, 1)
-		snapshot := ts.decodeHistorySnapshot(historyWithSnapshots.History[0])
-		ts.Equal("accounts", snapshot["type"])
-		ts.Equal("EU", snapshot["attributes"].(map[string]interface{})["region"])
-		ts.assertHistorySnapshotFieldPresence(orgID, created.ID, true, true)
-	})
-
-	ts.Run("revoke creates history", func() {
-		orgID := freshOrgID()
-		created := ts.mustCreateConsent(orgID, "grp-hist-revoke", ConsentCreateRequest{Type: "accounts"})
-
-		status, revokeResp := ts.doRevokeConsent(orgID, created.ID, ConsentRevokeRequest{ActionBy: "tester"})
-		ts.Equal(http.StatusOK, status)
-		ts.Require().NotNil(revokeResp)
-
-		_, history := ts.doGetConsentHistory(orgID, created.ID, false)
-		entry := findHistoryByReason(history.History, "Consent revoked")
-		ts.Require().NotNil(entry)
-		ts.Require().NotNil(entry.ActionBy)
-		ts.Equal("tester", *entry.ActionBy)
-	})
-
-	ts.Run("expiry creates history", func() {
-		orgID := freshOrgID()
-		futureExpiration := time.Now().Add(2 * time.Minute).UnixMilli()
-		pastExpiration := time.Now().Add(-2 * time.Minute).UnixMilli()
-		created := ts.mustCreateConsent(orgID, "grp-hist-expiry", ConsentCreateRequest{
-			Type:           "accounts",
-			ExpirationTime: &futureExpiration,
-			Authorizations: []AuthorizationRequest{
-				{UserID: "user-001", Status: "APPROVED"},
+				ts.Equal(http.StatusOK, status)
+				ts.Require().NotNil(history)
+				ts.Equal(created.ID, history.ID)
+				ts.Empty(history.History)
 			},
-		})
+		},
 
-		status, updated := ts.doUpdateConsent(orgID, "grp-hist-expiry", created.ID, ConsentUpdateRequest{ExpirationTime: &pastExpiration})
-		ts.Equal(http.StatusOK, status)
-		ts.Require().NotNil(updated)
-		ts.Equal("EXPIRED", updated.Status)
-
-		_, history := ts.doGetConsentHistory(orgID, created.ID, false)
-		updateEntry := findHistoryByReason(history.History, "Consent updated")
-		expireEntry := findHistoryByReason(history.History, "Consent expired")
-		ts.Require().NotNil(updateEntry)
-		ts.Require().NotNil(expireEntry)
-		ts.Require().NotNil(expireEntry.ActionBy)
-		ts.Equal("SYSTEM", *expireEntry.ActionBy)
-	})
-
-	ts.Run("auth-resource POST creates history", func() {
-		orgID := freshOrgID()
-		created := ts.mustCreateConsent(orgID, "grp-hist-auth-post", ConsentCreateRequest{Type: "accounts"})
-
-		status, body := ts.doRequest(http.MethodPost, "/api/v1/consents/"+created.ID+"/authorizations", orgID, "", map[string]interface{}{
-			"userId": "user-001",
-			"status": "APPROVED",
-		})
-		ts.Equal(http.StatusOK, status, "unexpected auth-resource POST response: %s", body)
-
-		_, history := ts.doGetConsentHistory(orgID, created.ID, false)
-		entry := findHistoryByReason(history.History, "Consent authorizations added")
-		ts.Require().NotNil(entry)
-		ts.Nil(entry.ActionBy)
-	})
-
-	ts.Run("auth-resource PUT creates history", func() {
-		orgID := freshOrgID()
-		created := ts.mustCreateConsent(orgID, "grp-hist-auth-put", ConsentCreateRequest{Type: "accounts"})
-		authID := ts.createAuthResourceForHistory(orgID, created.ID)
-
-		status, body := ts.doRequest(http.MethodPut, "/api/v1/consents/"+created.ID+"/authorizations/"+authID, orgID, "", map[string]interface{}{
-			"userId": "user-001",
-			"status": "REJECTED",
-		})
-		ts.Equal(http.StatusOK, status, "unexpected auth-resource PUT response: %s", body)
-
-		_, history := ts.doGetConsentHistory(orgID, created.ID, false)
-		entry := findHistoryByReason(history.History, "Consent authorizations updated")
-		ts.Require().NotNil(entry)
-		ts.Nil(entry.ActionBy)
-	})
-
-	ts.Run("includeStatusHistory controls statusHistory on consent GET", func() {
-		orgID := freshOrgID()
-		created := ts.mustCreateConsent(orgID, "grp-hist-status", ConsentCreateRequest{
-			Type: "accounts",
-			Authorizations: []AuthorizationRequest{
-				{UserID: "user-001", Status: "APPROVED"},
+		// -----------------------------------------------------------------------
+		// Consent update history
+		// -----------------------------------------------------------------------
+		{
+			name: "consent PUT creates history with pre-update snapshot",
+			setup: func(orgID string) *ConsentResponse {
+				return ts.mustCreateConsent(orgID, "grp-hist-put", ConsentCreateRequest{
+					Type:       "accounts",
+					Attributes: map[string]string{"region": "EU"},
+					Authorizations: []AuthorizationRequest{
+						{UserID: "user-001", Type: "authorisation", Status: "APPROVED"},
+					},
+				})
 			},
+			check: func(orgID string, created *ConsentResponse) {
+				groupID := "grp-hist-put"
+				status, updated := ts.doUpdateConsent(orgID, groupID, created.ID, ConsentUpdateRequest{
+					Type:       "payments",
+					Attributes: map[string]string{"region": "LK"},
+				})
+				ts.Equal(http.StatusOK, status)
+				ts.Require().NotNil(updated)
+
+				_, historyWithoutSnapshots := ts.doGetConsentHistory(orgID, created.ID, false)
+				ts.Require().Len(historyWithoutSnapshots.History, 1)
+				entry := historyWithoutSnapshots.History[0]
+				ts.Require().NotNil(entry.Reason)
+				ts.Equal("Consent updated", *entry.Reason)
+				ts.Require().NotNil(entry.ActionBy)
+				ts.Equal(groupID, *entry.ActionBy)
+				ts.Empty(entry.Snapshot)
+				ts.assertHistorySnapshotFieldPresence(orgID, created.ID, false, false)
+
+				_, historyWithSnapshots := ts.doGetConsentHistory(orgID, created.ID, true)
+				ts.Require().Len(historyWithSnapshots.History, 1)
+				snapshot := ts.decodeHistorySnapshot(historyWithSnapshots.History[0])
+				ts.Equal("accounts", snapshot["type"])
+				ts.Equal("EU", snapshot["attributes"].(map[string]any)["region"])
+				ts.assertHistorySnapshotFieldPresence(orgID, created.ID, true, true)
+			},
+		},
+		{
+			name: "revoke creates history",
+			setup: func(orgID string) *ConsentResponse {
+				return ts.mustCreateConsent(orgID, "grp-hist-revoke", ConsentCreateRequest{Type: "accounts"})
+			},
+			check: func(orgID string, created *ConsentResponse) {
+				status, revokeResp := ts.doRevokeConsent(orgID, created.ID, ConsentRevokeRequest{ActionBy: "tester"})
+				ts.Equal(http.StatusOK, status)
+				ts.Require().NotNil(revokeResp)
+
+				_, history := ts.doGetConsentHistory(orgID, created.ID, false)
+				entry := findHistoryByReason(history.History, "Consent revoked")
+				ts.Require().NotNil(entry)
+				ts.Require().NotNil(entry.ActionBy)
+				ts.Equal("tester", *entry.ActionBy)
+			},
+		},
+		{
+			name: "expiry creates history",
+			setup: func(orgID string) *ConsentResponse {
+				futureExpiration := time.Now().Add(2 * time.Minute).UnixMilli()
+				return ts.mustCreateConsent(orgID, "grp-hist-expiry", ConsentCreateRequest{
+					Type:           "accounts",
+					ExpirationTime: &futureExpiration,
+					Authorizations: []AuthorizationRequest{
+						{UserID: "user-001", Status: "APPROVED"},
+					},
+				})
+			},
+			check: func(orgID string, created *ConsentResponse) {
+				pastExpiration := time.Now().Add(-2 * time.Minute).UnixMilli()
+				status, updated := ts.doUpdateConsent(orgID, "grp-hist-expiry", created.ID, ConsentUpdateRequest{
+					ExpirationTime: &pastExpiration,
+				})
+				ts.Equal(http.StatusOK, status)
+				ts.Require().NotNil(updated)
+				ts.Equal("EXPIRED", updated.Status)
+
+				_, history := ts.doGetConsentHistory(orgID, created.ID, false)
+				updateEntry := findHistoryByReason(history.History, "Consent updated")
+				expireEntry := findHistoryByReason(history.History, "Consent expired")
+				ts.Require().NotNil(updateEntry)
+				ts.Require().NotNil(expireEntry)
+				ts.Require().NotNil(expireEntry.ActionBy)
+				ts.Equal("SYSTEM", *expireEntry.ActionBy)
+			},
+		},
+
+		// -----------------------------------------------------------------------
+		// Authorization-driven history
+		// -----------------------------------------------------------------------
+		{
+			name: "auth-resource POST creates history",
+			setup: func(orgID string) *ConsentResponse {
+				return ts.mustCreateConsent(orgID, "grp-hist-auth-post", ConsentCreateRequest{Type: "accounts"})
+			},
+			check: func(orgID string, created *ConsentResponse) {
+				status, body := ts.doRequest(http.MethodPost, "/api/v1/consents/"+created.ID+"/authorizations", orgID, "", map[string]any{
+					"userId": "user-001",
+					"status": "APPROVED",
+				})
+				ts.Equal(http.StatusOK, status, "unexpected auth-resource POST response: %s", body)
+
+				_, history := ts.doGetConsentHistory(orgID, created.ID, false)
+				entry := findHistoryByReason(history.History, "Consent authorizations added")
+				ts.Require().NotNil(entry)
+				ts.Nil(entry.ActionBy)
+			},
+		},
+		{
+			name: "auth-resource PUT creates history",
+			setup: func(orgID string) *ConsentResponse {
+				created := ts.mustCreateConsent(orgID, "grp-hist-auth-put", ConsentCreateRequest{Type: "accounts"})
+				ts.createAuthResourceForHistory(orgID, created.ID)
+				return created
+			},
+			check: func(orgID string, created *ConsentResponse) {
+				authID := ts.findSingleAuthorizationID(orgID, created.ID)
+				status, body := ts.doRequest(http.MethodPut, "/api/v1/consents/"+created.ID+"/authorizations/"+authID, orgID, "", map[string]any{
+					"userId": "user-001",
+					"status": "REJECTED",
+				})
+				ts.Equal(http.StatusOK, status, "unexpected auth-resource PUT response: %s", body)
+
+				_, history := ts.doGetConsentHistory(orgID, created.ID, false)
+				entry := findHistoryByReason(history.History, "Consent authorizations updated")
+				ts.Require().NotNil(entry)
+				ts.Nil(entry.ActionBy)
+			},
+		},
+
+		// -----------------------------------------------------------------------
+		// Status history on consent GET
+		// -----------------------------------------------------------------------
+		{
+			name: "includeStatusHistory controls statusHistory on consent GET",
+			setup: func(orgID string) *ConsentResponse {
+				return ts.mustCreateConsent(orgID, "grp-hist-status", ConsentCreateRequest{
+					Type: "accounts",
+					Authorizations: []AuthorizationRequest{
+						{UserID: "user-001", Status: "APPROVED"},
+					},
+				})
+			},
+			check: func(orgID string, created *ConsentResponse) {
+				status, rawBody := ts.doRequest(http.MethodGet, "/api/v1/consents/"+created.ID, orgID, "", nil)
+				ts.Equal(http.StatusOK, status)
+				ts.assertRawFieldPresence(rawBody, "statusHistory", false)
+
+				status, withHistory := ts.doGetConsentWithStatusHistory(orgID, created.ID)
+				ts.Equal(http.StatusOK, status)
+				ts.Require().NotNil(withHistory)
+				ts.NotEmpty(withHistory.StatusHistory)
+				initial := findStatusHistoryByCurrentStatus(withHistory.StatusHistory, "ACTIVE")
+				ts.Require().NotNil(initial)
+				ts.Nil(initial.PreviousStatus)
+
+				status, rawWithHistory := ts.doRequest(http.MethodGet, "/api/v1/consents/"+created.ID+"?includeStatusHistory=true", orgID, "", nil)
+				ts.Equal(http.StatusOK, status)
+				ts.assertInitialStatusHistoryOmitsPreviousStatus(rawWithHistory, "ACTIVE")
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		ts.Run(tc.name, func() {
+			orgID := freshOrgID()
+			created := tc.setup(orgID)
+			ts.Require().NotNil(created)
+			tc.check(orgID, created)
 		})
-
-		status, rawBody := ts.doRequest(http.MethodGet, "/api/v1/consents/"+created.ID, orgID, "", nil)
-		ts.Equal(http.StatusOK, status)
-		ts.assertRawFieldPresence(rawBody, "statusHistory", false)
-
-		status, withHistory := ts.doGetConsentWithStatusHistory(orgID, created.ID)
-		ts.Equal(http.StatusOK, status)
-		ts.Require().NotNil(withHistory)
-		ts.NotEmpty(withHistory.StatusHistory)
-		initial := findStatusHistoryByCurrentStatus(withHistory.StatusHistory, "ACTIVE")
-		ts.Require().NotNil(initial)
-		ts.Nil(initial.PreviousStatus)
-
-		status, rawWithHistory := ts.doRequest(http.MethodGet, "/api/v1/consents/"+created.ID+"?includeStatusHistory=true", orgID, "", nil)
-		ts.Equal(http.StatusOK, status)
-		ts.assertInitialStatusHistoryOmitsPreviousStatus(rawWithHistory, "ACTIVE")
-	})
+	}
 }
 
 func (ts *ConsentAPITestSuite) createAuthResourceForHistory(orgID, consentID string) string {
-	status, body := ts.doRequest(http.MethodPost, "/api/v1/consents/"+consentID+"/authorizations", orgID, "", map[string]interface{}{
+	status, body := ts.doRequest(http.MethodPost, "/api/v1/consents/"+consentID+"/authorizations", orgID, "", map[string]any{
 		"userId": "user-001",
 		"status": "APPROVED",
 	})
@@ -187,6 +248,17 @@ func (ts *ConsentAPITestSuite) createAuthResourceForHistory(orgID, consentID str
 	ts.Require().NoError(json.Unmarshal(body, &resp))
 	ts.Require().NotEmpty(resp.ID)
 	return resp.ID
+}
+
+// findSingleAuthorizationID fetches the consent and returns the only authorization id.
+// History auth-resource tests use a single authorization, so this keeps setup and check code simple.
+func (ts *ConsentAPITestSuite) findSingleAuthorizationID(orgID, consentID string) string {
+	status, consent := ts.doGetConsent(orgID, consentID)
+	ts.Require().Equal(http.StatusOK, status)
+	ts.Require().NotNil(consent)
+	ts.Require().Len(consent.Authorizations, 1)
+	ts.Require().NotEmpty(consent.Authorizations[0].ID)
+	return consent.Authorizations[0].ID
 }
 
 func findHistoryByReason(history []ConsentHistoryResponse, reason string) *ConsentHistoryResponse {
@@ -207,9 +279,9 @@ func findStatusHistoryByCurrentStatus(history []ConsentStatusAuditResponse, stat
 	return nil
 }
 
-func (ts *ConsentAPITestSuite) decodeHistorySnapshot(entry ConsentHistoryResponse) map[string]interface{} {
+func (ts *ConsentAPITestSuite) decodeHistorySnapshot(entry ConsentHistoryResponse) map[string]any {
 	ts.Require().NotEmpty(entry.Snapshot)
-	var snapshot map[string]interface{}
+	var snapshot map[string]any
 	ts.Require().NoError(json.Unmarshal(entry.Snapshot, &snapshot))
 	return snapshot
 }
@@ -223,7 +295,7 @@ func (ts *ConsentAPITestSuite) assertHistorySnapshotFieldPresence(orgID, consent
 	ts.Equal(http.StatusOK, status)
 
 	var raw struct {
-		History []map[string]interface{} `json:"history"`
+		History []map[string]any `json:"history"`
 	}
 	ts.Require().NoError(json.Unmarshal(body, &raw))
 	ts.Require().NotEmpty(raw.History)
@@ -232,15 +304,17 @@ func (ts *ConsentAPITestSuite) assertHistorySnapshotFieldPresence(orgID, consent
 }
 
 func (ts *ConsentAPITestSuite) assertRawFieldPresence(body []byte, field string, wantPresent bool) {
-	var raw map[string]interface{}
+	var raw map[string]any
 	ts.Require().NoError(json.Unmarshal(body, &raw))
 	_, exists := raw[field]
 	ts.Equal(wantPresent, exists)
 }
 
+// assertInitialStatusHistoryOmitsPreviousStatus verifies the initial status-audit entry
+// does not serialize previousStatus at all, instead of emitting it with a null value.
 func (ts *ConsentAPITestSuite) assertInitialStatusHistoryOmitsPreviousStatus(body []byte, currentStatus string) {
 	var raw struct {
-		StatusHistory []map[string]interface{} `json:"statusHistory"`
+		StatusHistory []map[string]any `json:"statusHistory"`
 	}
 	ts.Require().NoError(json.Unmarshal(body, &raw))
 	ts.Require().NotEmpty(raw.StatusHistory)

@@ -188,7 +188,7 @@ psql -U postgres -d consent_mgt -f consent-server/dbscripts/db_schema_postgres.s
 
 ### 3. Configure Application
 
-Update configuration file at `target/server/repository/conf/deployment.yaml`:
+The default configuration uses SQLite. Update configuration file at `target/server/repository/conf/deployment.yaml`:
 
 ```yaml
 server:
