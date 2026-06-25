@@ -22,7 +22,33 @@ package model
 const (
 	// DefaultAuthType is used when the caller does not specify an authorization type.
 	DefaultAuthType = "default"
+
+	// --- First-class authorization types for consent delegation ---
+
+	// AuthTypePrimary indicates self-consent: the person consenting for themselves.
+	AuthTypePrimary = "primary"
+
+	// AuthTypeDelegate indicates a person giving consent on behalf of another
+	// (e.g., a parent consenting for a child).
+	AuthTypeDelegate = "delegate"
+
+	// AuthTypeDelegateSubject indicates a person who is incapable of providing
+	// consent by themselves (e.g., a minor child).
+	AuthTypeDelegateSubject = "delegate_subject"
 )
+
+// FirstClassAuthTypes is the set of auth types that OpenFGC validates.
+// Custom types (anything not in this set) are stored and filterable but not validated.
+var FirstClassAuthTypes = map[string]bool{
+	AuthTypePrimary:         true,
+	AuthTypeDelegate:        true,
+	AuthTypeDelegateSubject: true,
+}
+
+// IsFirstClassAuthType reports whether the given type is a recognized first-class auth type.
+func IsFirstClassAuthType(authType string) bool {
+	return FirstClassAuthTypes[authType]
+}
 
 // =============================================================================
 // DB types — store layer only, db tags, no json tags
@@ -49,7 +75,7 @@ type AuthResource struct {
 // AuthType defaults to DefaultAuthType ("default") when empty.
 // AuthStatus defaults to the configured approved state when empty.
 type CreateAuthResourceInput struct {
-	AuthType   string      // optional; defaults to DefaultAuthType
+	AuthType   string // optional; defaults to DefaultAuthType
 	UserID     *string
 	AuthStatus string      // optional; defaults to configured approved state
 	Resources  interface{} // arbitrary value; service JSON-marshals before storing
@@ -94,8 +120,8 @@ type AuthResourceListOutput struct {
 // Type is optional — when absent the server uses DefaultAuthType ("default").
 type AuthResourceCreateRequest struct {
 	UserID    *string     `json:"userId,omitempty"`
-	Type      string      `json:"type,omitempty"`      // optional; defaults to "default"
-	Status    string      `json:"status,omitempty"`    // optional; defaults to "APPROVED"
+	Type      string      `json:"type,omitempty"`   // optional; defaults to "default"
+	Status    string      `json:"status,omitempty"` // optional; defaults to "APPROVED"
 	Resources interface{} `json:"resources,omitempty"`
 }
 

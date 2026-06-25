@@ -121,6 +121,7 @@ type AuthStatusMappings struct {
 	ApprovedState      string `yaml:"approved_state"`
 	RejectedState      string `yaml:"rejected_state"`
 	CreatedState       string `yaml:"created_state"`
+	RecordedState      string `yaml:"recorded_state"`
 	SystemExpiredState string `yaml:"system_expired_state"`
 	SystemRevokedState string `yaml:"system_revoked_state"`
 }
@@ -163,6 +164,13 @@ func (c *ConsentConfig) GetRejectedAuthStatus() AuthStatus {
 // GetCreatedAuthStatus returns the typed created auth status from config
 func (c *ConsentConfig) GetCreatedAuthStatus() AuthStatus {
 	return AuthStatus(c.AuthStatusMappings.CreatedState)
+}
+
+// GetRecordedAuthStatus returns the typed recorded auth status from config.
+// RECORDED means "this person is recorded in the consent but no action is needed from them"
+// (e.g., a child in a parent-child delegation, or an AI agent).
+func (c *ConsentConfig) GetRecordedAuthStatus() AuthStatus {
+	return AuthStatus(c.AuthStatusMappings.RecordedState)
 }
 
 // GetSystemExpiredAuthStatus returns the typed system expired auth status from config
@@ -349,6 +357,9 @@ func validateConfig(config *Config) error {
 	}
 	if config.Consent.AuthStatusMappings.CreatedState == "" {
 		return fmt.Errorf("auth created status mapping is required")
+	}
+	if config.Consent.AuthStatusMappings.RecordedState == "" {
+		return fmt.Errorf("auth recorded status mapping is required")
 	}
 	if config.Consent.AuthStatusMappings.SystemExpiredState == "" {
 		return fmt.Errorf("auth system expired status mapping is required")

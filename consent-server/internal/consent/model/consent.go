@@ -184,6 +184,22 @@ type ConsentSearchFilter struct {
 	Limit            int
 	Offset           int
 	OrgID            string
+
+	// --- Consent delegation search filters ---
+
+	// Delegation filters consents by delegation role when combined with UserIDs.
+	// nil = not specified (return all consents for the user regardless of auth type).
+	// true = user is a delegate (auth type = "delegate").
+	// false = user's own self-consents (auth type = "primary" or "default").
+	Delegation *bool
+
+	// DelegateSubject filters consents where this user ID is the delegate subject.
+	// When set, returns consents where this person's data is being consented for.
+	DelegateSubject string
+
+	// AuthTypes filters by specific auth type values (e.g., "agent", "carer").
+	// Supports both first-class and custom auth types.
+	AuthTypes []string
 }
 
 // =============================================================================

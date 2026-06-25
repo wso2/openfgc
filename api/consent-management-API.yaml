@@ -119,9 +119,10 @@ paths:
     get:
       summary: Search for consents
       description: |
-        Provides a powerful search capability to find consents based on various filter criteria like consent type, status, group ID, user ID, purpose, and element. Supports pagination.
+        Provides a powerful search capability to find consents based on various filter criteria like consent type, status, group ID, user ID, purpose, element, and delegation role. Supports pagination.
         If purposeVersion is specified, purposeName must also be provided.
         If elementVersion is specified, at least one of elementName or elementNamespace must also be provided.
+        The `delegation` and `authTypes` parameters are mutually exclusive. Use `delegation` for the built-in self/delegation role shortcut, or `authTypes` to match explicit authorization type values.
 
       operationId: consents-search-GET
       tags:
@@ -189,6 +190,48 @@ paths:
           schema:
             type: string
           example: "v2"
+        - name: delegation
+          in: query
+          description: |
+            Filter consents by delegation role. Used to separate self-consents from delegated consents.
+            - `true`: Returns consents where the user (specified by `userIds`) has authorization type `delegate`.
+            - `false`: Returns consents where the user has authorization type `primary` or `default` (self-consents).
+            - When omitted: Returns all consents for the user regardless of authorization type.
+
+            Can be used without `userIds` to query all delegation or self-consents system-wide.
+            Cannot be used together with `authTypes` (mutually exclusive).
+          required: false
+          schema:
+            type: boolean
+          example: true
+        - name: delegateSubject
+          in: query
+          description: |
+            Filter consents where the specified user ID is the delegate subject (i.e., a person whose data is being
+            consented for by someone else). Returns consents where this user has authorization type `delegate_subject`.
+
+            Can be combined with `delegation=true` and `userIds` to find consents where a specific delegate manages
+            a specific subject. For example: `?delegation=true&userIds=parent@example.com&delegateSubject=child@example.com`
+          required: false
+          schema:
+            type: string
+          example: "child@example.com"
+        - name: authTypes
+          in: query
+          description: |
+            A comma-separated list of authorization type values to filter by. Accepts any authorization type
+            string, including first-class types (`primary`, `delegate`, `delegate_subject`) and custom types
+            (e.g., `agent`, `carer`, `owner`).
+
+            When combined with `userIds`, returns consents where the specified user has the given authorization type.
+            When used alone, returns all consents that contain the specified authorization type.
+
+            Cannot be used together with `delegation` (mutually exclusive). Use `delegation` for the
+            built-in self/delegation role shortcut, or `authTypes` for explicit type matching.
+          required: false
+          schema:
+            type: string
+          example: "agent"
         - name: fromTime
           in: query
           description: The start of the time window for the search, as a Unix timestamp in milliseconds (integer).
@@ -2744,13 +2787,37 @@ components:
 
         **Authorization Type:**
         The `type` field is optional. When not provided, the server defaults to `"default"`.
+        `"default"` is treated as legacy self-consent, equivalent to `primary` for validation
+        and `delegation=false` searches.
+
+        OpenFGC recognizes three **first-class authorization types** that are validated:
+        - `primary`: Self-consent — the person consenting for themselves.
+        - `default`: Legacy self-consent used when `type` is omitted; treated like `primary`.
+        - `delegate`: A person giving consent on behalf of another (e.g., a parent).
+        - `delegate_subject`: A person who cannot consent for themselves (e.g., a minor child).
+
+        Data holders can also use **custom types** (e.g., `agent`, `carer`, `owner`). Custom types
+        are stored and filterable but not validated by OpenFGC.
+
+        **First-Class Type Validation Rules:**
+        - `delegate` requires at least one `delegate_subject` in the same consent.
+        - `delegate_subject` requires at least one `delegate` in the same consent.
+        - `primary`/`default` cannot be mixed with `delegate` or `delegate_subject` in the same consent.
+        - Custom types skip these validation rules entirely.
 
         **Authorization Status/State:**
         The `status` field represents the authorization state which determines the consent status:
-        - `approved` (default if not provided): Authorization is approved → consent will be "active"
-        - `created`: Authorization is created but not yet approved → consent will be "created"
-        - `rejected`: Authorization was rejected → consent will be "rejected"
+        - `APPROVED` (default if not provided): Authorization is approved → consent will be ACTIVE
+        - `CREATED`: Authorization is created but not yet approved → consent will be CREATED
+        - `REJECTED`: Authorization was rejected → consent will be REJECTED
+        - `RECORDED`: Passive participant — no action needed from this person (e.g., a child in
+          parent-child delegation, or an AI agent). RECORDED statuses are **skipped** during consent
+          status derivation.
         - Custom values: Will be resolved via extension point to one of the known consent statuses
+
+        **Universal Participation Rule:**
+        At least one authorization in a consent must have a non-RECORDED status. This prevents
+        consents where nobody actively consented.
       required:
         - userId
       properties:
@@ -2759,9 +2826,19 @@ components:
           type: string
           example: "admin@carbon.super"
         type:
-          description: The type of authorization (e.g., 'authorisation', 're-authorisation'). Defaults to "default" when not provided.
+          description: |
+            The type of authorization. Defaults to `"default"` when not provided.
+
+            **First-class types** (validated by OpenFGC):
+            - `primary`: Self-consent — the person consenting for themselves
+            - `default`: Legacy self-consent used when `type` is omitted; treated like `primary`
+            - `delegate`: Person giving consent on behalf of another (e.g., a parent)
+            - `delegate_subject`: Person who cannot consent for themselves (e.g., a minor child)
+
+            **Custom types** (stored and filterable, not validated):
+            Any other string value (e.g., `agent`, `carer`, `owner`, `authorisation`)
           type: string
-          example: "authorisation"
+          example: "primary"
         status:
           description: |
             The current status/state of this specific authorization.
@@ -2770,13 +2847,10 @@ components:
             - `APPROVED`: Authorization approved (default) → consent becomes ACTIVE
             - `CREATED`: Authorization created but not yet approved → consent becomes CREATED
             - `REJECTED`: Authorization rejected → consent becomes REJECTED
+            - `RECORDED`: Passive participant, no action needed → **skipped** in consent status derivation
             - Custom states: Resolved via extension point
           type: string
           example: "APPROVED"
-          enum:
-            - CREATED
-            - APPROVED
-            - REJECTED
         resources:
           description: |
             Flexible resources field that can contain any valid JSON structure.
@@ -2817,10 +2891,33 @@ components:
 
         **Status Derivation:**
         The consent status is NOT provided in the request. Instead, it is automatically derived by the API based on the authorization states:
-        - If any authorization has status REJECTED → consent status = REJECTED
-        - If any authorization has status CREATED → consent status = CREATED
-        - If all authorizations have status APPROVED (or empty/default) → consent status = ACTIVE
-        - For custom authorization states → consent status is resolved via extension point (must return a known status)
+        1. First, non-participating statuses are filtered out: `RECORDED`, `SYS_EXPIRED`, and `SYS_REVOKED` are excluded from derivation.
+        2. From the remaining participating statuses:
+           - If any authorization has status REJECTED → consent status = REJECTED
+           - If any authorization has status CREATED → consent status = CREATED
+           - If all authorizations have status APPROVED (or empty/default) → consent status = ACTIVE
+           - For custom authorization states → consent status is resolved via extension point (must return a known status)
+
+        **Consent Delegation:**
+        Consent delegation is when one person creates and manages a consent on behalf of another person who cannot consent for themselves.
+        Use the first-class authorization types (`primary`, `delegate`, `delegate_subject`) to model delegation relationships.
+
+        Example — parent consenting for a child:
+        ```json
+        "authorizations": [
+          { "userId": "parent@example.com", "type": "delegate", "status": "APPROVED" },
+          { "userId": "child@example.com", "type": "delegate_subject", "status": "RECORDED" }
+        ]
+        ```
+        Derivation: RECORDED is skipped → only APPROVED remains → consent becomes ACTIVE.
+
+        **Authorization Type Validation Rules:**
+        When first-class types are used, OpenFGC enforces:
+        - `delegate` requires at least one `delegate_subject` in the same consent
+        - `delegate_subject` requires at least one `delegate` in the same consent
+        - `primary`/`default` cannot be mixed with `delegate` or `delegate_subject`
+        - At least one authorization must have a non-RECORDED status
+        - Custom types skip the pairing rules but still require at least one non-RECORDED status
 
         **Known Consent Statuses:**
         - `CREATED`: Consent is created but not yet approved
@@ -2884,13 +2981,26 @@ components:
     ConsentAuthorizationCreatePayload:
       type: object
       description: |
-        Represents a detailed authorization object.
+        Represents a detailed authorization object within a consent create/update request.
+
+        **Authorization Type:**
+        The `type` field categorizes the authorization. OpenFGC recognizes three first-class types:
+        - `primary`: Self-consent — the person consenting for themselves
+        - `default`: Legacy self-consent used when `type` is omitted; treated like `primary`
+        - `delegate`: Person giving consent on behalf of another (e.g., a parent)
+        - `delegate_subject`: Person who cannot consent for themselves (e.g., a minor child)
+
+        `primary`/`default` cannot be mixed with `delegate` or `delegate_subject` in the same consent.
+
+        Custom types (e.g., `agent`, `carer`, `owner`) are also supported — stored and filterable
+        but not validated by OpenFGC.
 
         **Authorization State:**
         The status field represents the authorization state which determines the consent status:
         - `APPROVED` (default if not provided): Authorization is approved → consent will be ACTIVE
         - `CREATED`: Authorization is created but not yet approved → consent will be CREATED
         - `REJECTED`: Authorization was rejected → consent will be REJECTED
+        - `RECORDED`: Passive participant, skipped in consent status derivation
         - Custom states: Will be resolved via extension point to determine final consent status
       required:
         - userId
@@ -2900,20 +3010,20 @@ components:
           type: string
           example: "admin@carbon.super"
         type:
-          description: The type of authorization (e.g., 'authorisation', 're-authorisation').
+          description: |
+            The type of authorization. First-class types: `primary`, `default`, `delegate`, `delegate_subject`.
+            Custom types (e.g., `agent`, `carer`) are also accepted.
+            `default` is used when `type` is omitted and is treated like `primary`.
           type: string
-          example: "authorisation"
+          example: "primary"
         status:
           description: |
             The authorization state (defaults to APPROVED if not provided).
-            Known states: APPROVED, CREATED, REJECTED.
+            Known states: APPROVED, CREATED, REJECTED, RECORDED.
+            RECORDED is skipped during consent status derivation.
             Custom states will be resolved via extension point.
           type: string
           example: "APPROVED"
-          enum:
-            - CREATED
-            - APPROVED
-            - REJECTED
         resources:
           description: |
             Flexible resources field that can contain any valid JSON structure.
@@ -3000,10 +3110,12 @@ components:
 
         **Status Derivation:**
         The consent status is NOT provided in the request. Instead, it is automatically derived by the API based on the authorization states:
-        - If any authorization has status "rejected" → consent status = "rejected"
-        - If any authorization has status "created" → consent status = "created"
-        - If all authorizations have status "approved" (or empty/default) → consent status = "active"
-        - For custom authorization states → consent status is resolved via extension point (must return a known status)
+        1. First, non-participating statuses are filtered out: `RECORDED`, `SYS_EXPIRED`, and `SYS_REVOKED` are excluded from derivation.
+        2. From the remaining participating statuses:
+           - If any authorization has status "rejected" → consent status = "rejected"
+           - If any authorization has status "created" → consent status = "created"
+           - If all authorizations have status "approved" (or empty/default) → consent status = "active"
+           - For custom authorization states → consent status is resolved via extension point (must return a known status)
 
         **Purposes:**
         The purposes field is REQUIRED and will completely replace existing consent elements.

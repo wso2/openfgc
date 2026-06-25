@@ -52,6 +52,8 @@ consent:
     rejected_state: REJECTED
     # Authorization state indicating creation
     created_state: CREATED
+    # Authorization state for passive participants who don't need to approve (e.g., child, agent)
+    recorded_state: RECORDED 
     # Authorization state indicating authorization was system-expired due to consent expiry
     system_expired_state: SYS_EXPIRED
     # Authorization state indicating authorization was system-revoked due to consent revocation

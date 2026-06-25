@@ -215,6 +215,35 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 		filters.UserIDs = parts
 	}
 
+	// delegation (boolean) — filters by delegation role when combined with userIds
+	// true = user is a delegate, false = user's own self-consents
+	if s := r.URL.Query().Get("delegation"); s != "" {
+		switch strings.ToLower(s) {
+		case "true":
+			v := true
+			filters.Delegation = &v
+		case "false":
+			v := false
+			filters.Delegation = &v
+		default:
+			utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed,
+				"delegation must be 'true' or 'false'"))
+			return
+		}
+	}
+
+	// delegateSubject — filter consents where this userId is the delegate subject
+	filters.DelegateSubject = r.URL.Query().Get("delegateSubject")
+
+	// authTypes — filter by specific auth type values (e.g., "agent", "carer")
+	if s := r.URL.Query().Get("authTypes"); s != "" {
+		parts := strings.Split(s, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		filters.AuthTypes = parts
+	}
+
 	// purposeName (single) + optional purposeVersion
 	filters.PurposeName = r.URL.Query().Get("purposeName")
 	if s := r.URL.Query().Get("purposeVersion"); s != "" {
@@ -260,6 +289,12 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 	if filters.ElementVersion != nil && filters.ElementName == "" && filters.ElementNamespace == "" {
 		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed,
 			"elementVersion requires elementName or elementNamespace to be specified"))
+		return
+	}
+	// delegation and authTypes are mutually exclusive — use one or the other
+	if filters.Delegation != nil && len(filters.AuthTypes) > 0 {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed,
+			"delegation and authTypes cannot be used together; use delegation for first-class types or authTypes for custom types"))
 		return
 	}
 

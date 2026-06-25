@@ -32,6 +32,7 @@ consent:
     approved_state: APPROVED
     rejected_state: REJECTED
     created_state: CREATED
+    recorded_state: RECORDED 
     system_expired_state: SYS_EXPIRED
     system_revoked_state: SYS_REVOKED
   history:

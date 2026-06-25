@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	authmodel "github.com/wso2/openfgc/internal/authresource/model"
 	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
 	"github.com/wso2/openfgc/internal/consent/model"
 	"github.com/wso2/openfgc/internal/system/config"
@@ -85,6 +86,11 @@ func ValidateConsentCreateRequest(req model.ConsentCreateRequest, groupID, orgID
 		}
 	}
 
+	// Validate auth type constraints across the full authorization set
+	if err := ValidateAuthTypeConstraints(req.Authorizations); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -134,6 +140,103 @@ func ValidateConsentUpdateRequest(req model.ConsentUpdateRequest) error {
 		}
 	}
 
+	// Validate auth type constraints if authorizations are being replaced
+	if req.Authorizations != nil {
+		if err := ValidateAuthTypeConstraints(req.Authorizations); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ValidateAuthTypeConstraints validates the auth type rules across a full set of authorizations.
+//
+// Rules for first-class types:
+//   - "delegate" requires at least one "delegate_subject" in the same consent
+//   - "delegate_subject" requires at least one "delegate" in the same consent
+//   - "primary" cannot mix with "delegate" or "delegate_subject"
+//
+// Custom types (anything not primary/delegate/delegate_subject) skip these rules entirely.
+//
+// Universal rule (applies to all types):
+//   - At least one authorization must have a non-RECORDED status.
+//     This prevents consents where nobody actively consented.
+func ValidateAuthTypeConstraints(authorizations []model.AuthorizationRequest) error {
+	if len(authorizations) == 0 {
+		return nil
+	}
+
+	hasPrimary := false
+	hasDelegate := false
+	hasDelegateSubject := false
+	hasFirstClass := false
+
+	cfg := config.Get()
+
+	// Determine the recorded status string for the universal participation check
+	var recordedStatus string
+	if cfg != nil {
+		recordedStatus = string(cfg.Consent.GetRecordedAuthStatus())
+	}
+
+	hasNonRecorded := false
+
+	for _, auth := range authorizations {
+		// Resolve the effective auth type (empty defaults to "default" which is treated like primary)
+		authType := auth.Type
+		if authType == "" {
+			authType = authmodel.DefaultAuthType
+		}
+
+		switch authType {
+		case authmodel.AuthTypePrimary:
+			hasPrimary = true
+			hasFirstClass = true
+		case authmodel.AuthTypeDelegate:
+			hasDelegate = true
+			hasFirstClass = true
+		case authmodel.AuthTypeDelegateSubject:
+			hasDelegateSubject = true
+			hasFirstClass = true
+		case authmodel.DefaultAuthType:
+			// "default" is treated as self-consent (like primary) for validation purposes
+			hasPrimary = true
+		}
+
+		// Universal participation check: at least one auth must not be RECORDED
+		effectiveStatus := auth.Status
+		if effectiveStatus == "" {
+			// Empty status defaults to APPROVED — that's a participating status
+			hasNonRecorded = true
+		} else if recordedStatus == "" || effectiveStatus != recordedStatus {
+			hasNonRecorded = true
+		}
+	}
+
+	// Universal rule: at least one authorization must actively participate
+	if !hasNonRecorded {
+		return fmt.Errorf("at least one authorization must have an active status; RECORDED alone does not constitute consent")
+	}
+
+	// First-class type pairing rules (only enforced when first-class types are present)
+	if hasFirstClass {
+		// primary cannot mix with delegate or delegate_subject
+		if hasPrimary && (hasDelegate || hasDelegateSubject) {
+			return fmt.Errorf("authorization type 'primary' cannot be mixed with 'delegate' or 'delegate_subject' in the same consent")
+		}
+
+		// delegate requires at least one delegate_subject
+		if hasDelegate && !hasDelegateSubject {
+			return fmt.Errorf("authorization type 'delegate' requires at least one 'delegate_subject' in the same consent")
+		}
+
+		// delegate_subject requires at least one delegate
+		if hasDelegateSubject && !hasDelegate {
+			return fmt.Errorf("authorization type 'delegate_subject' requires at least one 'delegate' in the same consent")
+		}
+	}
+
 	return nil
 }
 
@@ -155,7 +258,17 @@ func ValidateConsentGetRequest(consentID, orgID string) error {
 }
 
 // EvaluateConsentStatusFromAuthStatuses determines consent status from a list of auth status strings.
-// Priority: rejected > created > active.
+//
+// The derivation follows two steps:
+//
+//  1. Filter out non-participating statuses: RECORDED, SYS_EXPIRED, and SYS_REVOKED are
+//     excluded because they represent passive participants or system-managed states that
+//     should not influence the consent's overall status.
+//
+//  2. From the remaining participating statuses, apply priority logic:
+//     Any REJECTED → consent REJECTED
+//     Any CREATED  → consent CREATED
+//     All APPROVED → consent ACTIVE
 func EvaluateConsentStatusFromAuthStatuses(authStatuses []string) string {
 	cfg := config.Get()
 	if cfg == nil {
@@ -167,12 +280,35 @@ func EvaluateConsentStatusFromAuthStatuses(authStatuses []string) string {
 		return string(consentConfig.GetCreatedConsentStatus())
 	}
 
-	// Evaluate ALL auth statuses with priority logic
+	// Step 1: Filter out non-participating statuses.
+	// RECORDED = passive participant (child, agent) — no action needed.
+	// SYS_EXPIRED / SYS_REVOKED = system-managed states — should not corrupt derivation.
+	recordedStatus := strings.ToUpper(string(consentConfig.GetRecordedAuthStatus()))
+	sysExpiredStatus := strings.ToUpper(string(consentConfig.GetSystemExpiredAuthStatus()))
+	sysRevokedStatus := strings.ToUpper(string(consentConfig.GetSystemRevokedAuthStatus()))
+
+	participatingStatuses := make([]string, 0, len(authStatuses))
+	for _, status := range authStatuses {
+		upper := strings.ToUpper(status)
+		if upper == recordedStatus || upper == sysExpiredStatus || upper == sysRevokedStatus {
+			continue
+		}
+		participatingStatuses = append(participatingStatuses, status)
+	}
+
+	// If all statuses were filtered out but there were auth resources,
+	// this shouldn't happen in practice because validation ensures at least one
+	// non-RECORDED auth exists. Fall back to created as a safety net.
+	if len(participatingStatuses) == 0 {
+		return string(consentConfig.GetCreatedConsentStatus())
+	}
+
+	// Step 2: Evaluate participating statuses with priority logic
 	hasRejected := false
 	hasCreated := false
 	allApproved := true
 
-	for _, authStatus := range authStatuses {
+	for _, authStatus := range participatingStatuses {
 		// Map auth status to consent status first (case-insensitive comparison)
 		authStatusUpper := strings.ToUpper(authStatus)
 		var mappedConsentStatus string

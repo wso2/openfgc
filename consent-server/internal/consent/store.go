@@ -825,15 +825,68 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilter) (
 		}
 	}
 
-	// UserIDs filter via JOIN — kept as JOIN so COUNT(DISTINCT) handles any duplicates.
-	if len(filters.UserIDs) > 0 {
-		ph := strings.Repeat("?,", len(filters.UserIDs))
+	// =========================================================================
+	// Auth resource filters (userIds, delegation, authTypes, delegateSubject)
+	//
+	// These use JOINs on CONSENT_AUTH_RESOURCE. When multiple filters are active
+	// they combine:
+	//   - userIds + delegation/authTypes share a single JOIN (car)
+	//   - delegateSubject uses its own JOIN (car_ds) so it can coexist with the
+	//     userIds JOIN (e.g., "father is delegate AND son is delegate_subject")
+	// =========================================================================
+
+	// Primary auth resource JOIN — needed when userIds, delegation, or authTypes is set.
+	needsCarJoin := len(filters.UserIDs) > 0 || filters.Delegation != nil || len(filters.AuthTypes) > 0
+	if needsCarJoin {
 		joinClause += " INNER JOIN CONSENT_AUTH_RESOURCE car ON CONSENT.CONSENT_ID = car.CONSENT_ID AND CONSENT.ORG_ID = car.ORG_ID"
-		whereConditions = append(whereConditions, fmt.Sprintf("car.USER_ID IN (%s)", ph[:len(ph)-1]))
-		for _, uid := range filters.UserIDs {
-			args = append(args, uid)
-			countArgs = append(countArgs, uid)
+
+		// UserIDs filter
+		if len(filters.UserIDs) > 0 {
+			ph := strings.Repeat("?,", len(filters.UserIDs))
+			whereConditions = append(whereConditions, fmt.Sprintf("car.USER_ID IN (%s)", ph[:len(ph)-1]))
+			for _, uid := range filters.UserIDs {
+				args = append(args, uid)
+				countArgs = append(countArgs, uid)
+			}
 		}
+
+		// Delegation filter on auth type (first-class types)
+		if filters.Delegation != nil {
+			if *filters.Delegation {
+				// delegation=true: consents where user is a delegate
+				whereConditions = append(whereConditions, "car.AUTH_TYPE = ?")
+				args = append(args, "delegate")
+				countArgs = append(countArgs, "delegate")
+			} else {
+				// delegation=false: user's own self-consents (primary or legacy default)
+				whereConditions = append(whereConditions, "car.AUTH_TYPE IN (?, ?)")
+				args = append(args, "primary", "default")
+				countArgs = append(countArgs, "primary", "default")
+			}
+		}
+
+		// AuthTypes filter (custom type filtering, e.g., "agent", "carer")
+		if len(filters.AuthTypes) > 0 {
+			ph := strings.Repeat("?,", len(filters.AuthTypes))
+			whereConditions = append(whereConditions, fmt.Sprintf("car.AUTH_TYPE IN (%s)", ph[:len(ph)-1]))
+			for _, at := range filters.AuthTypes {
+				args = append(args, at)
+				countArgs = append(countArgs, at)
+			}
+		}
+	}
+
+	// DelegateSubject filter — separate JOIN to find consents about a specific subject's data.
+	// Uses a separate alias (car_ds) so it can coexist with the primary car JOIN above.
+	// Example: ?delegation=true&userIds=father-111&delegateSubject=son-333
+	//   → car JOIN filters for father as delegate
+	//   → car_ds JOIN filters for son as delegate_subject
+	if filters.DelegateSubject != "" {
+		joinClause += " INNER JOIN CONSENT_AUTH_RESOURCE car_ds ON CONSENT.CONSENT_ID = car_ds.CONSENT_ID AND CONSENT.ORG_ID = car_ds.ORG_ID"
+		whereConditions = append(whereConditions, "car_ds.USER_ID = ?")
+		whereConditions = append(whereConditions, "car_ds.AUTH_TYPE = ?")
+		args = append(args, filters.DelegateSubject, "delegate_subject")
+		countArgs = append(countArgs, filters.DelegateSubject, "delegate_subject")
 	}
 
 	// PurposeName filter via EXISTS subquery to avoid duplicate rows.
