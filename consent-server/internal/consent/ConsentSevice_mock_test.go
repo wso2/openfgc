@@ -571,6 +571,68 @@ func (_c *MockConsentService_SearchConsentsByAttribute_Call) RunAndReturn(run fu
 	return _c
 }
 
+// GetGroupIDsByUserID provides a mock function with given fields: ctx, userID, orgID
+func (_m *MockConsentService) GetGroupIDsByUserID(ctx context.Context, userID string, orgID string) (*model.ConsentGroupIDsOutput, *serviceerror.ServiceError) {
+	ret := _m.Called(ctx, userID, orgID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetGroupIDsByUserID")
+	}
+
+	var r0 *model.ConsentGroupIDsOutput
+	var r1 *serviceerror.ServiceError
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*model.ConsentGroupIDsOutput, *serviceerror.ServiceError)); ok {
+		return rf(ctx, userID, orgID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *model.ConsentGroupIDsOutput); ok {
+		r0 = rf(ctx, userID, orgID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ConsentGroupIDsOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) *serviceerror.ServiceError); ok {
+		r1 = rf(ctx, userID, orgID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*serviceerror.ServiceError)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockConsentService_GetGroupIDsByUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetGroupIDsByUserID'
+type MockConsentService_GetGroupIDsByUserID_Call struct {
+	*mock.Call
+}
+
+// GetGroupIDsByUserID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - orgID string
+func (_e *MockConsentService_Expecter) GetGroupIDsByUserID(ctx interface{}, userID interface{}, orgID interface{}) *MockConsentService_GetGroupIDsByUserID_Call {
+	return &MockConsentService_GetGroupIDsByUserID_Call{Call: _e.mock.On("GetGroupIDsByUserID", ctx, userID, orgID)}
+}
+
+func (_c *MockConsentService_GetGroupIDsByUserID_Call) Run(run func(ctx context.Context, userID string, orgID string)) *MockConsentService_GetGroupIDsByUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockConsentService_GetGroupIDsByUserID_Call) Return(_a0 *model.ConsentGroupIDsOutput, _a1 *serviceerror.ServiceError) *MockConsentService_GetGroupIDsByUserID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockConsentService_GetGroupIDsByUserID_Call) RunAndReturn(run func(context.Context, string, string) (*model.ConsentGroupIDsOutput, *serviceerror.ServiceError)) *MockConsentService_GetGroupIDsByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateConsent provides a mock function with given fields: ctx, consentID, groupID, orgID, input
 func (_m *MockConsentService) UpdateConsent(ctx context.Context, consentID string, groupID string, orgID string, input model.UpdateConsentInput) (*model.ConsentOutput, *serviceerror.ServiceError) {
 	ret := _m.Called(ctx, consentID, groupID, orgID, input)

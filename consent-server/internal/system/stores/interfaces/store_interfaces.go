@@ -62,6 +62,8 @@ type ConsentStore interface {
 	GetConsentIDsByAttributeKey(ctx context.Context, key, orgID string) ([]string, error)
 	// GetConsentIDsByAttribute returns all consent IDs that carry the given key-value attribute pair.
 	GetConsentIDsByAttribute(ctx context.Context, key, value, orgID string) ([]string, error)
+	// GetGroupIDsByUserID returns distinct group IDs for consents authorized for the given user.
+	GetGroupIDsByUserID(ctx context.Context, userID, orgID string) ([]string, error)
 
 	// CreateStatusAudit inserts a CONSENT_STATUS_AUDIT row within a transaction.
 	CreateStatusAudit(tx dbmodel.TxInterface, audit *consentModel.ConsentStatusAudit) error

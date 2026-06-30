@@ -203,6 +203,13 @@ paths:
             type: integer
             format: int64
           example: 1734422400000
+        - name: sort
+          in: query
+          description: Sort results using a comma-separated list of sort items. Each item can be either `{field}:{direction}` or `{field}`, which defaults to `desc`. Supported fields are `createdTime`, `updatedTime`, `validityTime`, `status`, `groupId`, and `consentType`. Supported directions are `asc` and `desc`. A maximum of 3 sort items is allowed. If `validityTime` is used, consents without an expiry are treated as having the latest validity time. If omitted, results are sorted by `createdTime:desc`.
+          schema:
+            type: string
+            default: createdTime:desc
+          example: "status:asc,createdTime:desc"
         - name: limit
           in: query
           description: The maximum number of results to return in a single page. Used for pagination.
@@ -283,6 +290,53 @@ paths:
                 $ref: "#/components/schemas/ConsentAttributeSearchResponse"
         "400":
           description: Bad Request. The key parameter is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
+  /consents/group-ids:
+    get:
+      summary: Retrieve group IDs for a user
+      description: |
+        Retrieves the distinct group IDs associated with the specified user ID.
+
+        Results are scoped to the requesting organization and include only group IDs.
+        Group metadata is not returned.
+      operationId: consents-group-ids-GET
+      tags:
+        - Consents
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: userId
+          in: query
+          required: true
+          description: The user ID to search for.
+          schema:
+            type: string
+          example: "user1@example.com"
+      responses:
+        "200":
+          description: Successfully retrieved the group IDs matching the search criteria.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentGroupIDsResponse"
+        "400":
+          description: Bad Request. The userId parameter is missing, repeated, or invalid.
           content:
             application/json:
               schema:
@@ -3938,6 +3992,24 @@ components:
           example: 3
     ConsentAttributeSearchResponse:
       $ref: "#/components/schemas/ConsentIdsResponse"
+    ConsentGroupIDsResponse:
+      type: object
+      description: Response payload containing group IDs matching the search criteria.
+      required:
+        - groupIds
+        - count
+      properties:
+        groupIds:
+          description: Array of distinct group IDs, sorted alphabetically.
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+          example: ["group-001", "group-002"]
+        count:
+          description: The number of distinct group IDs returned.
+          type: integer
+          example: 2
     ConsentElementCreateRequest:
       type: object
       required:

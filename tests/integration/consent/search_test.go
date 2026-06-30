@@ -373,6 +373,78 @@ func (ts *ConsentAPITestSuite) TestSearchConsents() {
 		},
 
 		// -----------------------------------------------------------------------
+		// Sorting
+		// -----------------------------------------------------------------------
+		{
+			name: "default sort — returns newest created first",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "grp-sort-default-1", ConsentCreateRequest{Type: "zeta"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-default-2", ConsentCreateRequest{Type: "alpha"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-default-3", ConsentCreateRequest{Type: "beta"})
+			},
+			params: url.Values{
+				"groupIds": {"grp-sort-default-1,grp-sort-default-2,grp-sort-default-3"},
+			},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentListResponse) {
+				ts.Require().Len(resp.Data, 3)
+				ts.Equal("grp-sort-default-3", resp.Data[0].GroupID)
+				ts.Equal("grp-sort-default-2", resp.Data[1].GroupID)
+				ts.Equal("grp-sort-default-1", resp.Data[2].GroupID)
+			},
+		},
+		{
+			name: "sort=createdTime:asc — returns oldest created first",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "grp-sort-asc-1", ConsentCreateRequest{Type: "zeta"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-asc-2", ConsentCreateRequest{Type: "alpha"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-asc-3", ConsentCreateRequest{Type: "beta"})
+			},
+			params: url.Values{
+				"groupIds": {"grp-sort-asc-1,grp-sort-asc-2,grp-sort-asc-3"},
+				"sort":     {"createdTime:asc"},
+			},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentListResponse) {
+				ts.Require().Len(resp.Data, 3)
+				ts.Equal("grp-sort-asc-1", resp.Data[0].GroupID)
+				ts.Equal("grp-sort-asc-2", resp.Data[1].GroupID)
+				ts.Equal("grp-sort-asc-3", resp.Data[2].GroupID)
+			},
+		},
+		{
+			name: "multi-field sort — orders by status then groupId",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "grp-sort-multi-b", ConsentCreateRequest{Type: "zeta"})
+				ts.mustCreateConsent(orgID, "grp-sort-multi-a", ConsentCreateRequest{Type: "alpha"})
+				ts.mustCreateConsent(orgID, "grp-sort-multi-c", ConsentCreateRequest{
+					Type: "beta",
+					Authorizations: []AuthorizationRequest{
+						{UserID: "sort-user", Type: "accounts", Status: "APPROVED"},
+					},
+				})
+			},
+			params: url.Values{
+				"groupIds": {"grp-sort-multi-b,grp-sort-multi-a,grp-sort-multi-c"},
+				"sort":     {"status:asc,groupId:asc"},
+			},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentListResponse) {
+				ts.Require().Len(resp.Data, 3)
+				ts.Equal("grp-sort-multi-c", resp.Data[0].GroupID)
+				ts.Equal("ACTIVE", resp.Data[0].Status)
+				ts.Equal("grp-sort-multi-a", resp.Data[1].GroupID)
+				ts.Equal("CREATED", resp.Data[1].Status)
+				ts.Equal("grp-sort-multi-b", resp.Data[2].GroupID)
+				ts.Equal("CREATED", resp.Data[2].Status)
+			},
+		},
+
+		// -----------------------------------------------------------------------
 		// Org isolation
 		// -----------------------------------------------------------------------
 		{
@@ -734,6 +806,159 @@ func (ts *ConsentAPITestSuite) TestSearchConsentsByAttribute() {
 
 			var resp ConsentAttributeSearchResponse
 			ts.Require().NoError(json.Unmarshal(body, &resp), "unmarshal ConsentAttributeSearchResponse: %s", body)
+			if tc.checkResult != nil {
+				tc.checkResult(&resp)
+			}
+		})
+	}
+}
+
+// TestGetGroupIDsByUserID covers GET /consents/group-ids.
+//
+// Contract:
+//   - userId is required and exactly one value must be supplied.
+//   - Returns distinct group IDs associated with the specified user.
+//   - Results are scoped to the requesting org.
+//   - Results are sorted alphabetically by group ID.
+//   - Missing userId, repeated userId, or missing org-id -> 400 CS-4002.
+func (ts *ConsentAPITestSuite) TestGetGroupIDsByUserID() {
+	type testCase struct {
+		name        string
+		setup       func(orgID string)
+		userIDs     []string
+		omitOrgID   bool
+		wantStatus  int
+		wantError   string
+		checkResult func(resp *ConsentGroupIDsResponse)
+	}
+
+	cases := []testCase{
+		{
+			name: "one user across multiple groups returns distinct group IDs",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "group-gamma", ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-multi-001", Status: "APPROVED"}},
+				})
+				ts.mustCreateConsent(orgID, "group-alpha", ConsentCreateRequest{
+					Type:           "payments",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-multi-001", Status: "APPROVED"}},
+				})
+				ts.mustCreateConsent(orgID, "group-beta", ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-multi-001", Status: "APPROVED"}},
+				})
+			},
+			userIDs:    []string{"gid-user-multi-001"},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentGroupIDsResponse) {
+				ts.Equal(3, resp.Count)
+				ts.Equal([]string{"group-alpha", "group-beta", "group-gamma"}, resp.GroupIDs)
+			},
+		},
+		{
+			name: "duplicate group IDs across multiple consents are returned once",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "group-dup", ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-dup-001", Status: "APPROVED"}},
+				})
+				ts.mustCreateConsent(orgID, "group-dup", ConsentCreateRequest{
+					Type:           "payments",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-dup-001", Status: "APPROVED"}},
+				})
+				ts.mustCreateConsent(orgID, "group-other", ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-dup-001", Status: "APPROVED"}},
+				})
+			},
+			userIDs:    []string{"gid-user-dup-001"},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentGroupIDsResponse) {
+				ts.Equal(2, resp.Count)
+				ts.Equal([]string{"group-dup", "group-other"}, resp.GroupIDs)
+			},
+		},
+		{
+			name: "user with no matching authorizations returns empty result",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "group-alpha", ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-other-001", Status: "APPROVED"}},
+				})
+			},
+			userIDs:    []string{"gid-user-none-001"},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentGroupIDsResponse) {
+				ts.Equal(0, resp.Count)
+				ts.Empty(resp.GroupIDs)
+			},
+		},
+		{
+			name: "org isolation returns only groups from the requesting org",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "group-alpha", ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-org-001", Status: "APPROVED"}},
+				})
+				differentOrg := freshOrgID()
+				ts.mustCreateConsent(differentOrg, "group-foreign", ConsentCreateRequest{
+					Type:           "accounts",
+					Authorizations: []AuthorizationRequest{{UserID: "gid-user-org-001", Status: "APPROVED"}},
+				})
+			},
+			userIDs:    []string{"gid-user-org-001"},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentGroupIDsResponse) {
+				ts.Equal(1, resp.Count)
+				ts.Equal([]string{"group-alpha"}, resp.GroupIDs)
+			},
+		},
+		{
+			name:       "missing userId parameter -> 400 CS-4002",
+			userIDs:    nil,
+			wantStatus: http.StatusBadRequest,
+			wantError:  "CS-4002",
+		},
+		{
+			name:       "repeated userId parameters -> 400 CS-4002",
+			userIDs:    []string{"gid-user-repeat-001", "gid-user-repeat-002"},
+			wantStatus: http.StatusBadRequest,
+			wantError:  "CS-4002",
+		},
+		{
+			name:       "missing org-id header -> 400 CS-4002",
+			userIDs:    []string{"gid-user-header-001"},
+			omitOrgID:  true,
+			wantStatus: http.StatusBadRequest,
+			wantError:  "CS-4002",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		ts.Run(tc.name, func() {
+			orgID := freshOrgID()
+
+			if tc.setup != nil {
+				tc.setup(orgID)
+			}
+
+			requestOrgID := orgID
+			if tc.omitOrgID {
+				requestOrgID = ""
+			}
+
+			status, body := ts.doGetGroupIDsByUserID(requestOrgID, tc.userIDs)
+			ts.Require().Equal(tc.wantStatus, status, "unexpected status; body: %s", body)
+
+			if tc.wantError != "" {
+				ts.assertAPIError(body, tc.wantError)
+				return
+			}
+
+			var resp ConsentGroupIDsResponse
+			ts.Require().NoError(json.Unmarshal(body, &resp), "unmarshal ConsentGroupIDsResponse: %s", body)
 			if tc.checkResult != nil {
 				tc.checkResult(&resp)
 			}

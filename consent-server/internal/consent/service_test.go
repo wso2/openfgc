@@ -494,6 +494,52 @@ func TestSearchConsentsByAttribute_EmptyResult(t *testing.T) {
 }
 
 // =============================================================================
+// GetGroupIDsByUserID
+// =============================================================================
+
+func TestGetGroupIDsByUserID_Success(t *testing.T) {
+	cs := interfacesmock.NewConsentStore(t)
+	svc := newConsentSvc(t, cs, nil)
+
+	cs.On("GetGroupIDsByUserID", mock.Anything, "user-001", testOrgID).
+		Return([]string{"group-001", "group-002"}, nil)
+
+	out, svcErr := svc.GetGroupIDsByUserID(context.Background(), "user-001", testOrgID)
+	require.Nil(t, svcErr)
+	require.NotNil(t, out)
+	require.Equal(t, 2, out.Count)
+	require.Equal(t, []string{"group-001", "group-002"}, out.GroupIDs)
+}
+
+func TestGetGroupIDsByUserID_EmptyResult(t *testing.T) {
+	cs := interfacesmock.NewConsentStore(t)
+	svc := newConsentSvc(t, cs, nil)
+
+	cs.On("GetGroupIDsByUserID", mock.Anything, "user-001", testOrgID).
+		Return([]string{}, nil)
+
+	out, svcErr := svc.GetGroupIDsByUserID(context.Background(), "user-001", testOrgID)
+	require.Nil(t, svcErr)
+	require.NotNil(t, out)
+	require.Equal(t, 0, out.Count)
+	require.Empty(t, out.GroupIDs)
+}
+
+func TestGetGroupIDsByUserID_StoreError(t *testing.T) {
+	cs := interfacesmock.NewConsentStore(t)
+	svc := newConsentSvc(t, cs, nil)
+
+	cs.On("GetGroupIDsByUserID", mock.Anything, "user-001", testOrgID).
+		Return(nil, errStoreConsent)
+
+	out, svcErr := svc.GetGroupIDsByUserID(context.Background(), "user-001", testOrgID)
+	require.Nil(t, out)
+	require.NotNil(t, svcErr)
+	require.Equal(t, ErrorInternalServerError.Code, svcErr.Code)
+	require.Equal(t, ErrorInternalServerError.Message, svcErr.Message)
+}
+
+// =============================================================================
 // GetExpiredConsents
 // =============================================================================
 

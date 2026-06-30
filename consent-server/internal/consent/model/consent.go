@@ -174,6 +174,7 @@ type ConsentSearchFilter struct {
 	ConsentTypes     []string
 	ConsentStatuses  []string
 	UserIDs          []string
+	Sort             []ConsentSort
 	PurposeName      string // filter consents that reference this purpose name
 	PurposeVersion   *int   // combined with PurposeName to pin a specific version
 	ElementName      string // filter consents whose purpose contains this element
@@ -184,6 +185,29 @@ type ConsentSearchFilter struct {
 	Limit            int
 	Offset           int
 	OrgID            string
+}
+
+type ConsentSortField string
+
+const (
+	ConsentSortFieldCreatedTime  ConsentSortField = "createdTime"
+	ConsentSortFieldUpdatedTime  ConsentSortField = "updatedTime"
+	ConsentSortFieldValidityTime ConsentSortField = "validityTime"
+	ConsentSortFieldStatus       ConsentSortField = "status"
+	ConsentSortFieldGroupID      ConsentSortField = "groupId"
+	ConsentSortFieldConsentType  ConsentSortField = "consentType"
+)
+
+type ConsentSortDirection string
+
+const (
+	ConsentSortDirectionAsc  ConsentSortDirection = "ASC"
+	ConsentSortDirectionDesc ConsentSortDirection = "DESC"
+)
+
+type ConsentSort struct {
+	Field     ConsentSortField
+	Direction ConsentSortDirection
 }
 
 // =============================================================================
@@ -259,6 +283,12 @@ type ConsentListOutput struct {
 type ConsentAttributeSearchOutput struct {
 	ConsentIDs []string
 	Count      int
+}
+
+// ConsentGroupIDsOutput is the return type from GetGroupIDsByUserID.
+type ConsentGroupIDsOutput struct {
+	GroupIDs []string
+	Count    int
 }
 
 // ConsentRevokeInput is the input to the RevokeConsent service method.
@@ -464,6 +494,12 @@ type ConsentRevokeResponse struct {
 type ConsentAttributeSearchResponse struct {
 	ConsentIDs []string `json:"consentIds"`
 	Count      int      `json:"count"`
+}
+
+// ConsentGroupIDsResponse is the response body for GET /consents/group-ids.
+type ConsentGroupIDsResponse struct {
+	GroupIDs []string `json:"groupIds"`
+	Count    int      `json:"count"`
 }
 
 // =============================================================================

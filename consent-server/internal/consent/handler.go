@@ -250,6 +250,23 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	sortParams := r.URL.Query()["sort"]
+	if len(sortParams) > 1 {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "exactly one sort parameter is allowed"))
+		return
+	}
+	sortParam := ""
+	if len(sortParams) == 1 {
+		sortParam = sortParams[0]
+	}
+
+	sorts, err := parseConsentSorts(sortParam)
+	if err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
+		return
+	}
+	filters.Sort = sorts
+
 	// purposeVersion requires purposeName
 	if filters.PurposeVersion != nil && filters.PurposeName == "" {
 		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed,
@@ -415,6 +432,40 @@ func (h *consentHandler) searchConsentsByAttribute(w http.ResponseWriter, r *htt
 	})
 }
 
+// getGroupIDsByUserID handles GET /consents/group-ids
+func (h *consentHandler) getGroupIDsByUserID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgID := r.Header.Get(constants.HeaderOrgID)
+
+	if err := utils.ValidateOrgID(orgID); err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
+		return
+	}
+
+	userIDs := r.URL.Query()["userId"]
+	if len(userIDs) == 0 || userIDs[0] == "" {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "userId parameter is required"))
+		return
+	}
+	if len(userIDs) > 1 {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "exactly one userId parameter is required"))
+		return
+	}
+
+	out, serviceErr := h.service.GetGroupIDsByUserID(ctx, userIDs[0], orgID)
+	if serviceErr != nil {
+		utils.SendError(w, r, serviceErr)
+		return
+	}
+
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(&model.ConsentGroupIDsResponse{
+		GroupIDs: out.GroupIDs,
+		Count:    out.Count,
+	})
+}
+
 // =============================================================================
 // Request → service input converters
 // =============================================================================
@@ -476,6 +527,83 @@ func requestToUpdateInput(req model.ConsentUpdateRequest) (model.UpdateConsentIn
 		Purposes:                   purposes,
 		Authorizations:             auths,
 	}, nil
+}
+
+func parseConsentSorts(raw string) ([]model.ConsentSort, error) {
+	const maxConsentSortFields = 3
+
+	if strings.TrimSpace(raw) == "" {
+		return []model.ConsentSort{{
+			Field:     model.ConsentSortFieldCreatedTime,
+			Direction: model.ConsentSortDirectionDesc,
+		}}, nil
+	}
+
+	supportedFields := map[string]model.ConsentSortField{
+		string(model.ConsentSortFieldCreatedTime):  model.ConsentSortFieldCreatedTime,
+		string(model.ConsentSortFieldUpdatedTime):  model.ConsentSortFieldUpdatedTime,
+		string(model.ConsentSortFieldValidityTime): model.ConsentSortFieldValidityTime,
+		string(model.ConsentSortFieldStatus):       model.ConsentSortFieldStatus,
+		string(model.ConsentSortFieldGroupID):      model.ConsentSortFieldGroupID,
+		string(model.ConsentSortFieldConsentType):  model.ConsentSortFieldConsentType,
+	}
+
+	items := strings.Split(raw, ",")
+	if len(items) > maxConsentSortFields {
+		return nil, fmt.Errorf("a maximum of %d sort fields is allowed", maxConsentSortFields)
+	}
+
+	sorts := make([]model.ConsentSort, 0, len(items))
+	seenFields := make(map[model.ConsentSortField]struct{}, len(items))
+
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			return nil, fmt.Errorf("sort contains an empty item")
+		}
+
+		parts := strings.Split(item, ":")
+		if len(parts) > 2 {
+			return nil, fmt.Errorf("invalid sort item %q", item)
+		}
+
+		fieldName := strings.TrimSpace(parts[0])
+		if fieldName == "" {
+			return nil, fmt.Errorf("sort field is required")
+		}
+
+		field, ok := supportedFields[fieldName]
+		if !ok {
+			return nil, fmt.Errorf("unsupported sort field %q", fieldName)
+		}
+		if _, exists := seenFields[field]; exists {
+			return nil, fmt.Errorf("duplicate sort field %q", fieldName)
+		}
+
+		direction := model.ConsentSortDirectionDesc
+		if len(parts) == 2 {
+			rawDirection := strings.TrimSpace(parts[1])
+			if rawDirection == "" {
+				return nil, fmt.Errorf("sort direction is required when ':' is used")
+			}
+			switch rawDirection {
+			case "asc":
+				direction = model.ConsentSortDirectionAsc
+			case "desc":
+				direction = model.ConsentSortDirectionDesc
+			default:
+				return nil, fmt.Errorf("unsupported sort direction %q", rawDirection)
+			}
+		}
+
+		sorts = append(sorts, model.ConsentSort{
+			Field:     field,
+			Direction: direction,
+		})
+		seenFields[field] = struct{}{}
+	}
+
+	return sorts, nil
 }
 
 // parsePurposeRefRequests converts API purpose references to service-layer input structs.

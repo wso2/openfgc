@@ -99,6 +99,24 @@ var (
 		PostgresQuery: "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = $1 AND ATT_VALUE = $2 AND ORG_ID = $3 ORDER BY CONSENT_ID",
 	}
 
+	QueryFindGroupIDsByUserID = dbmodel.DBQuery{
+		ID: "FIND_GROUP_IDS_BY_USER_ID",
+		Query: `SELECT DISTINCT c.GROUP_ID
+			FROM CONSENT_AUTH_RESOURCE car
+			JOIN CONSENT c
+				ON c.CONSENT_ID = car.CONSENT_ID
+				AND c.ORG_ID = car.ORG_ID
+			WHERE car.USER_ID = ? AND car.ORG_ID = ?
+			ORDER BY c.GROUP_ID`,
+		PostgresQuery: `SELECT DISTINCT c.GROUP_ID
+			FROM CONSENT_AUTH_RESOURCE car
+			JOIN CONSENT c
+				ON c.CONSENT_ID = car.CONSENT_ID
+				AND c.ORG_ID = car.ORG_ID
+			WHERE car.USER_ID = $1 AND car.ORG_ID = $2
+			ORDER BY c.GROUP_ID`,
+	}
+
 	// Status audit queries
 	QueryCreateStatusAudit = dbmodel.DBQuery{
 		ID:            "CREATE_STATUS_AUDIT",
@@ -254,6 +272,15 @@ var (
 	QuerySearchConsentsCount       = dbmodel.DBQuery{ID: "COUNT_CONSENT_SEARCH_RESULTS", Query: ""}
 	QuerySearchConsentsData        = dbmodel.DBQuery{ID: "SEARCH_CONSENTS_DATA", Query: ""}
 )
+
+var consentSearchSortColumnMap = map[model.ConsentSortField]string{
+	model.ConsentSortFieldCreatedTime:  "CONSENT.CREATED_TIME",
+	model.ConsentSortFieldUpdatedTime:  "CONSENT.UPDATED_TIME",
+	model.ConsentSortFieldValidityTime: "CONSENT.EXPIRATION_TIME",
+	model.ConsentSortFieldStatus:       "CONSENT.CURRENT_STATUS",
+	model.ConsentSortFieldGroupID:      "CONSENT.GROUP_ID",
+	model.ConsentSortFieldConsentType:  "CONSENT.CONSENT_TYPE",
+}
 
 // store implements the interfaces.ConsentStore interface.
 type store struct{}
@@ -623,6 +650,25 @@ func (s *store) GetConsentIDsByAttribute(ctx context.Context, key, value, orgID 
 	return ids, nil
 }
 
+// GetGroupIDsByUserID returns distinct group IDs for consents authorized for the given user.
+func (s *store) GetGroupIDsByUserID(ctx context.Context, userID, orgID string) ([]string, error) {
+	dbClient, err := s.getDBClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+	rows, err := dbClient.Query(QueryFindGroupIDsByUserID, userID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	groupIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if groupID := getString(row, "group_id"); groupID != "" {
+			groupIDs = append(groupIDs, groupID)
+		}
+	}
+	return groupIDs, nil
+}
+
 // GetPurposesByConsentID returns all purpose rows joined with PURPOSE metadata for a consent.
 func (s *store) GetPurposesByConsentID(ctx context.Context, consentID, orgID string) ([]model.ConsentPurposeRow, error) {
 	dbClient, err := s.getDBClient()
@@ -913,13 +959,18 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilter) (
 	}
 
 	// Data query
+	orderByClause := buildConsentSearchOrderBy(filters.Sort)
 	dataSQL := fmt.Sprintf(
-		"SELECT DISTINCT CONSENT.CONSENT_ID, CONSENT.CREATED_TIME, CONSENT.UPDATED_TIME,"+
+		"SELECT CONSENT.CONSENT_ID, CONSENT.CREATED_TIME, CONSENT.UPDATED_TIME,"+
 			" CONSENT.GROUP_ID, CONSENT.CONSENT_TYPE, CONSENT.CURRENT_STATUS,"+
 			" CONSENT.CONSENT_FREQUENCY, CONSENT.EXPIRATION_TIME, CONSENT.RECURRING_INDICATOR,"+
 			" CONSENT.DATA_ACCESS_VALIDITY_DURATION, CONSENT.ORG_ID"+
-			" FROM CONSENT%s WHERE %s ORDER BY CONSENT.CREATED_TIME DESC LIMIT ? OFFSET ?",
-		joinClause, whereClause,
+			" FROM (SELECT DISTINCT CONSENT.CONSENT_ID, CONSENT.CREATED_TIME, CONSENT.UPDATED_TIME,"+
+			" CONSENT.GROUP_ID, CONSENT.CONSENT_TYPE, CONSENT.CURRENT_STATUS,"+
+			" CONSENT.CONSENT_FREQUENCY, CONSENT.EXPIRATION_TIME, CONSENT.RECURRING_INDICATOR,"+
+			" CONSENT.DATA_ACCESS_VALIDITY_DURATION, CONSENT.ORG_ID"+
+			" FROM CONSENT%s WHERE %s) CONSENT ORDER BY %s LIMIT ? OFFSET ?",
+		joinClause, whereClause, orderByClause,
 	)
 	dataArgs := append(args, filters.Limit, filters.Offset)
 	dataQ := QuerySearchConsentsData
@@ -937,6 +988,46 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilter) (
 		}
 	}
 	return consents, totalCount, nil
+}
+
+func buildConsentSearchOrderBy(sorts []model.ConsentSort) string {
+	orderParts := make([]string, 0, len(sorts)+1)
+	for _, sort := range sorts {
+		column, ok := consentSearchSortColumnMap[sort.Field]
+		if !ok {
+			continue
+		}
+
+		direction := string(sort.Direction)
+		if direction != string(model.ConsentSortDirectionAsc) && direction != string(model.ConsentSortDirectionDesc) {
+			continue
+		}
+
+		if sort.Field == model.ConsentSortFieldValidityTime {
+			// Treat NULL expiration as infinite validity in a backend-portable way.
+			if direction == string(model.ConsentSortDirectionAsc) {
+				orderParts = append(orderParts,
+					"CASE WHEN CONSENT.EXPIRATION_TIME IS NULL THEN 1 ELSE 0 END ASC",
+					"CONSENT.EXPIRATION_TIME ASC",
+				)
+			} else {
+				orderParts = append(orderParts,
+					"CASE WHEN CONSENT.EXPIRATION_TIME IS NULL THEN 0 ELSE 1 END ASC",
+					"CONSENT.EXPIRATION_TIME DESC",
+				)
+			}
+			continue
+		}
+
+		orderParts = append(orderParts, fmt.Sprintf("%s %s", column, direction))
+	}
+
+	if len(orderParts) == 0 {
+		orderParts = append(orderParts, "CONSENT.CREATED_TIME DESC")
+	}
+
+	orderParts = append(orderParts, "CONSENT.CONSENT_ID ASC")
+	return strings.Join(orderParts, ", ")
 }
 
 // GetExpiredConsents retrieves consents that have expired based on the current time and specified expirable statuses.

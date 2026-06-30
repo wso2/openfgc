@@ -54,6 +54,7 @@ func TestRegisterRoutes(t *testing.T) {
 		{"GET", "/api/v1/consents"},
 		{"POST", "/api/v1/consents/validate"},
 		{"GET", "/api/v1/consents/attributes"},
+		{"GET", "/api/v1/consents/group-ids"},
 	}
 
 	for _, tt := range tests {
