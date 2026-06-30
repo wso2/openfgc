@@ -174,6 +174,7 @@ type ConsentSearchFilter struct {
 	ConsentTypes     []string
 	ConsentStatuses  []string
 	UserIDs          []string
+	Sort             []ConsentSort
 	PurposeName      string // filter consents that reference this purpose name
 	PurposeVersion   *int   // combined with PurposeName to pin a specific version
 	ElementName      string // filter consents whose purpose contains this element
@@ -184,6 +185,29 @@ type ConsentSearchFilter struct {
 	Limit            int
 	Offset           int
 	OrgID            string
+}
+
+type ConsentSortField string
+
+const (
+	ConsentSortFieldCreatedTime  ConsentSortField = "createdTime"
+	ConsentSortFieldUpdatedTime  ConsentSortField = "updatedTime"
+	ConsentSortFieldValidityTime ConsentSortField = "validityTime"
+	ConsentSortFieldStatus       ConsentSortField = "status"
+	ConsentSortFieldGroupID      ConsentSortField = "groupId"
+	ConsentSortFieldConsentType  ConsentSortField = "consentType"
+)
+
+type ConsentSortDirection string
+
+const (
+	ConsentSortDirectionAsc  ConsentSortDirection = "ASC"
+	ConsentSortDirectionDesc ConsentSortDirection = "DESC"
+)
+
+type ConsentSort struct {
+	Field     ConsentSortField
+	Direction ConsentSortDirection
 }
 
 // =============================================================================

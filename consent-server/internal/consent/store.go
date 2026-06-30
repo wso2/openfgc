@@ -273,6 +273,15 @@ var (
 	QuerySearchConsentsData        = dbmodel.DBQuery{ID: "SEARCH_CONSENTS_DATA", Query: ""}
 )
 
+var consentSearchSortColumnMap = map[model.ConsentSortField]string{
+	model.ConsentSortFieldCreatedTime:  "CONSENT.CREATED_TIME",
+	model.ConsentSortFieldUpdatedTime:  "CONSENT.UPDATED_TIME",
+	model.ConsentSortFieldValidityTime: "CONSENT.EXPIRATION_TIME",
+	model.ConsentSortFieldStatus:       "CONSENT.CURRENT_STATUS",
+	model.ConsentSortFieldGroupID:      "CONSENT.GROUP_ID",
+	model.ConsentSortFieldConsentType:  "CONSENT.CONSENT_TYPE",
+}
+
 // store implements the interfaces.ConsentStore interface.
 type store struct{}
 
@@ -950,13 +959,14 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilter) (
 	}
 
 	// Data query
+	orderByClause := buildConsentSearchOrderBy(filters.Sort)
 	dataSQL := fmt.Sprintf(
 		"SELECT DISTINCT CONSENT.CONSENT_ID, CONSENT.CREATED_TIME, CONSENT.UPDATED_TIME,"+
 			" CONSENT.GROUP_ID, CONSENT.CONSENT_TYPE, CONSENT.CURRENT_STATUS,"+
 			" CONSENT.CONSENT_FREQUENCY, CONSENT.EXPIRATION_TIME, CONSENT.RECURRING_INDICATOR,"+
 			" CONSENT.DATA_ACCESS_VALIDITY_DURATION, CONSENT.ORG_ID"+
-			" FROM CONSENT%s WHERE %s ORDER BY CONSENT.CREATED_TIME DESC LIMIT ? OFFSET ?",
-		joinClause, whereClause,
+			" FROM CONSENT%s WHERE %s ORDER BY %s LIMIT ? OFFSET ?",
+		joinClause, whereClause, orderByClause,
 	)
 	dataArgs := append(args, filters.Limit, filters.Offset)
 	dataQ := QuerySearchConsentsData
@@ -974,6 +984,46 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilter) (
 		}
 	}
 	return consents, totalCount, nil
+}
+
+func buildConsentSearchOrderBy(sorts []model.ConsentSort) string {
+	orderParts := make([]string, 0, len(sorts)+1)
+	for _, sort := range sorts {
+		column, ok := consentSearchSortColumnMap[sort.Field]
+		if !ok {
+			continue
+		}
+
+		direction := string(sort.Direction)
+		if direction != string(model.ConsentSortDirectionAsc) && direction != string(model.ConsentSortDirectionDesc) {
+			continue
+		}
+
+		if sort.Field == model.ConsentSortFieldValidityTime {
+			// Treat NULL expiration as infinite validity in a backend-portable way.
+			if direction == string(model.ConsentSortDirectionAsc) {
+				orderParts = append(orderParts,
+					"CASE WHEN CONSENT.EXPIRATION_TIME IS NULL THEN 1 ELSE 0 END ASC",
+					"CONSENT.EXPIRATION_TIME ASC",
+				)
+			} else {
+				orderParts = append(orderParts,
+					"CASE WHEN CONSENT.EXPIRATION_TIME IS NULL THEN 0 ELSE 1 END ASC",
+					"CONSENT.EXPIRATION_TIME DESC",
+				)
+			}
+			continue
+		}
+
+		orderParts = append(orderParts, fmt.Sprintf("%s %s", column, direction))
+	}
+
+	if len(orderParts) == 0 {
+		orderParts = append(orderParts, "CONSENT.CREATED_TIME DESC")
+	}
+
+	orderParts = append(orderParts, "CONSENT.CONSENT_ID ASC")
+	return strings.Join(orderParts, ", ")
 }
 
 // GetExpiredConsents retrieves consents that have expired based on the current time and specified expirable statuses.

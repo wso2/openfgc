@@ -321,6 +321,10 @@ func TestHandlerListConsents_ValidPurposeVersionAndName(t *testing.T) {
 		Offset:         0,
 		PurposeName:    "Marketing",
 		PurposeVersion: &v1,
+		Sort: []model.ConsentSort{{
+			Field:     model.ConsentSortFieldCreatedTime,
+			Direction: model.ConsentSortDirectionDesc,
+		}},
 	}).Return(listOut, nil)
 
 	handler := newConsentHandler(mockSvc)
@@ -351,6 +355,190 @@ func TestHandlerListConsents_ServiceError(t *testing.T) {
 	handler.listConsents(rr, req)
 
 	require.Equal(t, http.StatusInternalServerError, rr.Code)
+}
+
+func TestHandlerListConsents_DefaultSortApplied(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+
+	listOut := &model.ConsentListOutput{
+		Data:  []model.ConsentOutput{},
+		Total: 0, Count: 0, Offset: 0, Limit: 10,
+	}
+	mockSvc.On("SearchConsents", mock.Anything, model.ConsentSearchFilter{
+		OrgID:  handlerTestOrgID,
+		Limit:  10,
+		Offset: 0,
+		Sort: []model.ConsentSort{{
+			Field:     model.ConsentSortFieldCreatedTime,
+			Direction: model.ConsentSortDirectionDesc,
+		}},
+	}).Return(listOut, nil)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandlerListConsents_SortSingleFieldSuccess(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+
+	listOut := &model.ConsentListOutput{
+		Data:  []model.ConsentOutput{},
+		Total: 0, Count: 0, Offset: 0, Limit: 10,
+	}
+	mockSvc.On("SearchConsents", mock.Anything, model.ConsentSearchFilter{
+		OrgID:  handlerTestOrgID,
+		Limit:  10,
+		Offset: 0,
+		Sort: []model.ConsentSort{{
+			Field:     model.ConsentSortFieldUpdatedTime,
+			Direction: model.ConsentSortDirectionAsc,
+		}},
+	}).Return(listOut, nil)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=updatedTime:asc", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandlerListConsents_SortMultiFieldSuccess(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+
+	listOut := &model.ConsentListOutput{
+		Data:  []model.ConsentOutput{},
+		Total: 0, Count: 0, Offset: 0, Limit: 10,
+	}
+	mockSvc.On("SearchConsents", mock.Anything, model.ConsentSearchFilter{
+		OrgID:  handlerTestOrgID,
+		Limit:  10,
+		Offset: 0,
+		Sort: []model.ConsentSort{
+			{
+				Field:     model.ConsentSortFieldStatus,
+				Direction: model.ConsentSortDirectionAsc,
+			},
+			{
+				Field:     model.ConsentSortFieldGroupID,
+				Direction: model.ConsentSortDirectionDesc,
+			},
+		},
+	}).Return(listOut, nil)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=status:asc,groupId:desc", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandlerListConsents_SortDirectionDefaultsToDesc(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+
+	listOut := &model.ConsentListOutput{
+		Data:  []model.ConsentOutput{},
+		Total: 0, Count: 0, Offset: 0, Limit: 10,
+	}
+	mockSvc.On("SearchConsents", mock.Anything, model.ConsentSearchFilter{
+		OrgID:  handlerTestOrgID,
+		Limit:  10,
+		Offset: 0,
+		Sort: []model.ConsentSort{{
+			Field:     model.ConsentSortFieldGroupID,
+			Direction: model.ConsentSortDirectionDesc,
+		}},
+	}).Return(listOut, nil)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=groupId", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandlerListConsents_InvalidSortField(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=unknown:asc", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "SearchConsents")
+}
+
+func TestHandlerListConsents_InvalidSortDirection(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=createdTime:sideways", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "SearchConsents")
+}
+
+func TestHandlerListConsents_DuplicateSortField(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=createdTime:asc,createdTime:desc", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "SearchConsents")
+}
+
+func TestHandlerListConsents_TooManySortFields(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=createdTime:desc,updatedTime:asc,status:asc,groupId:desc", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "SearchConsents")
+}
+
+func TestHandlerListConsents_EmptySortItem(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=createdTime:desc,,status:asc", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "SearchConsents")
 }
 
 // =============================================================================

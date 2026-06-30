@@ -81,13 +81,19 @@ func TestConsentStatusAudit_Fields(t *testing.T) {
 func TestConsentSearchFilter_Fields(t *testing.T) {
 	fromTime := int64(1640000000000)
 	f := ConsentSearchFilter{
-		GroupIDs:    []string{"grp-1"},
+		GroupIDs: []string{"grp-1"},
+		Sort: []ConsentSort{{
+			Field:     ConsentSortFieldCreatedTime,
+			Direction: ConsentSortDirectionDesc,
+		}},
 		PurposeName: "marketing",
 		FromTime:    &fromTime,
 		Limit:       50,
 		OrgID:       "org-1",
 	}
 	require.Equal(t, []string{"grp-1"}, f.GroupIDs)
+	require.Len(t, f.Sort, 1)
+	require.Equal(t, ConsentSortFieldCreatedTime, f.Sort[0].Field)
 	require.Equal(t, "marketing", f.PurposeName)
 	require.Equal(t, 50, f.Limit)
 }

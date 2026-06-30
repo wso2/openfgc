@@ -203,6 +203,13 @@ paths:
             type: integer
             format: int64
           example: 1734422400000
+        - name: sort
+          in: query
+          description: Sort results using a comma-separated list of `{field}:{direction}` items. Supported fields are `createdTime`, `updatedTime`, `validityTime`, `status`, `groupId`, and `consentType`. Supported directions are `asc` and `desc`. If `validityTime` is used, consents without an expiry are treated as having the latest validity time. If omitted, results are sorted by `createdTime:desc`.
+          schema:
+            type: string
+            default: createdTime:desc
+          example: "status:asc,createdTime:desc"
         - name: limit
           in: query
           description: The maximum number of results to return in a single page. Used for pagination.
