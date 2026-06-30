@@ -415,6 +415,40 @@ func (h *consentHandler) searchConsentsByAttribute(w http.ResponseWriter, r *htt
 	})
 }
 
+// getGroupIDsByUserID handles GET /consents/group-ids
+func (h *consentHandler) getGroupIDsByUserID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgID := r.Header.Get(constants.HeaderOrgID)
+
+	if err := utils.ValidateOrgID(orgID); err != nil {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
+		return
+	}
+
+	userIDs := r.URL.Query()["userId"]
+	if len(userIDs) == 0 || userIDs[0] == "" {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "userId parameter is required"))
+		return
+	}
+	if len(userIDs) > 1 {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "exactly one userId parameter is required"))
+		return
+	}
+
+	out, serviceErr := h.service.GetGroupIDsByUserID(ctx, userIDs[0], orgID)
+	if serviceErr != nil {
+		utils.SendError(w, r, serviceErr)
+		return
+	}
+
+	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(&model.ConsentGroupIDsResponse{
+		GroupIDs: out.GroupIDs,
+		Count:    out.Count,
+	})
+}
+
 // =============================================================================
 // Request → service input converters
 // =============================================================================

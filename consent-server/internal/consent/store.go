@@ -99,6 +99,24 @@ var (
 		PostgresQuery: "SELECT DISTINCT CONSENT_ID FROM CONSENT_ATTRIBUTE WHERE ATT_KEY = $1 AND ATT_VALUE = $2 AND ORG_ID = $3 ORDER BY CONSENT_ID",
 	}
 
+	QueryFindGroupIDsByUserID = dbmodel.DBQuery{
+		ID: "FIND_GROUP_IDS_BY_USER_ID",
+		Query: `SELECT DISTINCT c.GROUP_ID
+			FROM CONSENT_AUTH_RESOURCE car
+			JOIN CONSENT c
+				ON c.CONSENT_ID = car.CONSENT_ID
+				AND c.ORG_ID = car.ORG_ID
+			WHERE car.USER_ID = ? AND car.ORG_ID = ?
+			ORDER BY c.GROUP_ID`,
+		PostgresQuery: `SELECT DISTINCT c.GROUP_ID
+			FROM CONSENT_AUTH_RESOURCE car
+			JOIN CONSENT c
+				ON c.CONSENT_ID = car.CONSENT_ID
+				AND c.ORG_ID = car.ORG_ID
+			WHERE car.USER_ID = $1 AND car.ORG_ID = $2
+			ORDER BY c.GROUP_ID`,
+	}
+
 	// Status audit queries
 	QueryCreateStatusAudit = dbmodel.DBQuery{
 		ID:            "CREATE_STATUS_AUDIT",
@@ -621,6 +639,25 @@ func (s *store) GetConsentIDsByAttribute(ctx context.Context, key, value, orgID 
 		}
 	}
 	return ids, nil
+}
+
+// GetGroupIDsByUserID returns distinct group IDs for consents authorized for the given user.
+func (s *store) GetGroupIDsByUserID(ctx context.Context, userID, orgID string) ([]string, error) {
+	dbClient, err := s.getDBClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+	rows, err := dbClient.Query(QueryFindGroupIDsByUserID, userID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	groupIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if groupID := getString(row, "group_id"); groupID != "" {
+			groupIDs = append(groupIDs, groupID)
+		}
+	}
+	return groupIDs, nil
 }
 
 // GetPurposesByConsentID returns all purpose rows joined with PURPOSE metadata for a consent.

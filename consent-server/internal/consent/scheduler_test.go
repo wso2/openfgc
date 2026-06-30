@@ -56,6 +56,9 @@ func (unimplementedConsentService) ValidateConsent(_ context.Context, _ model.Co
 func (unimplementedConsentService) SearchConsentsByAttribute(_ context.Context, _, _, _ string) (*model.ConsentAttributeSearchOutput, *serviceerror.ServiceError) {
 	panic("not implemented")
 }
+func (unimplementedConsentService) GetGroupIDsByUserID(_ context.Context, _, _ string) (*model.ConsentGroupIDsOutput, *serviceerror.ServiceError) {
+	panic("not implemented")
+}
 func (unimplementedConsentService) GetExpiredConsents(_ context.Context, _ int64, _ []string) ([]model.Consent, *serviceerror.ServiceError) {
 	panic("not implemented")
 }

@@ -261,6 +261,12 @@ type ConsentAttributeSearchOutput struct {
 	Count      int
 }
 
+// ConsentGroupIDsOutput is the return type from GetGroupIDsByUserID.
+type ConsentGroupIDsOutput struct {
+	GroupIDs []string
+	Count    int
+}
+
 // ConsentRevokeInput is the input to the RevokeConsent service method.
 type ConsentRevokeInput struct {
 	ActionBy string
@@ -464,6 +470,12 @@ type ConsentRevokeResponse struct {
 type ConsentAttributeSearchResponse struct {
 	ConsentIDs []string `json:"consentIds"`
 	Count      int      `json:"count"`
+}
+
+// ConsentGroupIDsResponse is the response body for GET /consents/group-ids.
+type ConsentGroupIDsResponse struct {
+	GroupIDs []string `json:"groupIds"`
+	Count    int      `json:"count"`
 }
 
 // =============================================================================

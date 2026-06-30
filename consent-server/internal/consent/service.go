@@ -71,6 +71,7 @@ type ConsentService interface {
 	RevokeConsent(ctx context.Context, consentID, orgID string, input model.ConsentRevokeInput) (*model.ConsentRevokeOutput, *serviceerror.ServiceError)
 	ValidateConsent(ctx context.Context, input model.ConsentValidateInput, orgID string) (*model.ConsentValidateOutput, *serviceerror.ServiceError)
 	SearchConsentsByAttribute(ctx context.Context, key, value, orgID string) (*model.ConsentAttributeSearchOutput, *serviceerror.ServiceError)
+	GetGroupIDsByUserID(ctx context.Context, userID, orgID string) (*model.ConsentGroupIDsOutput, *serviceerror.ServiceError)
 	GetExpiredConsents(ctx context.Context, currentTimeMs int64, expirableStatuses []string) ([]model.Consent, *serviceerror.ServiceError)
 	ExpireConsent(ctx context.Context, consent *model.Consent, orgID string) *serviceerror.ServiceError
 }
@@ -976,6 +977,26 @@ func (s *consentService) SearchConsentsByAttribute(ctx context.Context, key, val
 	return &model.ConsentAttributeSearchOutput{
 		ConsentIDs: consentIDs,
 		Count:      len(consentIDs),
+	}, nil
+}
+
+// GetGroupIDsByUserID retrieves distinct group IDs for a single user within an organization.
+func (s *consentService) GetGroupIDsByUserID(ctx context.Context, userID, orgID string) (*model.ConsentGroupIDsOutput, *serviceerror.ServiceError) {
+	logger := log.GetLogger().WithContext(ctx)
+	logger.Info("Getting group IDs by user ID",
+		log.String("user_id", userID),
+		log.String("org_id", orgID))
+
+	groupIDs, err := s.stores.Consent.GetGroupIDsByUserID(ctx, userID, orgID)
+	if err != nil {
+		logger.Error("Failed to get group IDs by user ID", log.Error(err))
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+	}
+
+	logger.Info("Group ID lookup completed", log.Int("count", len(groupIDs)))
+	return &model.ConsentGroupIDsOutput{
+		GroupIDs: groupIDs,
+		Count:    len(groupIDs),
 	}, nil
 }
 

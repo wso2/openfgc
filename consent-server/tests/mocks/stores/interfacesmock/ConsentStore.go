@@ -824,6 +824,66 @@ func (_c *ConsentStore_GetConsentIDsByAttributeKey_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// GetGroupIDsByUserID provides a mock function with given fields: ctx, userID, orgID
+func (_m *ConsentStore) GetGroupIDsByUserID(ctx context.Context, userID string, orgID string) ([]string, error) {
+	ret := _m.Called(ctx, userID, orgID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetGroupIDsByUserID")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]string, error)); ok {
+		return rf(ctx, userID, orgID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []string); ok {
+		r0 = rf(ctx, userID, orgID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, userID, orgID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ConsentStore_GetGroupIDsByUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetGroupIDsByUserID'
+type ConsentStore_GetGroupIDsByUserID_Call struct {
+	*mock.Call
+}
+
+// GetGroupIDsByUserID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - orgID string
+func (_e *ConsentStore_Expecter) GetGroupIDsByUserID(ctx interface{}, userID interface{}, orgID interface{}) *ConsentStore_GetGroupIDsByUserID_Call {
+	return &ConsentStore_GetGroupIDsByUserID_Call{Call: _e.mock.On("GetGroupIDsByUserID", ctx, userID, orgID)}
+}
+
+func (_c *ConsentStore_GetGroupIDsByUserID_Call) Run(run func(ctx context.Context, userID string, orgID string)) *ConsentStore_GetGroupIDsByUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *ConsentStore_GetGroupIDsByUserID_Call) Return(_a0 []string, _a1 error) *ConsentStore_GetGroupIDsByUserID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ConsentStore_GetGroupIDsByUserID_Call) RunAndReturn(run func(context.Context, string, string) ([]string, error)) *ConsentStore_GetGroupIDsByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetElementApprovalsByConsentID provides a mock function with given fields: ctx, consentID, orgID
 func (_m *ConsentStore) GetElementApprovalsByConsentID(ctx context.Context, consentID string, orgID string) ([]consentmodel.ConsentApprovalRow, error) {
 	ret := _m.Called(ctx, consentID, orgID)

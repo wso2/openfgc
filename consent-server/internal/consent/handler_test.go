@@ -713,6 +713,96 @@ func TestHandlerSearchConsentsByAttribute_MissingKey(t *testing.T) {
 }
 
 // =============================================================================
+// getGroupIDsByUserID
+// =============================================================================
+
+func TestHandlerGetGroupIDsByUserID_Success(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+
+	groupOut := &model.ConsentGroupIDsOutput{
+		GroupIDs: []string{"group-001", "group-002"},
+		Count:    2,
+	}
+	mockSvc.On("GetGroupIDsByUserID", mock.Anything, "user-001", handlerTestOrgID).
+		Return(groupOut, nil)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents/group-ids?userId=user-001", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.getGroupIDsByUserID(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var resp model.ConsentGroupIDsResponse
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&resp))
+	require.Equal(t, 2, resp.Count)
+	require.Equal(t, []string{"group-001", "group-002"}, resp.GroupIDs)
+}
+
+func TestHandlerGetGroupIDsByUserID_MissingOrgID(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents/group-ids?userId=user-001", nil)
+	rr := httptest.NewRecorder()
+
+	handler.getGroupIDsByUserID(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "GetGroupIDsByUserID")
+}
+
+func TestHandlerGetGroupIDsByUserID_MissingUserID(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents/group-ids", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.getGroupIDsByUserID(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "GetGroupIDsByUserID")
+}
+
+func TestHandlerGetGroupIDsByUserID_MultipleUserIDs(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents/group-ids?userId=user-001&userId=user-002", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.getGroupIDsByUserID(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "GetGroupIDsByUserID")
+}
+
+func TestHandlerGetGroupIDsByUserID_ServiceError(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+
+	svcErr := &serviceerror.ServiceError{
+		Type:    serviceerror.ServerErrorType,
+		Code:    "CS-5000",
+		Message: "internal server error",
+	}
+	mockSvc.On("GetGroupIDsByUserID", mock.Anything, "user-001", handlerTestOrgID).Return(nil, svcErr)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents/group-ids?userId=user-001", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.getGroupIDsByUserID(rr, req)
+
+	require.Equal(t, http.StatusInternalServerError, rr.Code)
+}
+
+// =============================================================================
 // toExpirationMillis
 // =============================================================================
 

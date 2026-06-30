@@ -295,6 +295,53 @@ paths:
                 $ref: "#/components/schemas/ConsentErrorCommon"
       security:
         - basicAuth: []
+  /consents/group-ids:
+    get:
+      summary: Retrieve group IDs for a user
+      description: |
+        Retrieves the distinct group IDs associated with the specified user ID.
+
+        Results are scoped to the requesting organization and include only group IDs.
+        Group metadata is not returned.
+      operationId: consents-group-ids-GET
+      tags:
+        - Consents
+      parameters:
+        - in: header
+          name: org-id
+          required: true
+          description: "The unique identifier for the organization."
+          schema:
+            type: string
+            example: "ORG-001"
+        - name: userId
+          in: query
+          required: true
+          description: The user ID to search for.
+          schema:
+            type: string
+          example: "user1@example.com"
+      responses:
+        "200":
+          description: Successfully retrieved the group IDs matching the search criteria.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentGroupIDsResponse"
+        "400":
+          description: Bad Request. The userId parameter is missing, repeated, or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+        "500":
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentErrorCommon"
+      security:
+        - basicAuth: []
   /consents/{consentId}:
     get:
       summary: Retrieve a consent by its ID
@@ -3938,6 +3985,23 @@ components:
           example: 3
     ConsentAttributeSearchResponse:
       $ref: "#/components/schemas/ConsentIdsResponse"
+    ConsentGroupIDsResponse:
+      type: object
+      description: Response payload containing group IDs matching the search criteria.
+      required:
+        - groupIds
+        - count
+      properties:
+        groupIds:
+          description: Array of distinct group IDs, sorted alphabetically.
+          type: array
+          items:
+            type: string
+          example: ["group-001", "group-002"]
+        count:
+          description: The number of distinct group IDs returned.
+          type: integer
+          example: 2
     ConsentElementCreateRequest:
       type: object
       required:
