@@ -984,13 +984,12 @@ func (s *consentService) SearchConsentsByAttribute(ctx context.Context, key, val
 func (s *consentService) GetGroupIDsByUserID(ctx context.Context, userID, orgID string) (*model.ConsentGroupIDsOutput, *serviceerror.ServiceError) {
 	logger := log.GetLogger().WithContext(ctx)
 	logger.Info("Getting group IDs by user ID",
-		log.String("user_id", userID),
 		log.String("org_id", orgID))
 
 	groupIDs, err := s.stores.Consent.GetGroupIDsByUserID(ctx, userID, orgID)
 	if err != nil {
 		logger.Error("Failed to get group IDs by user ID", log.Error(err))
-		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, err.Error())
+		return nil, serviceerror.CustomServiceError(ErrorInternalServerError, ErrorInternalServerError.Message)
 	}
 
 	logger.Info("Group ID lookup completed", log.Int("count", len(groupIDs)))

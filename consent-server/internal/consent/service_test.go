@@ -536,6 +536,7 @@ func TestGetGroupIDsByUserID_StoreError(t *testing.T) {
 	require.Nil(t, out)
 	require.NotNil(t, svcErr)
 	require.Equal(t, ErrorInternalServerError.Code, svcErr.Code)
+	require.Equal(t, ErrorInternalServerError.Message, svcErr.Message)
 }
 
 // =============================================================================

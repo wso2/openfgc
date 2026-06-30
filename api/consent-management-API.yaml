@@ -205,7 +205,7 @@ paths:
           example: 1734422400000
         - name: sort
           in: query
-          description: Sort results using a comma-separated list of `{field}:{direction}` items. Supported fields are `createdTime`, `updatedTime`, `validityTime`, `status`, `groupId`, and `consentType`. Supported directions are `asc` and `desc`. If `validityTime` is used, consents without an expiry are treated as having the latest validity time. If omitted, results are sorted by `createdTime:desc`.
+          description: Sort results using a comma-separated list of sort items. Each item can be either `{field}:{direction}` or `{field}`, which defaults to `desc`. Supported fields are `createdTime`, `updatedTime`, `validityTime`, `status`, `groupId`, and `consentType`. Supported directions are `asc` and `desc`. A maximum of 3 sort items is allowed. If `validityTime` is used, consents without an expiry are treated as having the latest validity time. If omitted, results are sorted by `createdTime:desc`.
           schema:
             type: string
             default: createdTime:desc
@@ -4002,6 +4002,7 @@ components:
         groupIds:
           description: Array of distinct group IDs, sorted alphabetically.
           type: array
+          uniqueItems: true
           items:
             type: string
           example: ["group-001", "group-002"]

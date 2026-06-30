@@ -250,7 +250,17 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sorts, err := parseConsentSorts(r.URL.Query().Get("sort"))
+	sortParams := r.URL.Query()["sort"]
+	if len(sortParams) > 1 {
+		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, "exactly one sort parameter is allowed"))
+		return
+	}
+	sortParam := ""
+	if len(sortParams) == 1 {
+		sortParam = sortParams[0]
+	}
+
+	sorts, err := parseConsentSorts(sortParam)
 	if err != nil {
 		utils.SendError(w, r, serviceerror.CustomServiceError(ErrorValidationFailed, err.Error()))
 		return

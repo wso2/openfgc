@@ -541,6 +541,20 @@ func TestHandlerListConsents_EmptySortItem(t *testing.T) {
 	mockSvc.AssertNotCalled(t, "SearchConsents")
 }
 
+func TestHandlerListConsents_RepeatedSortParam(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	handler := newConsentHandler(mockSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/consents?sort=createdTime:desc&sort=status:asc", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "SearchConsents")
+}
+
 // =============================================================================
 // updateConsent
 // =============================================================================
