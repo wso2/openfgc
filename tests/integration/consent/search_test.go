@@ -373,6 +373,78 @@ func (ts *ConsentAPITestSuite) TestSearchConsents() {
 		},
 
 		// -----------------------------------------------------------------------
+		// Sorting
+		// -----------------------------------------------------------------------
+		{
+			name: "default sort — returns newest created first",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "grp-sort-default-1", ConsentCreateRequest{Type: "zeta"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-default-2", ConsentCreateRequest{Type: "alpha"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-default-3", ConsentCreateRequest{Type: "beta"})
+			},
+			params: url.Values{
+				"groupIds": {"grp-sort-default-1,grp-sort-default-2,grp-sort-default-3"},
+			},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentListResponse) {
+				ts.Require().Len(resp.Data, 3)
+				ts.Equal("grp-sort-default-3", resp.Data[0].GroupID)
+				ts.Equal("grp-sort-default-2", resp.Data[1].GroupID)
+				ts.Equal("grp-sort-default-1", resp.Data[2].GroupID)
+			},
+		},
+		{
+			name: "sort=createdTime:asc — returns oldest created first",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "grp-sort-asc-1", ConsentCreateRequest{Type: "zeta"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-asc-2", ConsentCreateRequest{Type: "alpha"})
+				time.Sleep(20 * time.Millisecond)
+				ts.mustCreateConsent(orgID, "grp-sort-asc-3", ConsentCreateRequest{Type: "beta"})
+			},
+			params: url.Values{
+				"groupIds": {"grp-sort-asc-1,grp-sort-asc-2,grp-sort-asc-3"},
+				"sort":     {"createdTime:asc"},
+			},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentListResponse) {
+				ts.Require().Len(resp.Data, 3)
+				ts.Equal("grp-sort-asc-1", resp.Data[0].GroupID)
+				ts.Equal("grp-sort-asc-2", resp.Data[1].GroupID)
+				ts.Equal("grp-sort-asc-3", resp.Data[2].GroupID)
+			},
+		},
+		{
+			name: "multi-field sort — orders by status then groupId",
+			setup: func(orgID string) {
+				ts.mustCreateConsent(orgID, "grp-sort-multi-b", ConsentCreateRequest{Type: "zeta"})
+				ts.mustCreateConsent(orgID, "grp-sort-multi-a", ConsentCreateRequest{Type: "alpha"})
+				ts.mustCreateConsent(orgID, "grp-sort-multi-c", ConsentCreateRequest{
+					Type: "beta",
+					Authorizations: []AuthorizationRequest{
+						{UserID: "sort-user", Type: "accounts", Status: "APPROVED"},
+					},
+				})
+			},
+			params: url.Values{
+				"groupIds": {"grp-sort-multi-b,grp-sort-multi-a,grp-sort-multi-c"},
+				"sort":     {"status:asc,groupId:asc"},
+			},
+			wantStatus: http.StatusOK,
+			checkResult: func(resp *ConsentListResponse) {
+				ts.Require().Len(resp.Data, 3)
+				ts.Equal("grp-sort-multi-c", resp.Data[0].GroupID)
+				ts.Equal("ACTIVE", resp.Data[0].Status)
+				ts.Equal("grp-sort-multi-a", resp.Data[1].GroupID)
+				ts.Equal("CREATED", resp.Data[1].Status)
+				ts.Equal("grp-sort-multi-b", resp.Data[2].GroupID)
+				ts.Equal("CREATED", resp.Data[2].Status)
+			},
+		},
+
+		// -----------------------------------------------------------------------
 		// Org isolation
 		// -----------------------------------------------------------------------
 		{
