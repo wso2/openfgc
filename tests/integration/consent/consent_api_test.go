@@ -208,6 +208,21 @@ func (ts *ConsentAPITestSuite) doSearchByAttribute(orgID, key, value string) (in
 	return ts.doRequest(http.MethodGet, "/api/v1/consents/attributes?"+params.Encode(), orgID, "", nil)
 }
 
+// doGetGroupIDsByUserID calls GET /consents/group-ids and returns (status, raw body).
+func (ts *ConsentAPITestSuite) doGetGroupIDsByUserID(orgID string, userIDs []string) (int, []byte) {
+	params := url.Values{}
+	for _, userID := range userIDs {
+		params.Add("userId", userID)
+	}
+
+	path := "/api/v1/consents/group-ids"
+	if len(params) > 0 {
+		path += "?" + params.Encode()
+	}
+
+	return ts.doRequest(http.MethodGet, path, orgID, "", nil)
+}
+
 // doValidateConsent calls POST /consents/validate and returns (status, raw body).
 // body can be a ConsentValidateRequest struct or a raw string for error cases.
 func (ts *ConsentAPITestSuite) doValidateConsent(orgID string, body any) (int, []byte) {

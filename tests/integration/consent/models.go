@@ -188,6 +188,12 @@ type ConsentAttributeSearchResponse struct {
 	Count      int      `json:"count"`
 }
 
+// ConsentGroupIDsResponse is returned by GET /consents/group-ids.
+type ConsentGroupIDsResponse struct {
+	GroupIDs []string `json:"groupIds"`
+	Count    int      `json:"count"`
+}
+
 // =============================================================================
 // Validate request / response types — POST /consents/validate
 // =============================================================================
