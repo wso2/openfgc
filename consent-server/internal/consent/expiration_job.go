@@ -21,7 +21,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 )
 
 // RunExpirationJob finds all consents whose VALIDITY_TIME has passed and marks them

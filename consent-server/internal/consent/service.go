@@ -30,16 +30,16 @@ import (
 	jsonschema "github.com/google/jsonschema-go/jsonschema"
 	"github.com/lestrrat-go/helium"
 	"github.com/lestrrat-go/helium/xsd"
-	authmodel "github.com/wso2/openfgc/internal/authresource/model"
-	"github.com/wso2/openfgc/internal/consent/model"
-	"github.com/wso2/openfgc/internal/consent/validator"
-	purposemodel "github.com/wso2/openfgc/internal/consentpurpose/model"
-	"github.com/wso2/openfgc/internal/system/config"
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/log"
-	"github.com/wso2/openfgc/internal/system/stores"
-	"github.com/wso2/openfgc/internal/system/utils"
+	authmodel "github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	"github.com/wso2/openfgc/consent-server/internal/consent/model"
+	"github.com/wso2/openfgc/consent-server/internal/consent/validator"
+	purposemodel "github.com/wso2/openfgc/consent-server/internal/consentpurpose/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // =============================================================================
@@ -80,8 +80,8 @@ type consentService struct {
 	stores *stores.StoreRegistry
 }
 
-// newConsentService creates a new consent service.
-func newConsentService(registry *stores.StoreRegistry) ConsentService {
+// NewConsentService constructs a ConsentService backed by the given stores.
+func NewConsentService(registry *stores.StoreRegistry) ConsentService {
 	return &consentService{stores: registry}
 }
 

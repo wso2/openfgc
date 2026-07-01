@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/openfgc/internal/consent/model"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/consent/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
 )
 
 // expirationConsentService is a test double for ConsentService that covers only the

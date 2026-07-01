@@ -30,12 +30,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	authmodel "github.com/wso2/openfgc/internal/authresource/model"
-	"github.com/wso2/openfgc/internal/consent/model"
-	"github.com/wso2/openfgc/internal/system/config"
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/stores"
-	"github.com/wso2/openfgc/tests/mocks/stores/interfacesmock"
+	authmodel "github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	"github.com/wso2/openfgc/consent-server/internal/consent/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/tests/mocks/stores/interfacesmock"
 )
 
 // TestMain sets the global config before any test runs so that the DB provider

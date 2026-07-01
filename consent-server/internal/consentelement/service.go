@@ -24,12 +24,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wso2/openfgc/internal/consentelement/model"
-	"github.com/wso2/openfgc/internal/consentelement/validator"
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/stores"
-	"github.com/wso2/openfgc/internal/system/utils"
+	"github.com/wso2/openfgc/consent-server/internal/consentelement/model"
+	"github.com/wso2/openfgc/consent-server/internal/consentelement/validator"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // ConsentElementService defines the exported service interface.
@@ -63,8 +63,8 @@ type consentElementService struct {
 	stores *stores.StoreRegistry
 }
 
-// newConsentElementService creates a new consent element service.
-func newConsentElementService(registry *stores.StoreRegistry) ConsentElementService {
+// NewConsentElementService constructs a ConsentElementService backed by the given stores.
+func NewConsentElementService(registry *stores.StoreRegistry) ConsentElementService {
 	return &consentElementService{stores: registry}
 }
 

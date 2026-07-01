@@ -22,11 +22,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/wso2/openfgc/internal/authresource/model"
-	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/utils"
+	"github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	authvalidator "github.com/wso2/openfgc/consent-server/internal/authresource/validator"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // authResourceHandler handles HTTP requests for auth resources.

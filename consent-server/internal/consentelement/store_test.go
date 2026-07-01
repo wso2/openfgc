@@ -24,9 +24,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	dbconst "github.com/wso2/openfgc/internal/system/database/constants"
-	"github.com/wso2/openfgc/internal/consentelement/model"
-	providermock "github.com/wso2/openfgc/tests/mocks/database/providermock"
+	dbconst "github.com/wso2/openfgc/consent-server/internal/system/database/constants"
+	"github.com/wso2/openfgc/consent-server/internal/consentelement/model"
+	providermock "github.com/wso2/openfgc/consent-server/tests/mocks/database/providermock"
 )
 
 func TestNewConsentElementStore(t *testing.T) {

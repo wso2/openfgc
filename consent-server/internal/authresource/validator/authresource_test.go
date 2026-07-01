@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/openfgc/internal/authresource/model"
-	"github.com/wso2/openfgc/internal/system/config"
+	"github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
 )
 
 // TestMain initializes a minimal configuration required by the validator

@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wso2/openfgc/internal/consent/model"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/consent/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
 )
 
 // unimplementedConsentService satisfies ConsentService with panicking stubs for every method.

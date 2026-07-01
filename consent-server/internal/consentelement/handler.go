@@ -27,10 +27,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wso2/openfgc/internal/consentelement/model"
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/utils"
+	"github.com/wso2/openfgc/consent-server/internal/consentelement/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // consentElementHandler handles HTTP requests for consent elements.

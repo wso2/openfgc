@@ -19,7 +19,7 @@
 // Package consentelement provides consent element management functionality.
 package consentelement
 
-import "github.com/wso2/openfgc/internal/system/error/serviceerror"
+import "github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
 
 // Client errors for consent element operations.
 var (

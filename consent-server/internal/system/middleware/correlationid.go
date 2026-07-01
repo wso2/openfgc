@@ -21,8 +21,8 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/wso2/openfgc/internal/system/constants"
-	sysContext "github.com/wso2/openfgc/internal/system/context"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	sysContext "github.com/wso2/openfgc/consent-server/internal/system/context"
 )
 
 // CorrelationIDMiddleware extracts or generates a correlation ID (trace ID) for each request.

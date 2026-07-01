@@ -22,8 +22,8 @@ package context
 import (
 	"context"
 
-	"github.com/wso2/openfgc/internal/system/log"
-	"github.com/wso2/openfgc/internal/system/utils"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // GetTraceID retrieves the trace ID (correlation ID) from the context.

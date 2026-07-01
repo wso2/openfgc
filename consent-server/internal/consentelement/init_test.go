@@ -26,8 +26,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
 )
 
 // TestInitialize tests the Initialize function
@@ -108,7 +108,7 @@ func TestRegisterRoutes(t *testing.T) {
 func TestNewConsentElementService(t *testing.T) {
 	registry := &stores.StoreRegistry{}
 
-	service := newConsentElementService(registry)
+	service := NewConsentElementService(registry)
 
 	require.NotNil(t, service)
 

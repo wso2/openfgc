@@ -25,10 +25,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wso2/openfgc/internal/consentpurpose/model"
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/utils"
+	"github.com/wso2/openfgc/consent-server/internal/consentpurpose/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // consentPurposeHandler handles HTTP requests for consent purposes.
