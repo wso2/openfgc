@@ -481,3 +481,15 @@ func TestMapToConsentApprovalRow_NullableFieldsAreNil(t *testing.T) {
 	require.False(t, ar.Approved)
 	require.Nil(t, ar.Value)
 }
+
+func TestBuildExpiredConsentsQuery_PostgresUsesDollarPlaceholders(t *testing.T) {
+	q := buildExpiredConsentsQuery(2)
+	require.Equal(t,
+		"SELECT "+consentColumns+" FROM CONSENT WHERE EXPIRATION_TIME < $1 AND CURRENT_STATUS IN ($2,$3)",
+		q.PostgresQuery,
+	)
+	require.Equal(t,
+		"SELECT "+consentColumns+" FROM CONSENT WHERE EXPIRATION_TIME < ? AND CURRENT_STATUS IN (?,?)",
+		q.Query,
+	)
+}
