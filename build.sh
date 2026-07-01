@@ -72,6 +72,7 @@ CONFIG_SOURCE="consent-server/cmd/server/repository/conf/deployment.yaml"
 CONFIG_TARGET="$OUTPUT_DIR/repository/conf/deployment.yaml"
 TEST_CONFIG_SOURCE_MYSQL="tests/integration/repository/conf/deployment.yaml"
 TEST_CONFIG_SOURCE_SQLITE="tests/integration/repository/conf/deployment-sqlite.yaml"
+TEST_CONFIG_SOURCE_POSTGRES="tests/integration/repository/conf/deployment-postgres.yaml"
 
 # Package naming
 PACKAGE_OS=$GO_OS
@@ -283,20 +284,30 @@ function test_integration() {
     local db_type="${DB_TYPE:-mysql}"
     echo "Database type: $db_type"
 
+    # Validate DB_TYPE before doing any build work.
+    local test_config_source
+    case "$db_type" in
+        mysql)
+            test_config_source="$TEST_CONFIG_SOURCE_MYSQL"
+            ;;
+        sqlite)
+            test_config_source="$TEST_CONFIG_SOURCE_SQLITE"
+            ;;
+        postgres)
+            test_config_source="$TEST_CONFIG_SOURCE_POSTGRES"
+            ;;
+        *)
+            echo "✗ Unsupported DB_TYPE '$db_type'. Supported values: mysql, sqlite, postgres"
+            exit 1
+            ;;
+    esac
+
     # Clean test cache to ensure tests run with latest changes
     echo "Cleaning test cache..."
     go clean -testcache
 
     # Build a dedicated integration-test server so normal build outputs are untouched.
     build_binary
-
-    # Select test config based on DB_TYPE
-    local test_config_source
-    if [ "$db_type" = "sqlite" ]; then
-        test_config_source="$TEST_CONFIG_SOURCE_SQLITE"
-    else
-        test_config_source="$TEST_CONFIG_SOURCE_MYSQL"
-    fi
 
     # Replace app config with test config for integration tests
     echo "Copying test configuration..."

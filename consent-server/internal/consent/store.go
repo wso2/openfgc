@@ -939,6 +939,19 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilter) (
 	return consents, totalCount, nil
 }
 
+func buildExpiredConsentsQuery(statusCount int) dbmodel.DBQuery {
+	placeholders := make([]string, statusCount)
+	for i := range placeholders {
+		placeholders[i] = "?"
+	}
+
+	rawQuery := fmt.Sprintf(QueryGetExpiredConsents.Query, strings.Join(placeholders, ","))
+	q := QueryGetExpiredConsents
+	q.Query = rawQuery
+	q.PostgresQuery = dbutils.ConvertToPostgresParams(rawQuery)
+	return q
+}
+
 // GetExpiredConsents retrieves consents that have expired based on the current time and specified expirable statuses.
 func (s *store) GetExpiredConsents(ctx context.Context, currentTimeMs int64, expirableStatuses []string) ([]model.Consent, error) {
 
@@ -951,21 +964,12 @@ func (s *store) GetExpiredConsents(ctx context.Context, currentTimeMs int64, exp
 		return nil, fmt.Errorf("failed to get database client: %w", err)
 	}
 
-	placeholders := make([]string, len(expirableStatuses))
 	args := []interface{}{currentTimeMs}
-	for i, status := range expirableStatuses {
-		placeholders[i] = "?"
+	for _, status := range expirableStatuses {
 		args = append(args, status)
 	}
 
-	query := fmt.Sprintf(QueryGetExpiredConsents.Query, strings.Join(placeholders, ","))
-	postgresQuery := fmt.Sprintf(QueryGetExpiredConsents.PostgresQuery, strings.Join(placeholders, ","))
-
-	rows, err := dbClient.Query(dbmodel.DBQuery{
-		ID:            QueryGetExpiredConsents.ID,
-		Query:         query,
-		PostgresQuery: postgresQuery,
-	}, args...)
+	rows, err := dbClient.Query(buildExpiredConsentsQuery(len(expirableStatuses)), args...)
 	if err != nil {
 		return nil, err
 	}
