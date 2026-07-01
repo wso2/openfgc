@@ -91,6 +91,8 @@ The Consent is the immutable evidence of a user’s decision regarding specific 
 - Go 1.25 or higher
 - MySQL 8.0+ or PostgreSQL 14+ (**recommended** for production)
 - sqlite3 (optional, if using SQLite)
+- mysql (optional, if using MySQL integration tests)
+- psql (optional, if using PostgreSQL integration tests)
 - Make (optional, for build commands)
 
 ## Project Structure
@@ -329,14 +331,18 @@ go build -o bin/consent-server cmd/server/main.go
 # Run unit tests
 ./build.sh test_unit
 
-# Run integration tests
+# Run integration tests (MySQL by default)
 ./build.sh test_integration
+
+# Run integration tests against SQLite or PostgreSQL 
+DB_TYPE=sqlite ./build.sh test_integration
+DB_TYPE=postgres ./build.sh test_integration
 
 # Run all tests
 ./build.sh test
 ```
 
-> **Note:** Integration tests use the configuration at `tests/integration/repository/conf/deployment.yaml`. If you're using a separate database for testing, ensure it's created and the credentials are updated in this configuration file before running the tests. The test database will be automatically initialized with the required schema.
+> **Note:** Integration tests obtain their configuration from `tests/integration/repository/conf/` based on `DB_TYPE`. If you're using a separate database for testing, update the matching configuration file before running the suite. The test database will be automatically recreated and initialized with the required schema.
 
 **Manual Execution**
 

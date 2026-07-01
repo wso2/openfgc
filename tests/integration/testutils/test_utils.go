@@ -26,13 +26,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
-// dbType holds the database type for the current test run ("sqlite" or "mysql").
+// dbType holds the database type for the current test run ("sqlite", "mysql", or "postgres").
 // Populated from the DB_TYPE environment variable; defaults to "mysql".
 var dbType = func() string {
 	if t := os.Getenv("DB_TYPE"); t != "" {
@@ -47,14 +48,15 @@ const (
 	TestServerPortEnv = "TEST_SERVER_PORT"
 )
 
+var integrationConfigPaths = map[string]string{
+	"mysql":    "repository/conf/deployment.yaml",
+	"sqlite":   "repository/conf/deployment-sqlite.yaml",
+	"postgres": "repository/conf/deployment-postgres.yaml",
+}
+
 // ConfigPath returns the integration test deployment config path for the active dbType.
 // Relative to the tests/integration/ directory.
-var ConfigPath = func() string {
-	if dbType == "sqlite" {
-		return "repository/conf/deployment-sqlite.yaml"
-	}
-	return "repository/conf/deployment.yaml"
-}()
+var ConfigPath = configPathForDBType(dbType)
 
 var serverCmd *exec.Cmd
 
@@ -63,6 +65,48 @@ type ServerConfig struct {
 		Hostname string `yaml:"hostname"`
 		Port     int    `yaml:"port"`
 	} `yaml:"server"`
+}
+
+type dbConfig struct {
+	Type     string `yaml:"type"`
+	Path     string `yaml:"path"`
+	Hostname string `yaml:"hostname"`
+	Port     int    `yaml:"port"`
+	Database string `yaml:"database"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	SSLMode  string `yaml:"sslmode"`
+	Options  string `yaml:"options"`
+}
+
+func configPathForDBType(dbType string) string {
+	if path, ok := integrationConfigPaths[dbType]; ok {
+		return path
+	}
+	return integrationConfigPaths["mysql"]
+}
+
+func supportedDBTypes() string {
+	return "mysql, sqlite, postgres"
+}
+
+func readDBConfig() (dbConfig, error) {
+	data, err := os.ReadFile(ConfigPath)
+	if err != nil {
+		return dbConfig{}, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var config struct {
+		Database struct {
+			Consent dbConfig `yaml:"consent"`
+		} `yaml:"database"`
+	}
+
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return dbConfig{}, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	return config.Database.Consent, nil
 }
 
 // getServerDir returns the directory containing the server binary and repository directory.
@@ -124,75 +168,59 @@ func BuildServer() error {
 }
 
 // SetupDatabase cleans and re-initialises the test database.
-// It branches on dbType: "sqlite" uses the sqlite3 CLI, "mysql" uses the mysql CLI.
+// It branches on dbType and uses the corresponding CLI to prepare a fresh schema.
 func SetupDatabase() error {
 	fmt.Printf("Setting up test database (type=%s)...\n", dbType)
 
-	data, err := os.ReadFile(ConfigPath)
+	dbConfig, err := readDBConfig()
 	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
+		return err
 	}
 
-	var config struct {
-		Database struct {
-			Consent struct {
-				Type     string `yaml:"type"`
-				Path     string `yaml:"path"`
-				Hostname string `yaml:"hostname"`
-				Port     int    `yaml:"port"`
-				Database string `yaml:"database"`
-				User     string `yaml:"user"`
-				Password string `yaml:"password"`
-			} `yaml:"consent"`
-		} `yaml:"database"`
-	}
-
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	dbConfig := config.Database.Consent
-
-	supported := map[string]bool{"mysql": true, "sqlite": true}
+	supported := map[string]bool{"mysql": true, "sqlite": true, "postgres": true}
 	if !supported[dbType] {
-		return fmt.Errorf("unsupported DB_TYPE %q: must be one of mysql, sqlite", dbType)
+		return fmt.Errorf("unsupported DB_TYPE %q: must be one of %s", dbType, supportedDBTypes())
 	}
 	if dbConfig.Type != dbType {
 		return fmt.Errorf("DB_TYPE env var is %q but config file has database.consent.type=%q", dbType, dbConfig.Type)
 	}
 
-	if dbType == "sqlite" {
+	switch dbType {
+	case "sqlite":
 		// Resolve the db file path: the server runs from target/server/,
 		// so prepend that to the relative path from the config.
 		dbPath := filepath.Join(getServerDir(), dbConfig.Path)
 		schemaFile := "../../consent-server/dbscripts/db_schema_sqlite.sql"
 		return initSQLiteDB(dbPath, schemaFile)
+	case "postgres":
+		schemaFile := "../../consent-server/dbscripts/db_schema_postgres.sql"
+		return initPostgresDB(dbConfig, schemaFile)
+	default:
+		// MySQL: drop and recreate the database, then apply the schema.
+		schemaFile := "../../consent-server/dbscripts/db_schema_mysql.sql"
+		if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
+			return fmt.Errorf("schema file not found: %s", schemaFile)
+		}
+
+		sqlScript := fmt.Sprintf(
+			"SET FOREIGN_KEY_CHECKS=0; DROP DATABASE IF EXISTS %s; CREATE DATABASE %s; USE %s; source %s; SET FOREIGN_KEY_CHECKS=1;",
+			dbConfig.Database, dbConfig.Database, dbConfig.Database, schemaFile,
+		)
+		cmd := exec.Command("mysql",
+			"-h", dbConfig.Hostname,
+			"-P", fmt.Sprintf("%d", dbConfig.Port),
+			"-u", dbConfig.User,
+			fmt.Sprintf("-p%s", dbConfig.Password),
+			"-e", sqlScript,
+		)
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to run database schema: %w\nOutput: %s", err, string(output))
+		}
+
+		return nil
 	}
-
-	// MySQL: drop and recreate the database, then apply the schema.
-	schemaFile := "../../consent-server/dbscripts/db_schema_mysql.sql"
-	if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
-		return fmt.Errorf("schema file not found: %s", schemaFile)
-	}
-
-	sqlScript := fmt.Sprintf(
-		"SET FOREIGN_KEY_CHECKS=0; DROP DATABASE IF EXISTS %s; CREATE DATABASE %s; USE %s; source %s; SET FOREIGN_KEY_CHECKS=1;",
-		dbConfig.Database, dbConfig.Database, dbConfig.Database, schemaFile,
-	)
-	cmd := exec.Command("mysql",
-		"-h", dbConfig.Hostname,
-		"-P", fmt.Sprintf("%d", dbConfig.Port),
-		"-u", dbConfig.User,
-		fmt.Sprintf("-p%s", dbConfig.Password),
-		"-e", sqlScript,
-	)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to run database schema: %w\nOutput: %s", err, string(output))
-	}
-
-	return nil
 }
 
 // initSQLiteDB creates a fresh SQLite database from a schema file using the sqlite3 CLI.
@@ -253,6 +281,67 @@ func initSQLiteDB(dbPath, schemaPath string) error {
 
 	fmt.Printf("✓ SQLite database initialized: %s\n", absDbPath)
 	return nil
+}
+
+func initPostgresDB(dbConfig dbConfig, schemaPath string) error {
+	if _, err := exec.LookPath("psql"); err != nil {
+		return fmt.Errorf("psql CLI not found in PATH: please install PostgreSQL client tools to run PostgreSQL integration tests")
+	}
+
+	absSchemaPath, err := filepath.Abs(schemaPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve schema path: %w", err)
+	}
+	if _, err := os.Stat(absSchemaPath); os.IsNotExist(err) {
+		return fmt.Errorf("schema file not found: %s", absSchemaPath)
+	}
+
+	baseArgs := []string{
+		"-h", dbConfig.Hostname,
+		"-p", fmt.Sprintf("%d", dbConfig.Port),
+		"-U", dbConfig.User,
+		"-v", "ON_ERROR_STOP=1",
+	}
+	baseEnv := append(os.Environ(), "PGPASSWORD="+dbConfig.Password)
+	if dbConfig.SSLMode != "" {
+		baseEnv = append(baseEnv, "PGSSLMODE="+dbConfig.SSLMode)
+	}
+
+	adminArgs := append([]string{}, baseArgs...)
+	adminArgs = append(adminArgs, "-d", "postgres", "-c",
+		fmt.Sprintf("DROP DATABASE IF EXISTS %s;", quotePostgresIdentifier(dbConfig.Database)),
+	)
+	if output, err := runPostgresCommand(adminArgs, baseEnv); err != nil {
+		return fmt.Errorf("failed to drop PostgreSQL test database: %w\nOutput: %s", err, output)
+	}
+
+	adminArgs = append([]string{}, baseArgs...)
+	adminArgs = append(adminArgs, "-d", "postgres", "-c",
+		fmt.Sprintf("CREATE DATABASE %s;", quotePostgresIdentifier(dbConfig.Database)),
+	)
+	if output, err := runPostgresCommand(adminArgs, baseEnv); err != nil {
+		return fmt.Errorf("failed to create PostgreSQL test database: %w\nOutput: %s", err, output)
+	}
+
+	schemaArgs := append([]string{}, baseArgs...)
+	schemaArgs = append(schemaArgs, "-d", dbConfig.Database, "-f", absSchemaPath)
+	if output, err := runPostgresCommand(schemaArgs, baseEnv); err != nil {
+		return fmt.Errorf("failed to apply PostgreSQL schema: %w\nOutput: %s", err, output)
+	}
+
+	fmt.Printf("✓ PostgreSQL database initialized: %s\n", dbConfig.Database)
+	return nil
+}
+
+func runPostgresCommand(args []string, env []string) (string, error) {
+	cmd := exec.Command("psql", args...)
+	cmd.Env = env
+	output, err := cmd.CombinedOutput()
+	return string(output), err
+}
+
+func quotePostgresIdentifier(identifier string) string {
+	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
 }
 
 // StartServer starts the consent-server in background
