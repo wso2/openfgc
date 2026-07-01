@@ -21,8 +21,8 @@ package consentpurpose
 import (
 	"net/http"
 
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
 )
 
 // Initialize sets up the consent purpose module and registers routes

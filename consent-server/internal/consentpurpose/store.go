@@ -23,12 +23,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wso2/openfgc/internal/consentpurpose/model"
-	dbconst "github.com/wso2/openfgc/internal/system/database/constants"
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/database/provider"
-	dbutils "github.com/wso2/openfgc/internal/system/database/utils"
-	"github.com/wso2/openfgc/internal/system/stores/interfaces"
+	"github.com/wso2/openfgc/consent-server/internal/consentpurpose/model"
+	dbconst "github.com/wso2/openfgc/consent-server/internal/system/database/constants"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/database/provider"
+	dbutils "github.com/wso2/openfgc/consent-server/internal/system/database/utils"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores/interfaces"
 )
 
 // purposeColumns is the SELECT column list shared across all PURPOSE queries.

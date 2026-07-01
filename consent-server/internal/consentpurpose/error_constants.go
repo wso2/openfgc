@@ -19,7 +19,7 @@
 // Package consentpurpose provides consent purpose management functionality.
 package consentpurpose
 
-import "github.com/wso2/openfgc/internal/system/error/serviceerror"
+import "github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
 
 // Client errors for consent purpose operations.
 var (

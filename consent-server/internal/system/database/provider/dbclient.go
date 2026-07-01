@@ -25,9 +25,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/database/transaction"
-	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/database/transaction"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 )
 
 // DBClientInterface defines the interface for database operations.

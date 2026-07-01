@@ -19,7 +19,7 @@
 // Package consent provides consent management functionality.
 package consent
 
-import "github.com/wso2/openfgc/internal/system/error/serviceerror"
+import "github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
 
 // Client errors for consent operations.
 var (

@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/openfgc/internal/consent/model"
-	"github.com/wso2/openfgc/internal/system/config"
+	"github.com/wso2/openfgc/consent-server/internal/consent/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
 )
 
 // =============================================================================

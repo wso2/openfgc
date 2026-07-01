@@ -19,7 +19,7 @@
 // Package authresource provides authorization resource management functionality.
 package authresource
 
-import "github.com/wso2/openfgc/internal/system/error/serviceerror"
+import "github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
 
 // Client errors for authorization resource operations.
 var (

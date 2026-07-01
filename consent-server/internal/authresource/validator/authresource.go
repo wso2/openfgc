@@ -21,8 +21,8 @@ package validator
 import (
 	"fmt"
 
-	"github.com/wso2/openfgc/internal/authresource/model"
-	"github.com/wso2/openfgc/internal/system/config"
+	"github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
 )
 
 // ValidateAuthResourceCreateRequest validates an auth resource creation request.

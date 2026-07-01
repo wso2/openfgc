@@ -22,7 +22,7 @@ package model
 import (
 	"time"
 
-	authmodel "github.com/wso2/openfgc/internal/authresource/model"
+	authmodel "github.com/wso2/openfgc/consent-server/internal/authresource/model"
 )
 
 // =============================================================================

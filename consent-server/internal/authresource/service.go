@@ -23,17 +23,17 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/wso2/openfgc/internal/authresource/model"
-	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
-	consenthistory "github.com/wso2/openfgc/internal/consent"
-	consentModel "github.com/wso2/openfgc/internal/consent/model"
-	"github.com/wso2/openfgc/internal/consent/validator"
-	"github.com/wso2/openfgc/internal/system/config"
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/log"
-	"github.com/wso2/openfgc/internal/system/stores"
-	"github.com/wso2/openfgc/internal/system/utils"
+	"github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	authvalidator "github.com/wso2/openfgc/consent-server/internal/authresource/validator"
+	consenthistory "github.com/wso2/openfgc/consent-server/internal/consent"
+	consentModel "github.com/wso2/openfgc/consent-server/internal/consent/model"
+	"github.com/wso2/openfgc/consent-server/internal/consent/validator"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // AuthResourceServiceInterface defines the contract for auth resource business operations.
@@ -50,8 +50,8 @@ type authResourceService struct {
 	stores *stores.StoreRegistry
 }
 
-// newAuthResourceService creates a new auth resource service.
-func newAuthResourceService(registry *stores.StoreRegistry) AuthResourceServiceInterface {
+// NewAuthResourceService constructs an AuthResourceServiceInterface backed by the given stores.
+func NewAuthResourceService(registry *stores.StoreRegistry) AuthResourceServiceInterface {
 	return &authResourceService{stores: registry}
 }
 

@@ -26,9 +26,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wso2/openfgc/internal/system/error/apierror"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/apierror"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 )
 
 // makeClientErr builds a client-type ServiceError with the given code.

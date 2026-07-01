@@ -1,4 +1,4 @@
-module github.com/wso2/openfgc
+module github.com/wso2/openfgc/consent-server
 
 go 1.26.1
 

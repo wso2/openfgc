@@ -28,10 +28,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	elementmodel "github.com/wso2/openfgc/internal/consentelement/model"
-	purposemodel "github.com/wso2/openfgc/internal/consentpurpose/model"
-	"github.com/wso2/openfgc/internal/system/stores"
-	"github.com/wso2/openfgc/tests/mocks/stores/interfacesmock"
+	elementmodel "github.com/wso2/openfgc/consent-server/internal/consentelement/model"
+	purposemodel "github.com/wso2/openfgc/consent-server/internal/consentpurpose/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/tests/mocks/stores/interfacesmock"
 )
 
 // =============================================================================

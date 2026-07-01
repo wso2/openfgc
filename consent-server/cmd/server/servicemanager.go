@@ -23,14 +23,14 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/wso2/openfgc/internal/authresource"
-	"github.com/wso2/openfgc/internal/consent"
-	"github.com/wso2/openfgc/internal/consentelement"
-	"github.com/wso2/openfgc/internal/consentpurpose"
-	"github.com/wso2/openfgc/internal/system/config"
-	"github.com/wso2/openfgc/internal/system/healthcheck/handler"
-	"github.com/wso2/openfgc/internal/system/log"
-	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/authresource"
+	"github.com/wso2/openfgc/consent-server/internal/consent"
+	"github.com/wso2/openfgc/consent-server/internal/consentelement"
+	"github.com/wso2/openfgc/consent-server/internal/consentpurpose"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
+	"github.com/wso2/openfgc/consent-server/internal/system/healthcheck/handler"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
 )
 
 // cancelScheduler holds the cancel function for the consent expiration scheduler goroutine.

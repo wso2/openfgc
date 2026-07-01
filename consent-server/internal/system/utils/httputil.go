@@ -23,10 +23,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/error/apierror"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/apierror"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 )
 
 // DecodeJSONBody decodes the JSON request body into v.
