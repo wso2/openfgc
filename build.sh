@@ -284,14 +284,7 @@ function test_integration() {
     local db_type="${DB_TYPE:-mysql}"
     echo "Database type: $db_type"
 
-    # Clean test cache to ensure tests run with latest changes
-    echo "Cleaning test cache..."
-    go clean -testcache
-
-    # Build a dedicated integration-test server so normal build outputs are untouched.
-    build_binary
-
-    # Select test config based on DB_TYPE
+    # Validate DB_TYPE before doing any build work.
     local test_config_source
     case "$db_type" in
         mysql)
@@ -308,6 +301,13 @@ function test_integration() {
             exit 1
             ;;
     esac
+
+    # Clean test cache to ensure tests run with latest changes
+    echo "Cleaning test cache..."
+    go clean -testcache
+
+    # Build a dedicated integration-test server so normal build outputs are untouched.
+    build_binary
 
     # Replace app config with test config for integration tests
     echo "Copying test configuration..."

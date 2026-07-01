@@ -83,7 +83,12 @@ func configPathForDBType(dbType string) string {
 	if path, ok := integrationConfigPaths[dbType]; ok {
 		return path
 	}
-	return integrationConfigPaths["mysql"]
+	return ""
+}
+
+func isSupportedDBType(dbType string) bool {
+	_, ok := integrationConfigPaths[dbType]
+	return ok
 }
 
 func supportedDBTypes() string {
@@ -172,15 +177,15 @@ func BuildServer() error {
 func SetupDatabase() error {
 	fmt.Printf("Setting up test database (type=%s)...\n", dbType)
 
+	if !isSupportedDBType(dbType) {
+		return fmt.Errorf("unsupported DB_TYPE %q: must be one of %s", dbType, supportedDBTypes())
+	}
+
 	dbConfig, err := readDBConfig()
 	if err != nil {
 		return err
 	}
 
-	supported := map[string]bool{"mysql": true, "sqlite": true, "postgres": true}
-	if !supported[dbType] {
-		return fmt.Errorf("unsupported DB_TYPE %q: must be one of %s", dbType, supportedDBTypes())
-	}
 	if dbConfig.Type != dbType {
 		return fmt.Errorf("DB_TYPE env var is %q but config file has database.consent.type=%q", dbType, dbConfig.Type)
 	}
