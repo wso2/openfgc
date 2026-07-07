@@ -21,7 +21,7 @@ package validator
 import (
 	"strings"
 
-	"github.com/wso2/openfgc/internal/consentelement/model"
+	"github.com/wso2/openfgc/consent-server/internal/consentelement/model"
 )
 
 // JSONElementType handles "json" consent elements.

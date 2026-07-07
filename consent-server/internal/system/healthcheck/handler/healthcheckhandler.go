@@ -23,9 +23,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/wso2/openfgc/internal/system/healthcheck/model"
-	"github.com/wso2/openfgc/internal/system/healthcheck/service"
-	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/healthcheck/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/healthcheck/service"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 )
 
 // HealthCheckHandler defines the handler for managing health check API requests.

@@ -20,7 +20,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 )
 
 // ExpirationStatuses groups all status strings needed by the expiration job.

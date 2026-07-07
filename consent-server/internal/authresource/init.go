@@ -21,14 +21,14 @@ package authresource
 import (
 	"net/http"
 
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
 )
 
 // Initialize sets up the auth resource module and registers routes
 func Initialize(mux *http.ServeMux, registry *stores.StoreRegistry) AuthResourceServiceInterface {
 	// Create service and handler using the registry
-	service := newAuthResourceService(registry)
+	service := NewAuthResourceService(registry)
 	handler := newAuthResourceHandler(service)
 
 	// Register routes

@@ -20,10 +20,10 @@
 package stores
 
 import (
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/database/provider"
-	"github.com/wso2/openfgc/internal/system/log"
-	"github.com/wso2/openfgc/internal/system/stores/interfaces"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/database/provider"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores/interfaces"
 )
 
 // StoreRegistry holds references to all stores in the application

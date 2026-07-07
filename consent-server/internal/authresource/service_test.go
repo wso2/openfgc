@@ -26,10 +26,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/openfgc/internal/authresource/model"
-	"github.com/wso2/openfgc/internal/system/config"
-	"github.com/wso2/openfgc/internal/system/stores"
-	"github.com/wso2/openfgc/tests/mocks/stores/interfacesmock"
+	"github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/tests/mocks/stores/interfacesmock"
 )
 
 func TestMain(m *testing.M) {

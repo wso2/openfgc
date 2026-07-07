@@ -24,11 +24,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wso2/openfgc/internal/authresource/model"
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/database/provider"
-	dbutils "github.com/wso2/openfgc/internal/system/database/utils"
-	"github.com/wso2/openfgc/internal/system/stores/interfaces"
+	"github.com/wso2/openfgc/consent-server/internal/authresource/model"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/database/provider"
+	dbutils "github.com/wso2/openfgc/consent-server/internal/system/database/utils"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores/interfaces"
 )
 
 // authResourceColumns is the SELECT column list shared across CONSENT_AUTH_RESOURCE table queries.

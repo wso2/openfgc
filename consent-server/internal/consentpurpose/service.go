@@ -25,13 +25,13 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/wso2/openfgc/internal/consentpurpose/model"
-	elementmodel "github.com/wso2/openfgc/internal/consentelement/model"
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/error/serviceerror"
-	"github.com/wso2/openfgc/internal/system/log"
-	"github.com/wso2/openfgc/internal/system/stores"
-	"github.com/wso2/openfgc/internal/system/utils"
+	"github.com/wso2/openfgc/consent-server/internal/consentpurpose/model"
+	elementmodel "github.com/wso2/openfgc/consent-server/internal/consentelement/model"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/utils"
 )
 
 // ConsentPurposeService manages versioned consent purposes within an organization.

@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
 )
 
 func TestInitialize(t *testing.T) {
@@ -45,7 +45,7 @@ func TestNewAuthResourceHandler(t *testing.T) {
 
 func TestNewAuthResourceService(t *testing.T) {
 	registry := &stores.StoreRegistry{}
-	service := newAuthResourceService(registry)
+	service := NewAuthResourceService(registry)
 
 	require.NotNil(t, service)
 }

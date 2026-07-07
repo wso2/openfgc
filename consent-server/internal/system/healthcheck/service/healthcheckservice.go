@@ -22,10 +22,10 @@ package service
 import (
 	"sync"
 
-	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
-	"github.com/wso2/openfgc/internal/system/database/provider"
-	"github.com/wso2/openfgc/internal/system/healthcheck/model"
-	"github.com/wso2/openfgc/internal/system/log"
+	dbmodel "github.com/wso2/openfgc/consent-server/internal/system/database/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/database/provider"
+	"github.com/wso2/openfgc/consent-server/internal/system/healthcheck/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 )
 
 var (

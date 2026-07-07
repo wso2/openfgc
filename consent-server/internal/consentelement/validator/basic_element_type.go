@@ -18,7 +18,7 @@
 
 package validator
 
-import "github.com/wso2/openfgc/internal/consentelement/model"
+import "github.com/wso2/openfgc/consent-server/internal/consentelement/model"
 
 // BasicElementType handles "basic" consent elements.
 // Basic type has no mandatory properties — all properties are optional.

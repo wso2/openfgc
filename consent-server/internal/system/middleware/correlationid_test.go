@@ -23,8 +23,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/wso2/openfgc/internal/system/constants"
-	sysContext "github.com/wso2/openfgc/internal/system/context"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	sysContext "github.com/wso2/openfgc/consent-server/internal/system/context"
 )
 
 // captureHandler records the correlation ID found in the request context.

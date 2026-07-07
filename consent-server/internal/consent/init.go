@@ -21,14 +21,14 @@ package consent
 import (
 	"net/http"
 
-	"github.com/wso2/openfgc/internal/system/constants"
-	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/constants"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
 )
 
 // Initialize sets up the consent module and registers routes
 func Initialize(mux *http.ServeMux, registry *stores.StoreRegistry) ConsentService {
 	// Create service and handler using the registry
-	service := newConsentService(registry)
+	service := NewConsentService(registry)
 	handler := newConsentHandler(service)
 
 	// Register routes

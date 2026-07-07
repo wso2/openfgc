@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/consent-server/internal/system/stores"
 )
 
 func TestInitialize(t *testing.T) {
@@ -72,7 +72,7 @@ func TestRegisterRoutes(t *testing.T) {
 func TestNewConsentService(t *testing.T) {
 	// Test service creation
 	registry := &stores.StoreRegistry{}
-	service := newConsentService(registry)
+	service := NewConsentService(registry)
 
 	require.NotNil(t, service, "Service should not be nil")
 }

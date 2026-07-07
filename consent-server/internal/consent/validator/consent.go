@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
-	"github.com/wso2/openfgc/internal/consent/model"
-	"github.com/wso2/openfgc/internal/system/config"
+	authvalidator "github.com/wso2/openfgc/consent-server/internal/authresource/validator"
+	"github.com/wso2/openfgc/consent-server/internal/consent/model"
+	"github.com/wso2/openfgc/consent-server/internal/system/config"
 )
 
 // minExpirationTimestamp is the smallest raw value accepted for expirationTime.

@@ -265,7 +265,7 @@ function test_unit() {
     echo "Cleaning test cache..."
     go clean -testcache
     cd consent-server || exit 1
-    go test ./internal/... -v -cover
+    go test ./internal/... ./pkg/... -v -cover
     cd "$SCRIPT_DIR" || exit 1
     echo "================================================================"
 }

@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/consent-server/internal/system/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -368,6 +368,18 @@ func Get() *Config {
 // SetGlobal sets the global configuration (for testing purposes)
 func SetGlobal(cfg *Config) {
 	globalConfig = cfg
+}
+
+// SetFromStruct is the library-mode counterpart to Load.
+func SetFromStruct(cfg *Config) error {
+	if cfg == nil {
+		return fmt.Errorf("config is nil")
+	}
+	if err := validateConfig(cfg); err != nil {
+		return fmt.Errorf("config validation failed: %w", err)
+	}
+	globalConfig = cfg
+	return nil
 }
 
 // GetDSN returns the database connection string appropriate for the configured database type.
