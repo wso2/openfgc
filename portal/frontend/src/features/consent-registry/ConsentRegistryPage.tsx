@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import { APIError } from '../../utils/apiClient'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRegistryFilters from './components/ConsentRegistryFilters'
 import ConsentRegistryTable from './components/ConsentRegistryTable'
@@ -187,7 +188,11 @@ function ConsentRegistryPage(): React.JSX.Element {
         />
 
         {consentListQuery.isError ? (
-          <Typography color="error.main">{t('consentRegistry.messages.loadFailed')}</Typography>
+          <Typography color="error.main">
+            {consentListQuery.error instanceof APIError && consentListQuery.error.status === 403
+              ? t('consentRegistry.messages.notAuthorized')
+              : t('consentRegistry.messages.loadFailed')}
+          </Typography>
         ) : null}
 
         {!consentListQuery.isError && (rows.length > 0 || isTableFetching) ? (

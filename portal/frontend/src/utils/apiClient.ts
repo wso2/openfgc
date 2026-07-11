@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { getAccessToken } from '../auth/accessToken'
+import { getAccessToken, handleUnauthorized } from '../auth/authBridge'
 
 export interface APIErrorPayload {
   code?: string
@@ -53,6 +53,21 @@ async function buildHeaders(headers?: HeadersInit): Promise<Headers> {
   }
 
   return normalizedHeaders
+}
+
+async function sendRequest(
+  path: string,
+  query: RequestOptions['query'],
+  requestInit: RequestInit,
+  headers?: HeadersInit,
+): Promise<Response> {
+  // buildURL is declared below to keep URL construction grouped with its documentation.
+  // eslint-disable-next-line no-use-before-define
+  return fetch(buildURL(path, query), {
+    credentials: 'omit',
+    ...requestInit,
+    headers: await buildHeaders(headers),
+  })
 }
 
 /**
@@ -92,11 +107,14 @@ function buildURL(path: string, query?: RequestOptions['query']): string {
  */
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { query, headers, ...requestInit } = options
-  const response = await fetch(buildURL(path, query), {
-    credentials: 'omit',
-    ...requestInit,
-    headers: await buildHeaders(headers),
-  })
+  let response = await sendRequest(path, query, requestInit, headers)
+
+  if (response.status === 401) {
+    response = await sendRequest(path, query, requestInit, headers)
+    if (response.status === 401) {
+      handleUnauthorized().catch(() => undefined)
+    }
+  }
 
   if (!response.ok) {
     let payload: APIErrorPayload | undefined
@@ -135,11 +153,14 @@ export async function apiRequestNoContent(
   options: RequestOptions = {},
 ): Promise<void> {
   const { query, headers, ...requestInit } = options
-  const response = await fetch(buildURL(path, query), {
-    credentials: 'omit',
-    ...requestInit,
-    headers: await buildHeaders(headers),
-  })
+  let response = await sendRequest(path, query, requestInit, headers)
+
+  if (response.status === 401) {
+    response = await sendRequest(path, query, requestInit, headers)
+    if (response.status === 401) {
+      handleUnauthorized().catch(() => undefined)
+    }
+  }
 
   if (!response.ok) {
     let payload: APIErrorPayload | undefined

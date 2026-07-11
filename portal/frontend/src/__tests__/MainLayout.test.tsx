@@ -49,6 +49,7 @@ function renderMainLayout(initialRoute = '/'): void {
       <I18nextProvider i18n={i18n}>
         <PortalAuthContext.Provider
           value={{
+            getAccessToken: vi.fn(async () => 'access-token'),
             isAuthenticated: true,
             isInitialized: true,
             isLoading: false,

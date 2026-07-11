@@ -17,7 +17,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearAccessTokenProvider, setAccessTokenProvider } from '../auth/accessToken'
+import { clearAuthBridge, registerAuthBridge } from '../auth/authBridge'
 import { approveMyConsent } from '../features/consent-registry/api/consentsApi'
 import { apiRequest } from '../utils/apiClient'
 
@@ -84,7 +84,8 @@ describe('apiRequest', () => {
       json: async () => ({}),
     })
     const provider = vi.fn(async () => 'access-token')
-    setAccessTokenProvider(provider)
+    const bridge = { getAccessToken: provider, handleUnauthorized: vi.fn() }
+    registerAuthBridge(bridge)
 
     await apiRequest<unknown>('/protected')
 
@@ -94,6 +95,22 @@ describe('apiRequest', () => {
     expect(provider).toHaveBeenCalledTimes(1)
     expect(requestHeaders.get('Authorization')).toBe('Bearer access-token')
 
-    clearAccessTokenProvider(provider)
+    clearAuthBridge(bridge)
+  })
+
+  it('retries a 401 response once with a newly obtained access token', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock
+      .mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) })
+    const provider = vi.fn().mockResolvedValue('refreshed-access-token')
+    const bridge = { getAccessToken: provider, handleUnauthorized: vi.fn() }
+    registerAuthBridge(bridge)
+
+    await apiRequest<unknown>('/protected')
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(provider).toHaveBeenCalledTimes(2)
+    clearAuthBridge(bridge)
   })
 })

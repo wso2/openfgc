@@ -19,7 +19,7 @@
 import { ThunderIDProvider, useThunderID } from '@thunderid/react'
 import { useEffect, useMemo, useState } from 'react'
 import type { PropsWithChildren } from 'react'
-import { clearAccessTokenProvider, setAccessTokenProvider } from '../accessToken'
+import { clearAuthBridge, registerAuthBridge } from '../authBridge'
 import { PortalAuthContext } from '../PortalAuthContext'
 import type { PortalAuth } from '../PortalAuthContext'
 
@@ -73,12 +73,19 @@ function ThunderAuthBridge({ children }: PropsWithChildren): React.JSX.Element {
   const user = isSignedIn ? (idTokenUser ?? sdkUser) : sdkUser
 
   useEffect(() => {
-    setAccessTokenProvider(getAccessToken)
+    const bridge = {
+      getAccessToken: async (): Promise<string | undefined> => {
+        const accessToken = await getAccessToken()
+        return accessToken.trim() || undefined
+      },
+      handleUnauthorized: thunder.signIn,
+    }
+    registerAuthBridge(bridge)
 
     return () => {
-      clearAccessTokenProvider(getAccessToken)
+      clearAuthBridge(bridge)
     }
-  }, [getAccessToken])
+  }, [getAccessToken, thunder.signIn])
 
   useEffect(() => {
     let active = true
@@ -108,18 +115,18 @@ function ThunderAuthBridge({ children }: PropsWithChildren): React.JSX.Element {
       isAuthenticated: thunder.isSignedIn,
       isInitialized: thunder.isInitialized,
       isLoading: thunder.isLoading,
+      getAccessToken: async (): Promise<string | undefined> => {
+        const accessToken = await getAccessToken()
+        return accessToken.trim() || undefined
+      },
       signIn: thunder.signIn,
-      signOut: thunder.signOut,
+      signOut: async (): Promise<unknown> => {
+        setIdTokenUser(undefined)
+        return thunder.signOut()
+      },
       user,
     }),
-    [
-      thunder.isInitialized,
-      thunder.isLoading,
-      thunder.isSignedIn,
-      thunder.signIn,
-      thunder.signOut,
-      user,
-    ],
+    [thunder, getAccessToken, user],
   )
 
   return <PortalAuthContext.Provider value={value}>{children}</PortalAuthContext.Provider>

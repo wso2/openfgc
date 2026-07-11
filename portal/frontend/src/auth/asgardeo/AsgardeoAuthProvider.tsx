@@ -19,7 +19,7 @@
 import { AsgardeoProvider, useAsgardeo } from '@asgardeo/react'
 import { useEffect, useMemo } from 'react'
 import type { PropsWithChildren } from 'react'
-import { clearAccessTokenProvider, setAccessTokenProvider } from '../accessToken'
+import { clearAuthBridge, registerAuthBridge } from '../authBridge'
 import { PortalAuthContext } from '../PortalAuthContext'
 
 interface AsgardeoAuthConfiguration {
@@ -58,33 +58,37 @@ function getAsgardeoAuthConfiguration(): AsgardeoAuthConfiguration | undefined {
 
 function AsgardeoAuthBridge({ children }: PropsWithChildren): React.JSX.Element {
   const asgardeo = useAsgardeo()
+  const { getAccessToken, signIn } = asgardeo
 
   useEffect(() => {
-    const provider = asgardeo.getAccessToken
-    setAccessTokenProvider(provider)
+    const bridge = {
+      getAccessToken: async (): Promise<string | undefined> => {
+        const accessToken = await getAccessToken()
+        return accessToken.trim() || undefined
+      },
+      handleUnauthorized: signIn,
+    }
+    registerAuthBridge(bridge)
 
     return () => {
-      clearAccessTokenProvider(provider)
+      clearAuthBridge(bridge)
     }
-  }, [asgardeo.getAccessToken])
+  }, [getAccessToken, signIn])
 
   const value = useMemo(
     () => ({
       isAuthenticated: asgardeo.isSignedIn,
       isInitialized: asgardeo.isInitialized,
       isLoading: asgardeo.isLoading,
+      getAccessToken: async (): Promise<string | undefined> => {
+        const accessToken = await asgardeo.getAccessToken()
+        return accessToken.trim() || undefined
+      },
       signIn: asgardeo.signIn,
       signOut: asgardeo.signOut,
       user: asgardeo.user,
     }),
-    [
-      asgardeo.isInitialized,
-      asgardeo.isLoading,
-      asgardeo.isSignedIn,
-      asgardeo.signIn,
-      asgardeo.signOut,
-      asgardeo.user,
-    ],
+    [asgardeo],
   )
 
   return <PortalAuthContext.Provider value={value}>{children}</PortalAuthContext.Provider>

@@ -19,6 +19,7 @@
 import { createContext, useContext } from 'react'
 
 export interface PortalAuth {
+  getAccessToken: () => Promise<string | undefined>
   isAuthenticated: boolean
   isInitialized: boolean
   isLoading: boolean
