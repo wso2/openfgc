@@ -18,6 +18,7 @@
 
 import type { PropsWithChildren } from 'react'
 import { AsgardeoAuthProvider } from './asgardeo/AsgardeoAuthProvider'
+import PlaceholderAuthProvider from './placeholder/PlaceholderAuthProvider'
 import { ThunderAuthProvider } from './thunder/ThunderAuthProvider'
 
 export function PortalAuthProvider({ children }: PropsWithChildren): React.JSX.Element {
@@ -25,6 +26,10 @@ export function PortalAuthProvider({ children }: PropsWithChildren): React.JSX.E
 
   if (provider === 'asgardeo') {
     return <AsgardeoAuthProvider>{children}</AsgardeoAuthProvider>
+  }
+
+  if (provider === 'placeholder') {
+    return <PlaceholderAuthProvider>{children}</PlaceholderAuthProvider>
   }
 
   if (provider === 'thunder') {
