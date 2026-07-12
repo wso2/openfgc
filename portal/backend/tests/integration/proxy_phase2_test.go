@@ -271,7 +271,8 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 					"dataAccessValidityDuration":86400,
 					"attributes":{"department":"sales","region":"APAC"},
 					"authorizations":[
-						{"id":"auth-1","userId":"user1@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000,"resources":{"accountIds":["acc-123","acc-456"]}}
+						{"id":"auth-1","userId":"user1@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000,"resources":{"accountIds":["acc-123","acc-456"]}},
+						{"id":"auth-2","userId":"user@example.com","type":"authorisation","status":"PENDING","updatedTime":1702800001,"resources":{}}
 					],
 					"purposes":[
 						{"name":"profile_access","elements":[
@@ -426,6 +427,11 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		var gotBody map[string]any
 
 		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"authorizations":[{"id":"auth-1","userId":"user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1}]}`))
+				return
+			}
 			gotMethod = r.Method
 			gotPath = r.URL.Path
 			body, _ := io.ReadAll(r.Body)
@@ -473,6 +479,11 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		var gotBody map[string]any
 
 		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"authorizations":[{"id":"auth-1","userId":"user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1}]}`))
+				return
+			}
 			gotMethod = r.Method
 			gotPath = r.URL.Path
 			body, _ := io.ReadAll(r.Body)
@@ -813,6 +824,7 @@ func TestMeConsentByIDAggregatesPurposeAndElementDetails(t *testing.T) {
 				"status":"ACTIVE",
 				"createdTime":1702800000,
 				"updatedTime":1702800001,
+				"authorizations":[{"id":"auth-1","userId":"user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
 				"purposes":[
 					{
 						"name":"marketing_communication_preferences",
@@ -919,6 +931,7 @@ func TestMeConsentByIDFailsClosedWhenPurposeMetadataMissing(t *testing.T) {
 				"status":"ACTIVE",
 				"createdTime":1702800000,
 				"updatedTime":1702800001,
+				"authorizations":[{"id":"auth-1","userId":"user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
 				"purposes":[{"name":"marketing_communication_preferences","elements":[{"name":"user_email","isUserApproved":true}]}]
 			}`))
 		case "/api/v1/consent-purposes":
@@ -971,9 +984,10 @@ func TestMeConsentByIDHandlesNullableAndMixedProperties(t *testing.T) {
 				"recurringIndicator":null,
 				"dataAccessValidityDuration":null,
 				"attributes":{"consentMode":1},
-				"authorizations":[{"id":"auth-1","userId":null,"type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
+				"authorizations":[{"id":"auth-1","userId":"user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
 				"createdTime":1702800000,
 				"updatedTime":1702800001,
+				"authorizations":[{"id":"auth-1","userId":"user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
 				"purposes":[{"name":"marketing_communication_preferences","elements":[{"name":"user_email","isUserApproved":true}]}]
 			}`))
 		case "/api/v1/consent-purposes":
@@ -1050,6 +1064,7 @@ func TestMeConsentByIDPurposeLookupFallsBackWithoutClientFilter(t *testing.T) {
 				"status":"ACTIVE",
 				"createdTime":1702800000,
 				"updatedTime":1702800001,
+				"authorizations":[{"id":"auth-1","userId":"user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
 				"purposes":[{"name":"data_sharing_purpose","elements":[{"name":"user_email","isUserApproved":true}]}]
 			}`))
 		case "/api/v1/consent-purposes":

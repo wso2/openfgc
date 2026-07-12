@@ -79,10 +79,10 @@ func (h *Handler) ConsentByID(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
-	if _, ok := h.resolveUserID(w, r); !ok {
+	userID, ok := h.resolveUserID(w, r)
+	if !ok {
 		return
 	}
-	// TODO(Phase 3): verify the fetched consent belongs to the authenticated user before returning it.
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -100,6 +100,10 @@ func (h *Handler) ConsentByID(w http.ResponseWriter, r *http.Request) {
 	}
 	if baseResp.StatusCode != http.StatusOK {
 		h.svc.WriteUpstreamResponse(w, baseResp)
+		return
+	}
+	if !IsConsentOwnedByUser(baseResp.Body, userID) {
+		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent not found")
 		return
 	}
 
@@ -124,7 +128,6 @@ func (h *Handler) ConsentApprove(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// TODO(Phase 3): verify the fetched consent belongs to the authenticated user before approving it.
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -153,6 +156,10 @@ func (h *Handler) ConsentApprove(w http.ResponseWriter, r *http.Request) {
 		h.svc.WriteUpstreamResponse(w, baseResp)
 		return
 	}
+	if !IsConsentOwnedByUser(baseResp.Body, userID) {
+		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent not found")
+		return
+	}
 
 	payload, trustedClientID, err := h.svc.BuildApprovalUpdatePayload(r, baseResp.Body, selections, userID)
 	if err != nil {
@@ -178,7 +185,6 @@ func (h *Handler) ConsentRevoke(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	// TODO(Phase 3): verify the targeted consent belongs to the authenticated user before revoking it.
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -196,6 +202,19 @@ func (h *Handler) ConsentRevoke(w http.ResponseWriter, r *http.Request) {
 	payload, err := buildRevokePayload(body, userID)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+		return
+	}
+	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+url.PathEscape(consentID), nil, nil)
+	if err != nil {
+		writeProxyError(w, err)
+		return
+	}
+	if baseResp.StatusCode != http.StatusOK {
+		h.svc.WriteUpstreamResponse(w, baseResp)
+		return
+	}
+	if !IsConsentOwnedByUser(baseResp.Body, userID) {
+		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent not found")
 		return
 	}
 	if err := h.svc.Forward(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID)+"/revoke", nil, payload); err != nil {
@@ -234,12 +253,12 @@ func writeBodyReadError(w http.ResponseWriter, err error) {
 }
 
 func (h *Handler) resolveUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
-	userID, ok := systemcontext.UserIDFromContext(r.Context())
+	identity, ok := systemcontext.UserIdentityFromContext(r.Context())
 	if !ok {
-		writeJSONError(w, http.StatusServiceUnavailable, "PLACEHOLDER_UNAVAILABLE", "placeholder identity unavailable")
+		writeJSONError(w, http.StatusInternalServerError, "IDENTITY_UNAVAILABLE", "authenticated identity unavailable")
 		return "", false
 	}
-	return userID, true
+	return identity.UserID, true
 }
 
 func (h *Handler) readBoundedBody(r *http.Request) ([]byte, error) {

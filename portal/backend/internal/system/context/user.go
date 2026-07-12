@@ -24,7 +24,6 @@ import (
 	"strings"
 )
 
-type userIDKey struct{}
 type userIdentityKey struct{}
 
 // UserIdentity is the only user identity representation exposed to application code.
@@ -53,30 +52,4 @@ func UserIdentityFromContext(ctx context.Context) (UserIdentity, bool) {
 	identity.UserID = strings.TrimSpace(identity.UserID)
 	identity.OrgID = strings.TrimSpace(identity.OrgID)
 	return identity, true
-}
-
-// WithUserID stores the effective user ID in request context.
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey{}, userID)
-}
-
-// UserIDFromContext returns the effective user ID previously resolved by middleware.
-func UserIDFromContext(ctx context.Context) (string, bool) {
-	if identity, ok := UserIdentityFromContext(ctx); ok {
-		return identity.UserID, true
-	}
-	if ctx == nil {
-		return "", false
-	}
-
-	value, ok := ctx.Value(userIDKey{}).(string)
-	if !ok {
-		return "", false
-	}
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "", false
-	}
-
-	return value, true
 }

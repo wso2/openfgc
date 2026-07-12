@@ -20,6 +20,11 @@ type IdentityOptions struct {
 	PlaceholderOrgID       string
 }
 
+type authenticationErrorResponse struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 // Authenticate validates bearer credentials, or derives the same identity from
 // explicitly enabled local/test placeholders. Placeholder mode is never a fallback.
 func Authenticate(next http.Handler, validator *auth.Validator, opts IdentityOptions) http.Handler {
@@ -97,7 +102,7 @@ func writeUnauthorized(w http.ResponseWriter) {
 func writeAuthError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(userIDErrorResponse{Code: code, Message: message})
+	_ = json.NewEncoder(w).Encode(authenticationErrorResponse{Code: code, Message: message})
 }
 
 func hasScope(scopes []string, required string) bool {

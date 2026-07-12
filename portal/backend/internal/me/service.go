@@ -235,6 +235,29 @@ func (s *Service) BuildAggregatedConsentResponse(r *http.Request, baseBody []byt
 	return aggregated, nil
 }
 
+// IsConsentOwnedByUser reports whether the fetched consent contains an
+// authorization for the effective user. It is used before returning or
+// changing a consent through a self-scoped /me route.
+func IsConsentOwnedByUser(baseBody []byte, userID string) bool {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return false
+	}
+
+	var consent consentRetrievalResponse
+	if err := json.Unmarshal(baseBody, &consent); err != nil {
+		return false
+	}
+
+	for _, authorization := range consent.Authorizations {
+		if authorization.UserID != nil && strings.EqualFold(strings.TrimSpace(*authorization.UserID), userID) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (s *Service) fetchPurposeMetadata(r *http.Request, clientID string, consentPurpose consentPurposeItem) (purposeMetadata, error) {
 	exactByClient, err := s.fetchPurposeMetadataPage(r, consentPurpose.Name, clientID)
 	if err != nil {
