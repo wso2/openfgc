@@ -39,7 +39,20 @@ type Config struct {
 	Server ServerConfig `koanf:"server"`
 	Log    LogConfig    `koanf:"log"`
 	CORS   CORSConfig   `koanf:"cors"`
+	Auth   AuthConfig   `koanf:"auth"`
 	Proxy  ProxyConfig  `koanf:"proxy"`
+}
+
+type AuthConfig struct {
+	IssuerURL              string        `koanf:"issuer_url"`
+	ResourceAudience       string        `koanf:"resource_audience"`
+	AllowedAlgorithms      []string      `koanf:"allowed_algorithms"`
+	JWKSTTL                time.Duration `koanf:"jwks_ttl"`
+	JWKSRefreshTimeout     time.Duration `koanf:"jwks_refresh_timeout"`
+	ClockSkew              time.Duration `koanf:"clock_skew"`
+	RequireAccessTokenType bool          `koanf:"require_access_token_type"`
+	TokenTypeClaim         string        `koanf:"token_type_claim"`
+	AccessTokenType        string        `koanf:"access_token_type"`
 }
 
 // CORSConfig contains browser cross-origin policy settings for local/frontend integration.
@@ -163,14 +176,19 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}); err != nil {
 		return err
 	}
-	if err := k.Set("cors.allowed_headers", []string{"Content-Type", "X-Correlation-ID"}); err != nil {
+	if err := k.Set("cors.allowed_headers", []string{"Authorization", "Content-Type", "X-Correlation-ID"}); err != nil {
 		return err
 	}
 	if err := k.Set("cors.allow_credentials", false); err != nil {
 		return err
 	}
-	if err := k.Set("proxy.openfgc_api_url", "http://localhost:9090"); err != nil {
+	if err := k.Set("proxy.openfgc_api_url", "http://localhost:8060"); err != nil {
 		return err
+	}
+	for key, value := range map[string]any{"auth.issuer_url": "https://localhost:8090", "auth.resource_audience": "consent-api", "auth.allowed_algorithms": []string{"RS256"}, "auth.jwks_ttl": "5m", "auth.jwks_refresh_timeout": "5s", "auth.clock_skew": "30s", "auth.require_access_token_type": false, "auth.token_type_claim": "token_type", "auth.access_token_type": "access_token"} {
+		if err := k.Set(key, value); err != nil {
+			return err
+		}
 	}
 	if err := k.Set("proxy.openfgc_api_timeout", "10s"); err != nil {
 		return err
@@ -201,6 +219,9 @@ func setDefaults(k *koanf.Koanf) error {
 }
 
 func validate(cfg Config) error {
+	if strings.TrimSpace(cfg.Auth.IssuerURL) == "" || strings.TrimSpace(cfg.Auth.ResourceAudience) == "" {
+		return fmt.Errorf("auth issuer_url and resource_audience are required")
+	}
 	if cfg.Server.Port <= 0 {
 		return fmt.Errorf("server.port must be a positive value")
 	}
