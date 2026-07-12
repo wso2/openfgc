@@ -376,8 +376,6 @@ func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Reque
 	}
 	if trustedClientID != "" {
 		outgoing.Header.Set("TPP-client-id", trustedClientID)
-	} else if s.cfg.PlaceholderClientID != "" {
-		outgoing.Header.Set("TPP-client-id", s.cfg.PlaceholderClientID)
 	}
 	correlationID := incoming.Header.Get("X-Correlation-ID")
 	if correlationID == "" {

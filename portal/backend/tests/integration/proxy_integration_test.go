@@ -165,8 +165,8 @@ func TestAPIPassthroughRewriteAndHeaderSafety(t *testing.T) {
 	if gotOrg != "ORG-001" {
 		t.Fatalf("expected trusted org-id header, got %s", gotOrg)
 	}
-	if gotTPP != "TPP-CLIENT-001" {
-		t.Fatalf("expected trusted TPP-client-id header, got %s", gotTPP)
+	if gotTPP != "" {
+		t.Fatalf("expected TPP-client-id to be stripped, got %s", gotTPP)
 	}
 }
 
@@ -1113,5 +1113,85 @@ func TestMeConsentByIDPurposeLookupFallsBackWithoutClientFilter(t *testing.T) {
 	purpose := purposes[0].(map[string]any)
 	if purpose["description"] != "Third-party data sharing purpose" {
 		t.Fatalf("expected fallback purpose description, got %v", purpose["description"])
+	}
+}
+
+func TestMeConsentRoutesRejectForeignOwner(t *testing.T) {
+	mutationCalled := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			mutationCalled = true
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"550e8400-e29b-41d4-a716-446655440000","authorizations":[{"id":"auth-1","userId":"another-user@example.com","type":"authorisation","status":"APPROVED","updatedTime":1}]}`))
+	}))
+	defer upstream.Close()
+	bff := newPhase2Server(t, upstream.URL)
+	defer bff.Close()
+	for _, tc := range []struct{ method, path, body string }{
+		{http.MethodGet, "/me/consents/550e8400-e29b-41d4-a716-446655440000", ""},
+		{http.MethodPost, "/me/consents/550e8400-e29b-41d4-a716-446655440000/approve", "[]"},
+		{http.MethodPut, "/me/consents/550e8400-e29b-41d4-a716-446655440000/revoke", "{}"},
+	} {
+		mutationCalled = false
+		req, err := http.NewRequest(tc.method, bff.URL+tc.path, strings.NewReader(tc.body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("%s %s: expected 404, got %d", tc.method, tc.path, resp.StatusCode)
+		}
+		if mutationCalled {
+			t.Fatalf("%s %s: mutation reached upstream", tc.method, tc.path)
+		}
+	}
+}
+
+func TestMeEndpointsRejectInvalidConsentID(t *testing.T) {
+	upstreamCalled := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		upstreamCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	bff := newPhase2Server(t, upstream.URL)
+	defer bff.Close()
+	for _, tc := range []struct{ name, method, path, body string }{
+		{"get by id", http.MethodGet, "/me/consents/not-a-uuid", ""},
+		{"approve", http.MethodPost, "/me/consents/not-a-uuid/approve", "[]"},
+		{"revoke", http.MethodPut, "/me/consents/not-a-uuid/revoke", "{}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			upstreamCalled = false
+			req, err := http.NewRequest(tc.method, bff.URL+tc.path, strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d", resp.StatusCode)
+			}
+			if upstreamCalled {
+				t.Fatal("expected request to be rejected before upstream call")
+			}
+			var payload map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload["code"] != "INVALID_CONSENT_ID" {
+				t.Fatalf("expected INVALID_CONSENT_ID, got %v", payload["code"])
+			}
+		})
 	}
 }

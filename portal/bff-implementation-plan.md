@@ -306,7 +306,7 @@ The BFF strips any browser-supplied values for the trusted headers below, then d
 |---|---|---|
 | `UserIdentity.UserID` | `userIds` query parameter | Set only for `/me/*` routes; overwrite all browser-supplied `userIds`. It is also used for user-owned authorization and action payloads. |
 | `UserIdentity.OrgID` | `org-id` header | Set on every OpenFGC request. Reject the request if the required organization identity is absent. |
-| No user/IdP-derived source | `TPP-client-id` header | Strip any browser value and do not set this header in the current design. If OpenFGC requires it, define a separate service-level trusted source before enabling that route. |
+| Fetched OpenFGC consent `clientId` | `TPP-client-id` header | Strip any browser value. The `/me/consents/{consentId}/approve` flow may set this header only from the consent fetched from OpenFGC; it is never derived from a token, placeholder identity, or request header. |
 | Validated incoming correlation ID, or generated ID | `X-Correlation-ID` header | Propagate only after format/length validation; otherwise generate a new ID. |
 
 The BFF never forwards the browser `Authorization` header or a browser-supplied trusted-context header to OpenFGC.
@@ -513,42 +513,41 @@ Trust the local IdP certificate through the container/host trust store. Do not u
 
 ### React Portal
 
-- [ ] Define the portal `AuthProvider` interface and use it from all portal components and API clients.
-- [ ] Implement the selected IdP React SDK adapter as an OAuth public client using Authorization Code + PKCE.
-- [ ] Register the React redirect URI and post-logout redirect URI with the selected IdP.
-- [ ] Configure the API audience/resource and requested scopes.
-- [ ] Add an API client/interceptor that obtains a current `AuthProvider` access token and sets `Authorization: Bearer <token>`.
-- [ ] Handle `401` by using `AuthProvider` token renewal/login without infinite retries.
-- [ ] Handle `403` as an authorization failure.
-- [ ] Use `AuthProvider` logout; remove calls to BFF login, refresh, callback, and logout endpoints.
+- [x] Define the portal `AuthProvider` interface and use it from all portal components and API clients.
+- [x] Implement the selected IdP React SDK adapter as an OAuth public client using Authorization Code + PKCE.
+- [x] Register the React redirect URI and post-logout redirect URI with the selected IdP.
+- [x] Configure the API audience/resource and requested scopes.
+- [x] Add an API client/interceptor that obtains a current `AuthProvider` access token and sets `Authorization: Bearer <token>`.
+- [x] Handle `401` by using `AuthProvider` token renewal/login without infinite retries.
+- [x] Handle `403` as an authorization failure.
+- [x] Use `AuthProvider` logout; remove calls to BFF login, refresh, callback, and logout endpoints.
 
 ### BFF Authentication and Authorization
 
-- [ ] Implement issuer discovery and JWKS caching.
-- [ ] Implement strict bearer-header parsing.
-- [ ] Validate signature, allowed algorithm, issuer, audience, time claims, and subject; validate access-token type only when explicitly enabled and supported by the IdP.
-- [ ] Refresh JWKS on unknown `kid` and support normal key rotation.
-- [ ] Map validated claims to the normalized `Principal` model.
-- [ ] Add `UserIdentity` context accessors and update identity middleware to resolve both `Principal.Subject` and `Principal.OrgID` into one request-scoped `UserIdentity`.
-- [ ] Retain explicit placeholder identity mode only for test/local use; reject it in production and never use it as an authentication fallback.
-- [ ] Configure and enforce the §4 scope, organization, and ownership policy for both `/me/*` and `/api/*` routes.
-- [ ] Return `401` with `WWW-Authenticate: Bearer` for authentication failures and `403` for authorization failures.
-- [ ] Remove all BFF OIDC client/callback/refresh/session/cookie/CSRF implementation.
+- [x] Implement issuer discovery and JWKS caching.
+- [x] Implement strict bearer-header parsing.
+- [x] Validate signature, allowed algorithm, issuer, audience, time claims, and subject; validate access-token type only when explicitly enabled and supported by the IdP.
+- [x] Refresh JWKS on unknown `kid` and support normal key rotation.
+- [x] Map validated claims to the normalized `Principal` model.
+- [x] Add `UserIdentity` context accessors and update identity middleware to resolve both `Principal.Subject` and `Principal.OrgID` into one request-scoped `UserIdentity`.
+- [x] Retain explicit placeholder identity mode only for test/local use; reject it in production and never use it as an authentication fallback.
+- [x] Configure and enforce the §4 scope, organization, and ownership policy for both `/me/*` and `/api/*` routes.
+- [x] Return `401` with `WWW-Authenticate: Bearer` for authentication failures and `403` for authorization failures.
 
 ### BFF Routes and Proxy
 
-- [ ] Enforce self-scoping and object ownership on `/me/*` routes.
-- [ ] Enforce the §4 scope-to-route policy for the existing controlled `/api/*` passthrough route.
-- [ ] Update `openapi/bff.yaml`: define the OAuth2 security scheme and all scope descriptions, then declare each operation's required scope with OpenAPI `security` requirements.
-- [ ] Maintain explicit method/path mappings to OpenFGC `/api/v1/*`.
-- [ ] Point `BFF_PROXY__OPENFGC_API_URL` to port `8060`.
-- [ ] Strip client-supplied trusted headers; inject user and organization context only from `UserIdentity`.
-- [ ] Apply body limits, timeouts, correlation IDs, and hop-by-hop header stripping.
+- [x] Enforce self-scoping and object ownership on `/me/*` routes.
+- [x] Enforce the §4 scope-to-route policy for the existing controlled `/api/*` passthrough route.
+- [x] Update `openapi/bff.yaml`: define the OAuth2 security scheme and all scope descriptions, then declare each operation's required scope with OpenAPI `security` requirements.
+- [x] Maintain explicit method/path mappings to OpenFGC `/api/v1/*`.
+- [x] Point `BFF_PROXY__OPENFGC_API_URL` to port `8060`.
+- [x] Strip client-supplied trusted headers; inject user and organization context only from `UserIdentity`.
+- [x] Apply body limits, timeouts, correlation IDs, and hop-by-hop header stripping.
 
 ### Security and Operations
 
-- [ ] Configure explicit CORS origins and permit the `Authorization` header.
-- [ ] Set CORS credentials to false.
+- [x] Configure explicit CORS origins and permit the `Authorization` header.
+- [x] Set CORS credentials to false.
 - [ ] Apply security and no-store cache headers.
 - [ ] Ensure token redaction in application, proxy, and observability logs.
 - [ ] Make OpenFGC port `8060` private-only and enforce BFF-only access.
@@ -556,14 +555,14 @@ Trust the local IdP certificate through the container/host trust store. Do not u
 
 ### Testing
 
-- [ ] Unit tests: valid token, missing/malformed bearer header, invalid signature, unsupported algorithm, expired/not-yet-valid token, wrong issuer, wrong audience, missing subject, and wrong token type.
-- [ ] Unit tests: JWKS cache hits, unknown-`kid` refresh, rotation, and transient JWKS failure behavior.
-- [ ] Unit tests: claim mapping, scope policy, organization policy, and ownership policy.
-- [ ] Integration tests: portal-style bearer request to every protected route; no cookies required.
-- [ ] Integration tests: `401` versus `403` behavior and `WWW-Authenticate` response.
-- [ ] Integration tests: CORS preflight and `Authorization` header allowance.
-- [ ] Integration tests: OpenFGC path mapping, query preservation, port-8060 target, and header override prevention.
-- [ ] Integration tests: `/me/consents` always injects `UserIdentity.UserID` and ignores client user filters; `/api/*` rejects missing `:any` scopes and preserves authorized filters only within the injected organization.
+- [x] Unit tests: valid token, missing/malformed bearer header, invalid signature, unsupported algorithm, expired/not-yet-valid token, wrong issuer, wrong audience, missing subject, and wrong token type.
+- [x] Unit tests: JWKS cache hits, unknown-`kid` refresh, rotation, and transient JWKS failure behavior.
+- [x] Unit tests: claim mapping, scope policy, organization policy, and ownership policy.
+- [x] Integration tests: portal-style bearer request to every protected route; no cookies required.
+- [x] Integration tests: `401` versus `403` behavior and `WWW-Authenticate` response.
+- [x] Integration tests: CORS preflight and `Authorization` header allowance.
+- [x] Integration tests: OpenFGC path mapping, query preservation, port-8060 target, and header override prevention.
+- [x] Integration tests: `/me/consents` always injects `UserIdentity.UserID` and ignores client user filters; `/api/*` rejects missing `:any` scopes and preserves authorized filters only within the injected organization.
 
 ---
 

@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: OpenFGC Portal BFF API
+  title: OpenFGC Portal Backend API
   version: 0.2.0
   description: >-
-    Stateless portal BFF endpoints, including health checks, portal-facing
+    Stateless portal backend endpoints, including health checks, portal-facing
     user routes, and explicit passthrough routes to consent-server. For proxied
     endpoints in this spec, response payload shape is inherited from the
     consent-management API.
@@ -250,14 +250,135 @@ paths:
         '503':
           $ref: '#/components/responses/ProxyError'
 
+  /api/consent-elements:
+    get:
+      security:
+        - OAuth2: [portal:elements:read]
+      tags: [Passthrough]
+      summary: List consent elements
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+    post:
+      security:
+        - OAuth2: [portal:elements:write]
+      tags: [Passthrough]
+      summary: Create a consent element
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+
+  /api/consent-elements/{elementId}:
+    parameters:
+      - in: path
+        name: elementId
+        required: true
+        schema: {type: string}
+    get:
+      security:
+        - OAuth2: [portal:elements:read]
+      tags: [Passthrough]
+      summary: Get a consent element
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+    put:
+      security:
+        - OAuth2: [portal:elements:write]
+      tags: [Passthrough]
+      summary: Update a consent element
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+    delete:
+      security:
+        - OAuth2: [portal:elements:write]
+      tags: [Passthrough]
+      summary: Delete a consent element
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+
+  /api/consent-purposes:
+    get:
+      security:
+        - OAuth2: [portal:purposes:read]
+      tags: [Passthrough]
+      summary: List consent purposes
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+    post:
+      security:
+        - OAuth2: [portal:purposes:write]
+      tags: [Passthrough]
+      summary: Create a consent purpose
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+
+  /api/consent-purposes/{purposeId}:
+    parameters:
+      - in: path
+        name: purposeId
+        required: true
+        schema: {type: string}
+    get:
+      security:
+        - OAuth2: [portal:purposes:read]
+      tags: [Passthrough]
+      summary: Get a consent purpose
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+    put:
+      security:
+        - OAuth2: [portal:purposes:write]
+      tags: [Passthrough]
+      summary: Update a consent purpose
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+    delete:
+      security:
+        - OAuth2: [portal:purposes:write]
+      tags: [Passthrough]
+      summary: Delete a consent purpose
+      responses:
+        '200': {description: Upstream response}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/ProxyError'}
+
 components:
   securitySchemes:
     OAuth2:
       type: oauth2
+      description: >-
+        Configure Swagger UI as a public OAuth client with PKCE; do not use a
+        client secret. Actual endpoints are discovered from BFF_AUTH__ISSUER_URL.
       flows:
         authorizationCode:
-          authorizationUrl: https://localhost:8090/oauth2/authorize
-          tokenUrl: https://localhost:8090/oauth2/token
+          authorizationUrl: https://idp.example.com/oauth2/authorize
+          tokenUrl: https://idp.example.com/oauth2/token
           scopes:
             portal:consents:read:self: Read the caller's consents.
             portal:consents:write:self: Change the caller's consents.
