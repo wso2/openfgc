@@ -21,27 +21,31 @@ package me
 import (
 	"net/http"
 
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 // Initialize sets up the me module and registers routes.
-func Initialize(mux *http.ServeMux, cfg config.Config) error {
+func Initialize(mux *http.ServeMux, cfg config.Config, validator *auth.Validator) error {
 	handler, err := NewHandler(cfg.Proxy)
 	if err != nil {
 		return err
 	}
 
-	userIDOptions := middleware.UserIDOptions{
+	identityOptions := middleware.IdentityOptions{
 		PlaceholderModeEnabled: cfg.Proxy.PlaceholderModeEnabled,
 		PlaceholderUserID:      cfg.Proxy.PlaceholderUserID,
-		Environment:            cfg.Env,
+		PlaceholderOrgID:       cfg.Proxy.PlaceholderOrgID,
 	}
 
-	mux.Handle("GET /me/consents", middleware.UserID(http.HandlerFunc(handler.Consents), userIDOptions))
-	mux.Handle("GET /me/consents/{consentId}", middleware.UserID(http.HandlerFunc(handler.ConsentByID), userIDOptions))
-	mux.Handle("POST /me/consents/{consentId}/approve", middleware.UserID(http.HandlerFunc(handler.ConsentApprove), userIDOptions))
-	mux.Handle("PUT /me/consents/{consentId}/revoke", middleware.UserID(http.HandlerFunc(handler.ConsentRevoke), userIDOptions))
+	protect := func(next http.Handler, scope string) http.Handler {
+		return middleware.Authenticate(middleware.RequireScope(next, func(*http.Request) string { return scope }), validator, identityOptions)
+	}
+	mux.Handle("GET /me/consents", protect(http.HandlerFunc(handler.Consents), "portal:consents:read:self"))
+	mux.Handle("GET /me/consents/{consentId}", protect(http.HandlerFunc(handler.ConsentByID), "portal:consents:read:self"))
+	mux.Handle("POST /me/consents/{consentId}/approve", protect(http.HandlerFunc(handler.ConsentApprove), "portal:consents:write:self"))
+	mux.Handle("PUT /me/consents/{consentId}/revoke", protect(http.HandlerFunc(handler.ConsentRevoke), "portal:consents:write:self"))
 
 	return nil
 }

@@ -25,6 +25,35 @@ import (
 )
 
 type userIDKey struct{}
+type userIdentityKey struct{}
+
+// UserIdentity is the only user identity representation exposed to application code.
+// It is derived from validated token claims or explicit local/test placeholders.
+type UserIdentity struct {
+	UserID string
+	OrgID  string
+}
+
+// WithUserIdentity stores a normalized user identity in request context.
+func WithUserIdentity(ctx context.Context, identity UserIdentity) context.Context {
+	identity.UserID = strings.TrimSpace(identity.UserID)
+	identity.OrgID = strings.TrimSpace(identity.OrgID)
+	return context.WithValue(ctx, userIdentityKey{}, identity)
+}
+
+// UserIdentityFromContext returns the identity resolved by authentication middleware.
+func UserIdentityFromContext(ctx context.Context) (UserIdentity, bool) {
+	if ctx == nil {
+		return UserIdentity{}, false
+	}
+	identity, ok := ctx.Value(userIdentityKey{}).(UserIdentity)
+	if !ok || strings.TrimSpace(identity.UserID) == "" || strings.TrimSpace(identity.OrgID) == "" {
+		return UserIdentity{}, false
+	}
+	identity.UserID = strings.TrimSpace(identity.UserID)
+	identity.OrgID = strings.TrimSpace(identity.OrgID)
+	return identity, true
+}
 
 // WithUserID stores the effective user ID in request context.
 func WithUserID(ctx context.Context, userID string) context.Context {
@@ -33,6 +62,9 @@ func WithUserID(ctx context.Context, userID string) context.Context {
 
 // UserIDFromContext returns the effective user ID previously resolved by middleware.
 func UserIDFromContext(ctx context.Context) (string, bool) {
+	if identity, ok := UserIdentityFromContext(ctx); ok {
+		return identity.UserID, true
+	}
 	if ctx == nil {
 		return "", false
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/wso2/openfgc/portal/backend/internal/me"
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 	"github.com/wso2/openfgc/portal/backend/internal/system/healthcheck"
 	systemlog "github.com/wso2/openfgc/portal/backend/internal/system/log"
@@ -19,10 +20,11 @@ func newIntegrationHandler(cfg config.Config) (http.Handler, error) {
 	mux.HandleFunc("GET /health/readiness", healthHandler.Readiness)
 	mux.HandleFunc("GET /health", healthHandler.Liveness)
 
-	if err := proxy.Initialize(mux, cfg.Proxy); err != nil {
+	validator := auth.NewValidator(cfg.Auth)
+	if err := proxy.Initialize(mux, cfg, validator); err != nil {
 		return nil, err
 	}
-	if err := me.Initialize(mux, cfg); err != nil {
+	if err := me.Initialize(mux, cfg, validator); err != nil {
 		return nil, err
 	}
 

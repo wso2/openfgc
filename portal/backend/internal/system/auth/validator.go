@@ -60,14 +60,18 @@ func (v *Validator) Validate(ctx context.Context, raw string) (Principal, error)
 		}
 		return key, nil
 	}, jwt.WithIssuer(v.cfg.IssuerURL), jwt.WithAudience(v.cfg.ResourceAudience), jwt.WithLeeway(v.cfg.ClockSkew), jwt.WithValidMethods(v.cfg.AllowedAlgorithms))
-	if err != nil || !token.Valid {
-		return Principal{}, fmt.Errorf("invalid token")
+	if err != nil {
+		return Principal{}, fmt.Errorf("parse and validate JWT: %w", err)
+	}
+	if !token.Valid {
+		return Principal{}, fmt.Errorf("JWT is not valid")
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return Principal{}, fmt.Errorf("invalid claims")
 	}
 	sub, _ := claims.GetSubject()
+	// sub, _ = claims["email"].(string) // Uncomment this to use email as sub
 	sub = strings.TrimSpace(sub)
 	org, _ := claims["org_id"].(string)
 	org = strings.TrimSpace(org)

@@ -16,6 +16,7 @@ tags:
 paths:
   /health:
     get:
+      security: []
       tags: [Health]
       summary: Liveness check
       responses:
@@ -23,6 +24,7 @@ paths:
           description: Service healthy
   /health/liveness:
     get:
+      security: []
       tags: [Health]
       summary: Liveness check
       responses:
@@ -30,6 +32,7 @@ paths:
           description: Service healthy
   /health/readiness:
     get:
+      security: []
       tags: [Health]
       summary: Readiness check
       responses:
@@ -38,6 +41,8 @@ paths:
 
   /me/consents:
     get:
+      security:
+        - OAuth2: [portal:consents:read:self]
       tags: [User]
       summary: List current user consents
       description: >-
@@ -60,6 +65,10 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '502':
           $ref: '#/components/responses/ProxyError'
         '503':
@@ -67,6 +76,8 @@ paths:
 
   /me/consents/{consentId}:
     get:
+      security:
+        - OAuth2: [portal:consents:read:self]
       tags: [User]
       summary: Get consent by id for current user flow
       description: >-
@@ -97,6 +108,8 @@ paths:
 
   /me/consents/{consentId}/approve:
     post:
+      security:
+        - OAuth2: [portal:consents:write:self]
       tags: [User]
       summary: Approve consent for current user flow
       description: >-
@@ -147,6 +160,8 @@ paths:
 
   /me/consents/{consentId}/revoke:
     put:
+      security:
+        - OAuth2: [portal:consents:write:self]
       tags: [User]
       summary: Revoke consent for current user flow
       description: >-
@@ -183,6 +198,8 @@ paths:
 
   /api/consents:
     get:
+      security:
+        - OAuth2: [portal:consents:read:any]
       tags: [Passthrough]
       summary: Passthrough search consents
       description: >-
@@ -203,6 +220,8 @@ paths:
         '503':
           $ref: '#/components/responses/ProxyError'
     post:
+      security:
+        - OAuth2: [portal:consents:write:any]
       tags: [Passthrough]
       summary: Passthrough create consent
       description: >-
@@ -232,6 +251,22 @@ paths:
           $ref: '#/components/responses/ProxyError'
 
 components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://localhost:8090/oauth2/authorize
+          tokenUrl: https://localhost:8090/oauth2/token
+          scopes:
+            portal:consents:read:self: Read the caller's consents.
+            portal:consents:write:self: Change the caller's consents.
+            portal:consents:read:any: Read consents in the organization.
+            portal:consents:write:any: Change consents in the organization.
+            portal:elements:read: Read consent elements.
+            portal:elements:write: Change consent elements.
+            portal:purposes:read: Read consent purposes.
+            portal:purposes:write: Change consent purposes.
   schemas:
     MeConsentDetailAggregatedResponse:
       type: object
@@ -362,6 +397,10 @@ components:
           type: string
           example: upstream unavailable
   responses:
+    Unauthorized:
+      description: Missing or invalid bearer access token
+    Forbidden:
+      description: Valid token lacks the required scope
     ProxyError:
       description: Proxy-layer error response
       content:

@@ -678,6 +678,9 @@ func TestRequestBodyReadFailureReturnsBadRequest(t *testing.T) {
 		t.Fatalf("failed to load config: %v", err)
 	}
 	cfg.Proxy.OpenFGCAPIURL = upstream.URL
+	cfg.Proxy.PlaceholderModeEnabled = true
+	cfg.Proxy.PlaceholderUserID = "user@example.com"
+	cfg.Proxy.PlaceholderOrgID = "ORG-001"
 
 	h, err := newIntegrationHandler(*cfg)
 	if err != nil {
@@ -730,7 +733,7 @@ func TestUpstreamUnavailableMapsTo502(t *testing.T) {
 	}
 }
 
-func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
+func TestMeEndpointsReturn401WhenPlaceholderModeDisabled(t *testing.T) {
 	upstreamCalled := false
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		upstreamCalled = true
@@ -778,8 +781,8 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 				_ = resp.Body.Close()
 			}()
 
-			if resp.StatusCode != http.StatusServiceUnavailable {
-				t.Fatalf("expected 503, got %d", resp.StatusCode)
+			if resp.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("expected 401, got %d", resp.StatusCode)
 			}
 
 			if upstreamCalled {
@@ -790,8 +793,8 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 				t.Fatalf("expected json error payload: %v", err)
 			}
-			if payload["code"] != "IDENTITY_UNAVAILABLE" {
-				t.Fatalf("expected IDENTITY_UNAVAILABLE, got %v", payload["code"])
+			if payload["code"] != "UNAUTHORIZED" {
+				t.Fatalf("expected UNAUTHORIZED, got %v", payload["code"])
 			}
 		})
 	}

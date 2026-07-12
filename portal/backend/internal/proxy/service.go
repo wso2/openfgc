@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
+	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
 	"github.com/wso2/openfgc/portal/backend/internal/system/correlation"
 )
 
@@ -370,8 +371,8 @@ func connectionHeaderNames(headers http.Header) map[string]struct{} {
 }
 
 func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Request, trustedClientID string) {
-	if s.cfg.PlaceholderOrgID != "" {
-		outgoing.Header.Set("org-id", s.cfg.PlaceholderOrgID)
+	if identity, ok := systemcontext.UserIdentityFromContext(incoming.Context()); ok {
+		outgoing.Header.Set("org-id", identity.OrgID)
 	}
 	if trustedClientID != "" {
 		outgoing.Header.Set("TPP-client-id", trustedClientID)

@@ -20,17 +20,50 @@ package proxy
 
 import (
 	"net/http"
+	"strings"
 
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
+	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 // Initialize sets up the proxy module and registers routes.
-func Initialize(mux *http.ServeMux, cfg config.ProxyConfig) error {
-	handler, err := NewHandler(cfg)
+func Initialize(mux *http.ServeMux, cfg config.Config, validator *auth.Validator) error {
+	handler, err := NewHandler(cfg.Proxy)
 	if err != nil {
 		return err
 	}
 
-	mux.HandleFunc("/api/{path...}", handler.API)
+	identityOptions := middleware.IdentityOptions{
+		PlaceholderModeEnabled: cfg.Proxy.PlaceholderModeEnabled,
+		PlaceholderUserID:      cfg.Proxy.PlaceholderUserID,
+		PlaceholderOrgID:       cfg.Proxy.PlaceholderOrgID,
+	}
+	protected := middleware.Authenticate(middleware.RequireScope(http.HandlerFunc(handler.API), apiScope), validator, identityOptions)
+	mux.Handle("/api/{path...}", protected)
 	return nil
+}
+
+func apiScope(r *http.Request) string {
+	path := strings.TrimPrefix(r.URL.Path, "/api/")
+	method := r.Method
+	if strings.HasPrefix(path, "consents") {
+		if method == http.MethodGet {
+			return "portal:consents:read:any"
+		}
+		return "portal:consents:write:any"
+	}
+	if strings.HasPrefix(path, "consent-elements") {
+		if method == http.MethodGet {
+			return "portal:elements:read"
+		}
+		return "portal:elements:write"
+	}
+	if strings.HasPrefix(path, "consent-purposes") {
+		if method == http.MethodGet {
+			return "portal:purposes:read"
+		}
+		return "portal:purposes:write"
+	}
+	return ""
 }
