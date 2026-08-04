@@ -53,8 +53,6 @@ import {
 import ElementVersionSelect from './ElementVersionSelect'
 import PropertyEditor from './PropertyEditor'
 
-const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
-
 interface PurposeElementFormRow extends PurposeElementRequest {
   id: number
   elementKey: string
@@ -65,6 +63,7 @@ type PurposeOwnership = 'organization' | 'group'
 interface PurposeFormDialogProps {
   open: boolean
   initialValue: PurposeVersion | undefined
+  organizationId: string
   loading: boolean
   error: string | undefined
   onClose: () => void
@@ -83,6 +82,7 @@ function elementLabel(element: ElementSummary): string {
 function PurposeFormDialog({
   open,
   initialValue,
+  organizationId,
   loading,
   error,
   onClose,
@@ -118,7 +118,7 @@ function PurposeFormDialog({
     (versionMode || ownership !== 'group' || Boolean(groupId.trim())) &&
     elements.length > 0 &&
     elements.every((element) => Boolean(element.name.trim()))
-  const organizationWide = Boolean(ORG_ID) && initialValue?.groupId === ORG_ID
+  const organizationWide = initialValue?.groupId === organizationId
   const immutablePurposeMessage = organizationWide
     ? t('catalog.messages.immutableOrganizationPurpose', { name: initialValue?.name })
     : t('catalog.messages.immutableGroupPurpose', {

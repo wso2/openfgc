@@ -60,6 +60,7 @@ type AuthConfig struct {
 	RefreshTimeout                time.Duration `koanf:"refresh_timeout"`
 	ScopeClaim                    string        `koanf:"scope_claim"`
 	OrgIDClaim                    string        `koanf:"org_id_claim"`
+	OrgIDOverride                 string        `koanf:"org_id_override"`
 	RequireAccessTokenType        bool          `koanf:"require_access_token_type"`
 	AccessTokenTypeClaim          string        `koanf:"access_token_type_claim"`
 	AccessTokenTypeValue          string        `koanf:"access_token_type_value"`
@@ -113,6 +114,7 @@ type ProxyConfig struct {
 	PlaceholderModeEnabled bool     `koanf:"placeholder_mode_enabled"`
 	PlaceholderUserID      string   `koanf:"placeholder_user_id"`
 	PlaceholderOrgID       string   `koanf:"placeholder_org_id"`
+	PlaceholderScopes      []string `koanf:"placeholder_scopes"`
 	AllowedPassthrough     []string `koanf:"allowed_passthrough_methods"`
 }
 
@@ -166,6 +168,9 @@ func Load() (*Config, error) {
 	}
 	if rawScopes := os.Getenv("BFF_AUTH__SCOPES"); rawScopes != "" {
 		cfg.Auth.Scopes = strings.Fields(rawScopes)
+	}
+	if rawScopes := os.Getenv("BFF_PROXY__PLACEHOLDER_SCOPES"); rawScopes != "" {
+		cfg.Proxy.PlaceholderScopes = strings.Fields(rawScopes)
 	}
 	if rawAlgorithms := os.Getenv("BFF_AUTH__ALLOWED_SIGNING_ALGORITHMS"); rawAlgorithms != "" {
 		cfg.Auth.AllowedSigningAlgorithms = ParseCSV(rawAlgorithms)
@@ -238,6 +243,9 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("auth.org_id_claim", "org_id"); err != nil {
 		return err
 	}
+	if err := k.Set("auth.org_id_override", ""); err != nil {
+		return err
+	}
 	if err := k.Set("auth.require_access_token_type", false); err != nil {
 		return err
 	}
@@ -308,6 +316,9 @@ func setDefaults(k *koanf.Koanf) error {
 		return err
 	}
 	if err := k.Set("proxy.placeholder_org_id", ""); err != nil {
+		return err
+	}
+	if err := k.Set("proxy.placeholder_scopes", []string{}); err != nil {
 		return err
 	}
 	if err := k.Set("proxy.allowed_passthrough_methods", []string{"GET", "POST", "PUT", "DELETE"}); err != nil {
@@ -387,6 +398,9 @@ func validate(cfg Config) error {
 	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderOrgID != "" {
 		return fmt.Errorf("proxy.placeholder_org_id must be empty when placeholder mode is disabled")
 	}
+	if !cfg.Proxy.PlaceholderModeEnabled && len(cfg.Proxy.PlaceholderScopes) != 0 {
+		return fmt.Errorf("proxy.placeholder_scopes must be empty when placeholder mode is disabled")
+	}
 	if len(cfg.Proxy.AllowedPassthrough) == 0 {
 		return fmt.Errorf("proxy.allowed_passthrough_methods must not be empty")
 	}
@@ -409,7 +423,9 @@ func validateAuth(cfg Config) error {
 		"auth.post_logout_redirect_uri": cfg.Auth.PostLogoutRedirectURI,
 		"auth.resource_audience":        cfg.Auth.ResourceAudience,
 		"auth.scope_claim":              cfg.Auth.ScopeClaim,
-		"auth.org_id_claim":             cfg.Auth.OrgIDClaim,
+	}
+	if strings.TrimSpace(cfg.Auth.OrgIDOverride) == "" {
+		required["auth.org_id_claim"] = cfg.Auth.OrgIDClaim
 	}
 	for name, value := range required {
 		if strings.TrimSpace(value) == "" {

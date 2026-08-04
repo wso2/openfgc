@@ -115,6 +115,9 @@ func TestOIDCLoginCallbackRefreshAndLogout(t *testing.T) {
 	}
 	state := authorizationURL.Query().Get("state")
 	expectedPKCEChallenge = authorizationURL.Query().Get("code_challenge")
+	if audience := authorizationURL.Query().Get("audience"); audience != cfg.ResourceAudience {
+		t.Fatalf("unexpected authorization audience: %q", audience)
+	}
 	if state == "" || expectedPKCEChallenge == "" || authorizationURL.Query().Get("code_challenge_method") != "S256" {
 		t.Fatalf("login redirect missing state or S256 PKCE parameters: %s", authorizationURL.RawQuery)
 	}

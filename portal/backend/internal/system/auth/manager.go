@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -53,6 +54,11 @@ type Manager struct {
 func NewManager(ctx context.Context, cfg config.AuthConfig, proxyCfg config.ProxyConfig, log *slog.Logger) (*Manager, error) {
 	m := &Manager{cfg: cfg, proxyCfg: proxyCfg, log: log}
 	if !cfg.Enabled {
+		if proxyCfg.PlaceholderModeEnabled {
+			if err := validatePlaceholderScopes(proxyCfg.PlaceholderScopes); err != nil {
+				return nil, err
+			}
+		}
 		return m, nil
 	}
 	if err := validateConfiguredScopes(cfg.Scopes); err != nil {
@@ -106,6 +112,24 @@ func validateConfiguredScopesWithPrefix(configured []string, prefix string, port
 				return errors.New("auth scopes contain an unknown portal scope")
 			}
 		}
+	}
+	return nil
+}
+
+func validatePlaceholderScopes(configured []string) error {
+	canonical := make(map[string]struct{}, len(AllPortalScopes))
+	for _, scope := range AllPortalScopes {
+		canonical[scope] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(configured))
+	for _, scope := range configured {
+		if _, ok := canonical[scope]; !ok {
+			return fmt.Errorf("proxy placeholder scopes contain unknown portal scope %q", scope)
+		}
+		if _, duplicate := seen[scope]; duplicate {
+			return fmt.Errorf("proxy placeholder scopes contain duplicate scope %q", scope)
+		}
+		seen[scope] = struct{}{}
 	}
 	return nil
 }
@@ -164,8 +188,8 @@ func (m *Manager) authenticate(r *http.Request) (systemcontext.Principal, error)
 		if userID == "" || orgID == "" {
 			return systemcontext.Principal{}, errInvalidCredentials
 		}
-		scopes := make(map[string]struct{}, len(AllPortalScopes))
-		for _, scope := range AllPortalScopes {
+		scopes := make(map[string]struct{}, len(m.proxyCfg.PlaceholderScopes))
+		for _, scope := range m.proxyCfg.PlaceholderScopes {
 			scopes[scope] = struct{}{}
 		}
 		return systemcontext.Principal{UserID: userID, OrgID: orgID, Scopes: scopes}, nil
@@ -197,7 +221,10 @@ func (m *Manager) validateAccessToken(ctx context.Context, raw string) (systemco
 		return systemcontext.Principal{}, time.Time{}, errInvalidCredentials
 	}
 	subject := strings.TrimSpace(verified.Subject)
-	orgID, err := stringClaim(claims, m.cfg.OrgIDClaim)
+	orgID := strings.TrimSpace(m.cfg.OrgIDOverride)
+	if orgID == "" {
+		orgID, err = stringClaim(claims, m.cfg.OrgIDClaim)
+	}
 	if err != nil || subject == "" || orgID == "" {
 		return systemcontext.Principal{}, time.Time{}, errInvalidCredentials
 	}

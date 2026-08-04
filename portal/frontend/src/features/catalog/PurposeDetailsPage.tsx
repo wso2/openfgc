@@ -58,8 +58,10 @@ import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import CopyableText from '../../components/CopyableText'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import useAuthorization from '../auth/useAuthorization'
 import type { PurposeVersionItem } from '../../types/catalog'
 import { formatEpochTimestamp } from '../../utils/dateTime'
+import { PORTAL_SCOPES } from '../../utils/portalScopes'
 import DeleteVersionDialog from './components/DeleteVersionDialog'
 import PurposeFormDialog from './components/PurposeFormDialog'
 import {
@@ -68,8 +70,6 @@ import {
   usePurposeQuery,
   usePurposeVersionsQuery,
 } from './hooks/useCatalogQueries'
-
-const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
 
 interface DetailField {
   icon: React.ReactNode
@@ -129,6 +129,8 @@ function PurposeDetailsPage(): React.JSX.Element {
   const [selectedVersion, setSelectedVersion] = useState<string>()
   const [versionDialogOpen, setVersionDialogOpen] = useState(false)
   const [deleteVersion, setDeleteVersion] = useState<string>()
+  const { currentUser, hasScope } = useAuthorization()
+  const canWritePurposes = hasScope(PORTAL_SCOPES.PURPOSES_WRITE)
 
   const detail = detailQuery.data
   const latestVersion = useMemo<PurposeVersionItem | undefined>(
@@ -182,7 +184,7 @@ function PurposeDetailsPage(): React.JSX.Element {
     )
   }
 
-  const organizationWide = Boolean(ORG_ID) && detail.groupId === ORG_ID
+  const organizationWide = detail.groupId === currentUser.organizationId
   const propertyEntries = Object.entries(displayedVersion.properties ?? {})
 
   return (
@@ -225,13 +227,15 @@ function PurposeDetailsPage(): React.JSX.Element {
                 </MenuItem>
               ))}
             </TextField>
-            <Button
-              variant="contained"
-              startIcon={<Plus size={18} />}
-              onClick={() => setVersionDialogOpen(true)}
-            >
-              {t('catalog.purposes.newVersion')}
-            </Button>
+            {canWritePurposes ? (
+              <Button
+                variant="contained"
+                startIcon={<Plus size={18} />}
+                onClick={() => setVersionDialogOpen(true)}
+              >
+                {t('catalog.purposes.newVersion')}
+              </Button>
+            ) : null}
           </Stack>
         </Stack>
 
@@ -549,18 +553,20 @@ function PurposeDetailsPage(): React.JSX.Element {
                       <TableCell>{version.elements.length}</TableCell>
                       <TableCell>{formatEpochTimestamp(version.createdTime)}</TableCell>
                       <TableCell align="right">
-                        <Tooltip title={t('catalog.actions.deleteVersion')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('catalog.actions.deleteVersion')}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              setDeleteVersion(version.version)
-                            }}
-                          >
-                            <Trash2 size={17} />
-                          </IconButton>
-                        </Tooltip>
+                        {canWritePurposes ? (
+                          <Tooltip title={t('catalog.actions.deleteVersion')}>
+                            <IconButton
+                              size="small"
+                              aria-label={t('catalog.actions.deleteVersion')}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setDeleteVersion(version.version)
+                              }}
+                            >
+                              <Trash2 size={17} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -575,6 +581,7 @@ function PurposeDetailsPage(): React.JSX.Element {
         key={`purpose-version-${String(versionDialogOpen)}`}
         open={versionDialogOpen}
         initialValue={detail}
+        organizationId={currentUser.organizationId}
         loading={createVersionMutation.isPending}
         error={createVersionMutation.error?.message}
         onClose={() => {

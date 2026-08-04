@@ -48,6 +48,8 @@ import type {
   ConsentRegistrySortField,
 } from '../../../types/consent'
 import { isConsentAPIStatus } from '../../../types/consent'
+import useAuthorization from '../../auth/useAuthorization'
+import { PORTAL_SCOPES } from '../../../utils/portalScopes'
 import {
   toEndOfDayEpochMilliseconds,
   toEpochMilliseconds,
@@ -91,7 +93,7 @@ function toListParams(
   }
 }
 
-function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
+function toConsentRow(consent: ConsentDetailAPI, canWriteSelf: boolean): ConsentRecord {
   const normalizedStatus = normalizeConsentStatus(consent.status)
 
   if (!isConsentAPIStatus(normalizedStatus)) {
@@ -106,8 +108,8 @@ function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
     purposes: consent.purposes.map((purpose) => purpose.displayName ?? purpose.name),
     updatedAt: new Date(toEpochMilliseconds(consent.updatedTime) ?? 0).toISOString(),
     expirationTime: consent.expirationTime ?? 0,
-    canRevoke: isConsentRevokableStatus(normalizedStatus),
-    canApprove: isConsentApprovableStatus(normalizedStatus),
+    canRevoke: canWriteSelf && isConsentRevokableStatus(normalizedStatus),
+    canApprove: canWriteSelf && isConsentApprovableStatus(normalizedStatus),
   }
 }
 
@@ -117,15 +119,16 @@ function consentListQueryOptions(
   rowsPerPage: number,
   sortField: ConsentRegistrySortField,
   sortDirection: ConsentRegistrySortDirection,
+  canWriteSelf: boolean,
 ) {
   const params = toListParams(filters, page, rowsPerPage, sortField, sortDirection)
 
   return queryOptions({
-    queryKey: ['consents', params],
+    queryKey: ['consents', params, { canWriteSelf }],
     queryFn: async (): Promise<ConsentListResult> => {
       const response = await fetchMyConsents(params)
       return {
-        rows: response.data.map(toConsentRow),
+        rows: response.data.map((consent) => toConsentRow(consent, canWriteSelf)),
         total: response.metadata.total,
       }
     },
@@ -141,8 +144,10 @@ export function useConsentListQuery(
   sortDirection: ConsentRegistrySortDirection,
 ): UseQueryResult<ConsentListResult> {
   const queryClient = useQueryClient()
+  const { hasScope } = useAuthorization()
+  const canWriteSelf = hasScope(PORTAL_SCOPES.CONSENTS_WRITE_SELF)
   const query = useQuery(
-    consentListQueryOptions(filters, page, rowsPerPage, sortField, sortDirection),
+    consentListQueryOptions(filters, page, rowsPerPage, sortField, sortDirection, canWriteSelf),
   )
 
   useEffect(() => {
@@ -152,12 +157,20 @@ export function useConsentListQuery(
     if (!query.isPlaceholderData && hasNextPage) {
       queryClient
         .prefetchQuery(
-          consentListQueryOptions(filters, nextPage, rowsPerPage, sortField, sortDirection),
+          consentListQueryOptions(
+            filters,
+            nextPage,
+            rowsPerPage,
+            sortField,
+            sortDirection,
+            canWriteSelf,
+          ),
         )
         .catch(() => undefined)
     }
   }, [
     filters,
+    canWriteSelf,
     page,
     query.data?.total,
     query.isPlaceholderData,

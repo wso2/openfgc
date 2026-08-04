@@ -16,32 +16,111 @@
  * under the License.
  */
 
+import { Box, Button, CircularProgress, Stack, Typography } from '@wso2/oxygen-ui'
+import { CircleAlert } from '@wso2/oxygen-ui-icons-react'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import MainLayout from './components/layout/main-layout/MainLayout'
 import ElementDetailsPage from './features/catalog/ElementDetailsPage'
 import ElementListPage from './features/catalog/ElementListPage'
 import PurposeDetailsPage from './features/catalog/PurposeDetailsPage'
 import PurposeListPage from './features/catalog/PurposeListPage'
+import AdminConsentRegistryPage from './features/admin-consents/AdminConsentRegistryPage'
 import ConsentDetailsPage from './features/consent-registry/ConsentDetailsPage'
 import ConsentRegistryPage from './features/consent-registry/ConsentRegistryPage'
 import DashboardPage from './features/dashboard/DashboardPage'
-import { isAuthenticated, login } from './utils/authClient'
+import { AuthorizationProvider } from './features/auth/AuthorizationProvider'
+import useAuthorization from './features/auth/useAuthorization'
+import firstAuthorizedPath from './features/auth/authorizationRoutes'
+import NoAccessPage from './features/auth/NoAccessPage'
+import useCurrentUserQuery from './features/auth/hooks/useCurrentUserQuery'
+import { isAuthEnabled, isAuthenticated, login } from './utils/authClient'
+import { PORTAL_SCOPES, type PortalScope } from './utils/portalScopes'
+import { APIError } from './utils/apiClient'
 
 function AuthenticationGate({
   children,
 }: {
   children: React.JSX.Element
 }): React.JSX.Element | null {
-  const authenticated = isAuthenticated()
+  const { t } = useTranslation('common')
+  const cookieAuthenticated = isAuthenticated()
+  const currentUserQuery = useCurrentUserQuery(cookieAuthenticated)
 
   useEffect(() => {
-    if (!authenticated) {
+    if (!cookieAuthenticated) {
       login()
     }
-  }, [authenticated])
+  }, [cookieAuthenticated])
 
-  return authenticated ? children : null
+  if (!cookieAuthenticated) {
+    return null
+  }
+
+  if (currentUserQuery.isPending) {
+    return (
+      <Box sx={{ display: 'grid', minHeight: '100vh', placeItems: 'center' }}>
+        <CircularProgress aria-label={t('authorization.loading')} />
+      </Box>
+    )
+  }
+
+  if (currentUserQuery.isError || !currentUserQuery.data) {
+    if (
+      isAuthEnabled() &&
+      currentUserQuery.error instanceof APIError &&
+      currentUserQuery.error.status === 401
+    ) {
+      return null
+    }
+    return (
+      <Box
+        sx={{
+          alignItems: 'center',
+          display: 'flex',
+          justifyContent: 'center',
+          minHeight: '100dvh',
+          p: 4,
+        }}
+      >
+        <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center' }}>
+          <CircleAlert size={40} aria-hidden="true" />
+          <Typography variant="h4" fontWeight={700}>
+            {t('authorization.loadFailed')}
+          </Typography>
+          <Button variant="outlined" onClick={() => currentUserQuery.refetch()}>
+            {t('authorization.tryAgain')}
+          </Button>
+        </Stack>
+      </Box>
+    )
+  }
+
+  return (
+    <AuthorizationProvider currentUser={currentUserQuery.data}>{children}</AuthorizationProvider>
+  )
+}
+
+function AuthorizedRoute({
+  scope,
+  children,
+}: {
+  scope: PortalScope
+  children: React.JSX.Element
+}): React.JSX.Element {
+  const { currentUser, hasScope } = useAuthorization()
+  if (hasScope(scope)) {
+    return children
+  }
+  const fallback = firstAuthorizedPath(currentUser.scopes)
+  return fallback ? <Navigate to={fallback} replace /> : <NoAccessPage />
+}
+
+function AuthorizedFallback(): React.JSX.Element {
+  const { currentUser } = useAuthorization()
+  const fallback = firstAuthorizedPath(currentUser.scopes)
+  return fallback ? <Navigate to={fallback} replace /> : <NoAccessPage />
 }
 
 function App(): React.JSX.Element {
@@ -49,14 +128,79 @@ function App(): React.JSX.Element {
     <AuthenticationGate>
       <Routes>
         <Route element={<MainLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/consents" element={<ConsentRegistryPage />} />
-          <Route path="/consents/:id" element={<ConsentDetailsPage />} />
-          <Route path="/purposes" element={<PurposeListPage />} />
-          <Route path="/purposes/:id" element={<PurposeDetailsPage />} />
-          <Route path="/elements" element={<ElementListPage />} />
-          <Route path="/elements/:id" element={<ElementDetailsPage />} />
-          <Route path="*" element={<Navigate to="/consents" replace />} />
+          <Route
+            path="/dashboard"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.CONSENTS_READ_SELF}>
+                <DashboardPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/consents"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.CONSENTS_READ_SELF}>
+                <ConsentRegistryPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/consents/:id"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.CONSENTS_READ_SELF}>
+                <ConsentDetailsPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/purposes"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.PURPOSES_READ}>
+                <PurposeListPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/purposes/:id"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.PURPOSES_READ}>
+                <PurposeDetailsPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/elements"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.ELEMENTS_READ}>
+                <ElementListPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/elements/:id"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.ELEMENTS_READ}>
+                <ElementDetailsPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/administration/consents"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.CONSENTS_READ_ANY}>
+                <AdminConsentRegistryPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/administration/consents/:id"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.CONSENTS_READ_ANY}>
+                <ConsentDetailsPage variant="admin" />
+              </AuthorizedRoute>
+            }
+          />
+          <Route path="*" element={<AuthorizedFallback />} />
         </Route>
       </Routes>
     </AuthenticationGate>

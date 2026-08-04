@@ -45,7 +45,48 @@ function buildBreadcrumbItems(
   consentsLabel: string,
   purposesLabel: string,
   elementsLabel: string,
+  administrationLabel: string,
+  administrationConsentsLabel: string,
 ): BreadcrumbItem[] {
+  const adminConsentDetailsMatch = pathname.match(/^\/administration\/consents\/([^/]+)$/)
+
+  if (adminConsentDetailsMatch) {
+    return [
+      { label: homeLabel, path: '/dashboard', isCurrent: false },
+      {
+        label: administrationLabel,
+        path: '/administration/consents',
+        isCurrent: false,
+      },
+      {
+        label: administrationConsentsLabel,
+        path: '/administration/consents',
+        isCurrent: false,
+      },
+      {
+        label: safeDecodeURIComponent(adminConsentDetailsMatch[1]),
+        path: pathname,
+        isCurrent: true,
+      },
+    ]
+  }
+
+  if (pathname.startsWith('/administration/consents')) {
+    return [
+      { label: homeLabel, path: '/dashboard', isCurrent: false },
+      {
+        label: administrationLabel,
+        path: '/administration/consents',
+        isCurrent: false,
+      },
+      {
+        label: administrationConsentsLabel,
+        path: '/administration/consents',
+        isCurrent: true,
+      },
+    ]
+  }
+
   const consentDetailsMatch = pathname.match(/^\/consents\/([^/]+)$/)
 
   if (consentDetailsMatch) {
@@ -135,6 +176,8 @@ function HeaderBreadcrumbs({ currentLabel }: HeaderBreadcrumbsProps): React.JSX.
     t('sidebar.allConsents'),
     t('sidebar.purposes'),
     t('sidebar.elements'),
+    t('sidebar.administration'),
+    t('sidebar.adminConsents'),
   ).map((item) => (item.isCurrent && currentLabel ? { ...item, label: currentLabel } : item))
 
   return (
@@ -149,7 +192,7 @@ function HeaderBreadcrumbs({ currentLabel }: HeaderBreadcrumbsProps): React.JSX.
         {breadcrumbItems.map((item) =>
           item.isCurrent ? (
             <Typography
-              key={item.path}
+              key={`${item.path}-${item.label}-current`}
               component="span"
               variant="body2"
               color="text.primary"
@@ -160,7 +203,7 @@ function HeaderBreadcrumbs({ currentLabel }: HeaderBreadcrumbsProps): React.JSX.
             </Typography>
           ) : (
             <Link
-              key={item.path}
+              key={`${item.path}-${item.label}`}
               component={RouterLink}
               to={item.path}
               underline="hover"

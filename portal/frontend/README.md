@@ -65,7 +65,6 @@ Note: If your machine cannot install Corepack shims, prefix pnpm commands with `
 
 Alternatively, follow the other [recommended pnpm installation options](https://pnpm.io/installation).
 
-
 ## Environment
 
 Create a local `.env` file from `.env.example` before running or building the portal.
@@ -73,13 +72,14 @@ Create a local `.env` file from `.env.example` before running or building the po
 | Variable                               | Description                                                                                                               | Example                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | `VITE_API_BASE_URL`                    | Required base URL for the OpenFGC Portal backend API. Vite embeds this value at build time.                               | `http://localhost:8080`   |
-| `VITE_ORG_ID`                          | Organization ID used to identify and filter organization-wide consent purposes.                                           | `ORG-001`        |
 | `VITE_AUTH_ENABLED`                    | Enables frontend authentication gating; set to `true` for protected deployments.                                          | `true`                    |
 | `VITE_AUTH_ACCESS_TOKEN_PART1_COOKIE`  | Cookie name for the readable access-token part.                                                                           | `portal-at-p1`            |
 | `VITE_AUTH_REFRESH_TOKEN_PART1_COOKIE` | Cookie name for the readable refresh-token part.                                                                          | `portal-rt-p1`            |
 | `VITE_AUTH_ID_TOKEN_PART1_COOKIE`      | Cookie name for ID-token part 1.                                                                                          | `portal-id-p1`            |
 | `VITE_AUTH_ID_TOKEN_PART2_COOKIE`      | Cookie name for ID-token part 2.                                                                                          | `portal-id-p2`            |
 | `VITE_AUTH_LOGOUT_ALLOWED_ORIGINS`     | Exact comma-separated origins accepted for logout navigation. Include the IdP origin when using its end-session endpoint. | `https://idp.example.com` |
+
+The authenticated user and organization IDs are resolved from `GET /me`; they are not frontend build-time configuration.
 
 ## Production security headers
 
@@ -151,3 +151,9 @@ function Example(): React.JSX.Element {
 ## CI
 
 GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request on portal/frontend directory.
+
+## AI Instructions
+
+This repository uses AGENTS.md files to keep AI-generated changes aligned with project and organization standards.
+
+- Frontend standards: `portal/frontend/AGENTS.md`

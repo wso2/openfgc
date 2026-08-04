@@ -24,6 +24,8 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-rou
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ConsentRegistryPage from '../features/consent-registry/ConsentRegistryPage'
 import i18n from '../i18n/i18n'
+import TestAuthorizationProvider from './TestAuthorizationProvider'
+import { PORTAL_SCOPES } from '../utils/portalScopes'
 
 const fetchMock = vi.fn()
 
@@ -60,18 +62,20 @@ function renderConsentRegistryPage(queryClient: QueryClient, initialEntry = '/co
       <I18nextProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter initialEntries={[initialEntry]}>
-            <Routes>
-              <Route
-                path="*"
-                element={
-                  <>
-                    <PendingConsentsLink />
-                    <CurrentLocation />
-                    <ConsentRegistryPage />
-                  </>
-                }
-              />
-            </Routes>
+            <TestAuthorizationProvider scopes={Object.values(PORTAL_SCOPES)}>
+              <Routes>
+                <Route
+                  path="*"
+                  element={
+                    <>
+                      <PendingConsentsLink />
+                      <CurrentLocation />
+                      <ConsentRegistryPage />
+                    </>
+                  }
+                />
+              </Routes>
+            </TestAuthorizationProvider>
           </MemoryRouter>
         </QueryClientProvider>
       </I18nextProvider>

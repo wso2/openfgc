@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
@@ -44,6 +45,7 @@ func newPortalServer(t *testing.T, upstreamURL string, configure func(*config.Co
 	cfg.Proxy.PlaceholderModeEnabled = true
 	cfg.Proxy.PlaceholderUserID = "user@example.com"
 	cfg.Proxy.PlaceholderOrgID = "ORG-001"
+	cfg.Proxy.PlaceholderScopes = append([]string(nil), auth.AllPortalScopes...)
 	if configure != nil {
 		configure(cfg)
 	}
@@ -503,6 +505,7 @@ func TestProxyErrorAndBodyLimits(t *testing.T) {
 		cfg.Proxy.PlaceholderModeEnabled = true
 		cfg.Proxy.PlaceholderUserID = "user@example.com"
 		cfg.Proxy.PlaceholderOrgID = "ORG-001"
+		cfg.Proxy.PlaceholderScopes = append([]string(nil), auth.AllPortalScopes...)
 		h, _ := newIntegrationHandler(*cfg)
 		req := httptest.NewRequest(http.MethodPost, "/api/consents", nil)
 		req.Body = failingReadCloser{}
@@ -525,6 +528,7 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 		cfg.Proxy.PlaceholderModeEnabled = false
 		cfg.Proxy.PlaceholderUserID = ""
 		cfg.Proxy.PlaceholderOrgID = ""
+		cfg.Proxy.PlaceholderScopes = nil
 	})
 	defer bff.Close()
 

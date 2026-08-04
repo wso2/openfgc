@@ -46,14 +46,26 @@ export interface ConsentRegistryFilters {
   endDate: string
 }
 
+export interface AdminConsentRegistryFilters extends ConsentRegistryFilters {
+  consentId: string
+  userIds: string
+  purposeVersion: string
+  elementName: string
+  elementNamespace: string
+  elementVersion: string
+}
+
 export type ConsentRegistrySortField = 'status' | 'updatedTime' | 'validityTime'
 export type ConsentRegistrySortDirection = 'asc' | 'desc'
 
 export interface ConsentListQueryParams {
   consentStatuses?: string
+  userIds?: string
   purposeName?: string
+  purposeVersion?: string
   groupIds?: string
   elementName?: string
+  elementNamespace?: string
   elementVersion?: string
   sort?: string
   fromTime?: number

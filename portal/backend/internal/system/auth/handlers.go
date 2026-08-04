@@ -50,7 +50,11 @@ func (m *Manager) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m.setLoginTransactionCookies(w, state, verifier)
-	authorizationURL := m.oauthConfig.AuthCodeURL(state, pkceAuthorizationOption(verifier))
+	authorizationURL := m.oauthConfig.AuthCodeURL(
+		state,
+		pkceAuthorizationOption(verifier),
+		oauth2.SetAuthURLParam("audience", m.cfg.ResourceAudience),
+	)
 	http.Redirect(w, r, authorizationURL, http.StatusFound)
 }
 

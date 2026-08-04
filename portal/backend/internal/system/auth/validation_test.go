@@ -198,6 +198,26 @@ func TestAccessTokenArrayScopeClaim(t *testing.T) {
 	}
 }
 
+func TestAccessTokenOrganizationOverride(t *testing.T) {
+	p := newOIDCValidationProvider(t)
+	manager := p.manager(t, func(cfg *config.AuthConfig) {
+		cfg.OrgIDOverride = " ORG-001 "
+	})
+	now := time.Now()
+	raw := signTestToken(t, p.key1, "key-1", map[string]any{
+		"iss": p.server.URL, "sub": "user", "aud": "portal-api", "exp": now.Add(time.Hour).Unix(),
+		"scope": ScopeConsentsReadSelf,
+	})
+
+	principal, _, err := manager.validateAccessToken(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("expected token without organization claim to use override: %v", err)
+	}
+	if principal.OrgID != "ORG-001" {
+		t.Fatalf("unexpected organization ID: %q", principal.OrgID)
+	}
+}
+
 func TestIDTokenValidationFailures(t *testing.T) {
 	p := newOIDCValidationProvider(t)
 	manager := p.manager(t, nil)

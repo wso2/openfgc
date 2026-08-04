@@ -38,6 +38,7 @@ func TestPlaceholderModePopulatesPrincipalContext(t *testing.T) {
 			PlaceholderModeEnabled: true,
 			PlaceholderUserID:      " user-1 ",
 			PlaceholderOrgID:       " org-1 ",
+			PlaceholderScopes:      []string{ScopeConsentsReadSelf, ScopeElementsRead},
 		},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
@@ -56,13 +57,77 @@ func TestPlaceholderModePopulatesPrincipalContext(t *testing.T) {
 		if principal.UserID != "user-1" || principal.OrgID != "org-1" {
 			t.Errorf("unexpected placeholder principal: %#v", principal)
 		}
-		for _, scope := range AllPortalScopes {
+		for _, scope := range []string{ScopeConsentsReadSelf, ScopeElementsRead} {
 			if _, ok := principal.Scopes[scope]; !ok {
 				t.Errorf("placeholder principal missing scope %q", scope)
 			}
 		}
+		if _, ok := principal.Scopes[ScopeConsentsWriteSelf]; ok {
+			t.Errorf("placeholder principal unexpectedly has unconfigured scope %q", ScopeConsentsWriteSelf)
+		}
 		w.WriteHeader(http.StatusNoContent)
 	})).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("unexpected response status: %d", recorder.Code)
+	}
+}
+
+func TestPlaceholderModeRejectsInvalidScopes(t *testing.T) {
+	tests := []struct {
+		name   string
+		scopes []string
+	}{
+		{name: "unknown", scopes: []string{"portal:unknown"}},
+		{name: "duplicate", scopes: []string{ScopeElementsRead, ScopeElementsRead}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewManager(
+				context.Background(),
+				config.AuthConfig{},
+				config.ProxyConfig{
+					PlaceholderModeEnabled: true,
+					PlaceholderUserID:      "user-1",
+					PlaceholderOrgID:       "org-1",
+					PlaceholderScopes:      tt.scopes,
+				},
+				slog.New(slog.NewTextHandler(io.Discard, nil)),
+			)
+			if err == nil {
+				t.Fatal("expected invalid placeholder scopes to be rejected")
+			}
+		})
+	}
+}
+
+func TestPlaceholderModeAllowsNoScopes(t *testing.T) {
+	manager, err := NewManager(
+		context.Background(),
+		config.AuthConfig{},
+		config.ProxyConfig{
+			PlaceholderModeEnabled: true,
+			PlaceholderUserID:      "user-1",
+			PlaceholderOrgID:       "org-1",
+		},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	if err != nil {
+		t.Fatalf("new manager: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	manager.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := systemcontext.PrincipalFromContext(r.Context())
+		if !ok {
+			t.Fatal("expected placeholder principal")
+		}
+		if len(principal.Scopes) != 0 {
+			t.Fatalf("expected no placeholder scopes, got %#v", principal.Scopes)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/protected", nil))
 
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("unexpected response status: %d", recorder.Code)

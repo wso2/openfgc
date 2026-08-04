@@ -21,5 +21,4 @@ import { beforeEach, vi } from 'vitest'
 
 beforeEach(() => {
   vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:8080')
-  vi.stubEnv('VITE_ORG_ID', 'test-org')
 })

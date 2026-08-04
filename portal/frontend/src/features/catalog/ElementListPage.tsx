@@ -43,8 +43,10 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import useAuthorization from '../auth/useAuthorization'
 import type { ElementFilters, ElementType } from '../../types/catalog'
 import { formatEpochTimestamp } from '../../utils/dateTime'
+import { PORTAL_SCOPES } from '../../utils/portalScopes'
 import ElementFormDialog from './components/ElementFormDialog'
 import ElementTypeChip from './components/ElementTypeChip'
 import { useCreateElementMutation, useElementsQuery } from './hooks/useCatalogQueries'
@@ -289,6 +291,8 @@ function ElementListPage(): React.JSX.Element {
   const rowsPerPage = useMemo(() => getRowsPerPage(searchParams), [searchParams])
   const query = useElementsQuery(filters, page, rowsPerPage)
   const createMutation = useCreateElementMutation()
+  const { hasScope } = useAuthorization()
+  const canWriteElements = hasScope(PORTAL_SCOPES.ELEMENTS_WRITE)
 
   const updateParams = (
     nextFilters: ElementFilters,
@@ -343,13 +347,15 @@ function ElementListPage(): React.JSX.Element {
               {t('catalog.elements.subtitle')}
             </Typography>
           </Stack>
-          <Button
-            variant="contained"
-            startIcon={<Plus size={18} />}
-            onClick={() => setCreateOpen(true)}
-          >
-            {t('catalog.elements.add')}
-          </Button>
+          {canWriteElements ? (
+            <Button
+              variant="contained"
+              startIcon={<Plus size={18} />}
+              onClick={() => setCreateOpen(true)}
+            >
+              {t('catalog.elements.add')}
+            </Button>
+          ) : null}
         </Stack>
 
         <ElementFiltersPanel

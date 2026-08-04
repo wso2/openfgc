@@ -254,6 +254,33 @@ func TestOIDCAuthLifecycleThroughAssembledBFF(t *testing.T) {
 	fixture := newAuthIntegrationFixture(t, strings.Join(auth.AllPortalScopes, " "))
 	cookies := fixture.login(t)
 
+	currentUserRequest, _ := http.NewRequest(http.MethodGet, fixture.bff.URL+"/me", nil)
+	addAuthIntegrationAccess(currentUserRequest, fixture.cfg.Auth, cookies)
+	currentUserResponse, err := fixture.client.Do(currentUserRequest)
+	if err != nil {
+		t.Fatalf("current user request: %v", err)
+	}
+	if currentUserResponse.StatusCode != http.StatusOK {
+		_ = currentUserResponse.Body.Close()
+		t.Fatalf("current user returned %d", currentUserResponse.StatusCode)
+	}
+	var currentUserPayload struct {
+		UserID         string   `json:"userId"`
+		OrganizationID string   `json:"organizationId"`
+		Scopes         []string `json:"scopes"`
+	}
+	if err := json.NewDecoder(currentUserResponse.Body).Decode(&currentUserPayload); err != nil {
+		_ = currentUserResponse.Body.Close()
+		t.Fatalf("decode current user: %v", err)
+	}
+	_ = currentUserResponse.Body.Close()
+	if currentUserPayload.UserID != "integration-user" || currentUserPayload.OrganizationID != "integration-org" {
+		t.Fatalf("unexpected current user: %+v", currentUserPayload)
+	}
+	if len(currentUserPayload.Scopes) != len(auth.AllPortalScopes) {
+		t.Fatalf("current user scopes = %v", currentUserPayload.Scopes)
+	}
+
 	apiRequest, _ := http.NewRequest(http.MethodGet, fixture.bff.URL+"/api/consents?limit=10", nil)
 	addAuthIntegrationAccess(apiRequest, fixture.cfg.Auth, cookies)
 	apiResponse, err := fixture.client.Do(apiRequest)

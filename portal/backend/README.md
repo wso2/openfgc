@@ -128,14 +128,11 @@ Common error codes:
 - `BFF_PROXY__PLACEHOLDER_MODE_ENABLED=true` is blocked when `BFF_ENV=production`
 - `BFF_PROXY__PLACEHOLDER_USER_ID` must be empty if placeholder mode is disabled
 - `BFF_PROXY__PLACEHOLDER_ORG_ID` must be empty if placeholder mode is disabled
+- `BFF_PROXY__PLACEHOLDER_SCOPES` is a space-separated list of portal scope. Must be empty if placeholder mode is disabled
+- Empty placeholder scopes are allowed and produce an authenticated principal with no portal permissions
 
 ## AI Instructions
 
-This repository uses VS Code Copilot instruction files to keep AI-generated changes aligned with project and organization standards.
+This repository uses AGENTS.md files to keep AI-generated changes aligned with project and organization standards.
 
 - Backend standards: `portal/backend/AGENTS.md`
-- Copilot workspace entrypoint (repo root): `.github/copilot-instructions.md`
-- Scoped instructions folder (repo root): `.github/instructions/`
-- Backend scope mapping: `portal/backend/**` -> `.github/instructions/portal-backend.instructions.md`
-
-Copilot instructions are discovered automatically and scoped using `applyTo` patterns.

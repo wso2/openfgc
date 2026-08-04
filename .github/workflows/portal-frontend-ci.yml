@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - 'portal/frontend/**'
+      - 'portal/backend/openapi/portal-backend.yaml'
       - '.github/workflows/portal-frontend-ci.yml'
   push:
     branches: [ main ]
     paths:
       - 'portal/frontend/**'
+      - 'portal/backend/openapi/portal-backend.yaml'
       - '.github/workflows/portal-frontend-ci.yml'
 
 jobs:

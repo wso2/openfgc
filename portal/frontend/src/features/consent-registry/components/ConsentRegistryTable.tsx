@@ -63,8 +63,11 @@ interface ConsentRegistryTableProps {
   onRowsPerPageChange: (rowsPerPage: number) => void
   onSortChange: (field: ConsentRegistrySortField, direction: ConsentRegistrySortDirection) => void
   onRetry: () => void
-  onApprove: (consentID: string) => void
-  onRevoke: (consentID: string) => void
+  detailBasePath?: string
+  showApproveAction?: boolean
+  showMutationActions?: boolean
+  onApprove?: (consentID: string) => void
+  onRevoke?: (consentID: string) => void
   isMutating: boolean
 }
 
@@ -92,6 +95,9 @@ export default function ConsentRegistryTable({
   onRowsPerPageChange,
   onSortChange,
   onRetry,
+  detailBasePath = '/consents',
+  showApproveAction = true,
+  showMutationActions = true,
   onApprove,
   onRevoke,
   isMutating,
@@ -138,10 +144,10 @@ export default function ConsentRegistryTable({
       const consentID = event.currentTarget.dataset.consentId
 
       if (consentID) {
-        navigate(`/consents/${encodeURIComponent(consentID)}`)
+        navigate(`${detailBasePath}/${encodeURIComponent(consentID)}`)
       }
     },
-    [navigate],
+    [detailBasePath, navigate],
   )
 
   const handleApproveClick = useCallback(
@@ -150,7 +156,7 @@ export default function ConsentRegistryTable({
       const consentID = event.currentTarget.dataset.consentId
 
       if (consentID) {
-        onApprove(consentID)
+        onApprove?.(consentID)
       }
     },
     [onApprove],
@@ -162,7 +168,7 @@ export default function ConsentRegistryTable({
       const consentID = event.currentTarget.dataset.consentId
 
       if (consentID) {
-        onRevoke(consentID)
+        onRevoke?.(consentID)
       }
     },
     [onRevoke],
@@ -426,14 +432,14 @@ export default function ConsentRegistryTable({
                               <IconButton
                                 size="small"
                                 component={RouterLink}
-                                to={`/consents/${encodeURIComponent(row.id)}`}
+                                to={`${detailBasePath}/${encodeURIComponent(row.id)}`}
                                 aria-label={t('consentRegistry.actions.view')}
                                 onClick={handleStopPropagation}
                               >
                                 <Eye size={16} />
                               </IconButton>
                             </Tooltip>
-                            {row.canApprove ? (
+                            {showMutationActions && showApproveAction && row.canApprove ? (
                               <Tooltip title={t('consentRegistry.actions.approve')}>
                                 <span>
                                   <IconButton
@@ -448,7 +454,8 @@ export default function ConsentRegistryTable({
                                   </IconButton>
                                 </span>
                               </Tooltip>
-                            ) : (
+                            ) : null}
+                            {showMutationActions && !(showApproveAction && row.canApprove) ? (
                               <Tooltip title={t('consentRegistry.actions.revoke')}>
                                 <span>
                                   <IconButton
@@ -463,7 +470,7 @@ export default function ConsentRegistryTable({
                                   </IconButton>
                                 </span>
                               </Tooltip>
-                            )}
+                            ) : null}
                           </ListingTable.RowActions>
                         </ListingTable.Cell>
                       </ListingTable.Row>
@@ -561,4 +568,12 @@ export default function ConsentRegistryTable({
       </ListingTable.Container>
     </ListingTable.Provider>
   )
+}
+
+ConsentRegistryTable.defaultProps = {
+  detailBasePath: '/consents',
+  showApproveAction: true,
+  showMutationActions: true,
+  onApprove: undefined,
+  onRevoke: undefined,
 }

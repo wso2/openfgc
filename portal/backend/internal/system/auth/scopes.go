@@ -47,6 +47,18 @@ var AllPortalScopes = []string{
 	ScopePurposesRead, ScopePurposesWrite,
 }
 
+// GrantedPortalScopes returns the canonical portal scopes present in granted,
+// preserving the stable order of AllPortalScopes.
+func GrantedPortalScopes(granted map[string]struct{}) []string {
+	result := make([]string, 0, len(AllPortalScopes))
+	for _, scope := range AllPortalScopes {
+		if _, ok := granted[scope]; ok {
+			result = append(result, scope)
+		}
+	}
+	return result
+}
+
 type apiScopePolicy struct {
 	method, pattern, scope string
 }

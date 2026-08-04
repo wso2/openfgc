@@ -58,8 +58,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import CopyableText from '../../components/CopyableText'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import useAuthorization from '../auth/useAuthorization'
 import type { ElementVersionItem } from '../../types/catalog'
 import { formatEpochTimestamp } from '../../utils/dateTime'
+import { PORTAL_SCOPES } from '../../utils/portalScopes'
 import DeleteVersionDialog from './components/DeleteVersionDialog'
 import ElementFormDialog from './components/ElementFormDialog'
 import ElementTypeChip from './components/ElementTypeChip'
@@ -128,6 +130,8 @@ function ElementDetailsPage(): React.JSX.Element {
   const [selectedVersion, setSelectedVersion] = useState<string>()
   const [versionDialogOpen, setVersionDialogOpen] = useState(false)
   const [deleteVersion, setDeleteVersion] = useState<string>()
+  const { hasScope } = useAuthorization()
+  const canWriteElements = hasScope(PORTAL_SCOPES.ELEMENTS_WRITE)
 
   const detail = detailQuery.data
   const latestVersion = useMemo<ElementVersionItem | undefined>(
@@ -223,13 +227,15 @@ function ElementDetailsPage(): React.JSX.Element {
                 </MenuItem>
               ))}
             </TextField>
-            <Button
-              variant="contained"
-              startIcon={<Plus size={18} />}
-              onClick={() => setVersionDialogOpen(true)}
-            >
-              {t('catalog.elements.newVersion')}
-            </Button>
+            {canWriteElements ? (
+              <Button
+                variant="contained"
+                startIcon={<Plus size={18} />}
+                onClick={() => setVersionDialogOpen(true)}
+              >
+                {t('catalog.elements.newVersion')}
+              </Button>
+            ) : null}
           </Stack>
         </Stack>
 
@@ -489,18 +495,20 @@ function ElementDetailsPage(): React.JSX.Element {
                       <TableCell>{version.description ?? '-'}</TableCell>
                       <TableCell>{formatEpochTimestamp(version.createdTime)}</TableCell>
                       <TableCell align="right">
-                        <Tooltip title={t('catalog.actions.deleteVersion')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('catalog.actions.deleteVersion')}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              setDeleteVersion(version.version)
-                            }}
-                          >
-                            <Trash2 size={17} />
-                          </IconButton>
-                        </Tooltip>
+                        {canWriteElements ? (
+                          <Tooltip title={t('catalog.actions.deleteVersion')}>
+                            <IconButton
+                              size="small"
+                              aria-label={t('catalog.actions.deleteVersion')}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setDeleteVersion(version.version)
+                              }}
+                            >
+                              <Trash2 size={17} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -45,8 +45,10 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import useAuthorization from '../auth/useAuthorization'
 import type { ElementSummary, PurposeFilters } from '../../types/catalog'
 import { formatEpochTimestamp } from '../../utils/dateTime'
+import { PORTAL_SCOPES } from '../../utils/portalScopes'
 import ElementVersionSelect from './components/ElementVersionSelect'
 import PurposeFormDialog from './components/PurposeFormDialog'
 import {
@@ -56,7 +58,6 @@ import {
 } from './hooks/useCatalogQueries'
 
 const ROW_OPTIONS = [10, 25, 50]
-const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
 
 type PurposeScope = 'organization' | 'all'
 
@@ -68,18 +69,18 @@ function elementLabel(element: ElementSummary): string {
   return `${element.displayName ?? element.name} (${element.namespace})`
 }
 
-function emptyFilters(): PurposeListFilters {
+function emptyFilters(organizationId: string): PurposeListFilters {
   return {
     purposeName: '',
     elementName: '',
     elementNamespace: '',
     elementVersion: '',
-    groupIds: ORG_ID,
+    groupIds: organizationId,
     scope: 'organization',
   }
 }
 
-function getFilters(searchParams: URLSearchParams): PurposeListFilters {
+function getFilters(searchParams: URLSearchParams, organizationId: string): PurposeListFilters {
   const scope: PurposeScope = searchParams.get('scope') === 'all' ? 'all' : 'organization'
 
   return {
@@ -87,19 +88,21 @@ function getFilters(searchParams: URLSearchParams): PurposeListFilters {
     elementName: searchParams.get('elementName') ?? '',
     elementNamespace: searchParams.get('elementNamespace') ?? '',
     elementVersion: searchParams.get('elementVersion') ?? '',
-    groupIds: scope === 'organization' ? ORG_ID : (searchParams.get('groupIds') ?? ''),
+    groupIds: scope === 'organization' ? organizationId : (searchParams.get('groupIds') ?? ''),
     scope,
   }
 }
 
 interface PurposeFiltersPanelProps {
   initialFilters: PurposeListFilters
+  organizationId: string
   onApply: (filters: PurposeListFilters) => void
   onClear: () => void
 }
 
 function PurposeFiltersPanel({
   initialFilters,
+  organizationId,
   onApply,
   onClear,
 }: PurposeFiltersPanelProps): React.JSX.Element {
@@ -234,7 +237,7 @@ function PurposeFiltersPanel({
                 setDraft({
                   ...draft,
                   scope: value,
-                  groupIds: value === 'organization' ? ORG_ID : '',
+                  groupIds: value === 'organization' ? organizationId : '',
                 })
               }}
               aria-label={t('catalog.purposes.scopeFilter')}
@@ -341,7 +344,7 @@ function PurposeFiltersPanel({
             <Button
               variant="text"
               onClick={() => {
-                setDraft(emptyFilters())
+                setDraft(emptyFilters(organizationId))
                 setFiltersAnchor(null)
                 onClear()
               }}
@@ -372,13 +375,21 @@ function PurposeListPage(): React.JSX.Element {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [createOpen, setCreateOpen] = useState(false)
-  const filters = useMemo(() => getFilters(searchParams), [searchParams])
+  const {
+    currentUser: { organizationId },
+    hasScope,
+  } = useAuthorization()
+  const filters = useMemo(
+    () => getFilters(searchParams, organizationId),
+    [organizationId, searchParams],
+  )
   const parsedPage = Number(searchParams.get('page') ?? '1')
   const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage - 1 : 0
   const parsedRows = Number(searchParams.get('rowsPerPage') ?? '10')
   const rowsPerPage = ROW_OPTIONS.includes(parsedRows) ? parsedRows : 10
   const query = usePurposesQuery(filters, page, rowsPerPage)
   const createMutation = useCreatePurposeMutation()
+  const canWritePurposes = hasScope(PORTAL_SCOPES.PURPOSES_WRITE)
 
   const updateParams = (
     nextFilters: PurposeListFilters,
@@ -438,18 +449,21 @@ function PurposeListPage(): React.JSX.Element {
               {t('catalog.purposes.subtitle')}
             </Typography>
           </Stack>
-          <Button
-            variant="contained"
-            startIcon={<Plus size={18} />}
-            onClick={() => setCreateOpen(true)}
-          >
-            {t('catalog.purposes.add')}
-          </Button>
+          {canWritePurposes ? (
+            <Button
+              variant="contained"
+              startIcon={<Plus size={18} />}
+              onClick={() => setCreateOpen(true)}
+            >
+              {t('catalog.purposes.add')}
+            </Button>
+          ) : null}
         </Stack>
 
         <PurposeFiltersPanel
           key={`purpose-filters-${searchParams.toString()}`}
           initialFilters={filters}
+          organizationId={organizationId}
           onApply={(nextFilters) => updateParams(nextFilters)}
           onClear={() => setSearchParams({}, { replace: true })}
         />
@@ -571,7 +585,7 @@ function PurposeListPage(): React.JSX.Element {
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        {purpose.groupId === ORG_ID ? (
+                        {purpose.groupId === organizationId ? (
                           <Chip
                             size="small"
                             variant="outlined"
@@ -657,6 +671,7 @@ function PurposeListPage(): React.JSX.Element {
         key={`create-purpose-${String(createOpen)}`}
         open={createOpen}
         initialValue={undefined}
+        organizationId={organizationId}
         loading={createMutation.isPending}
         error={createMutation.error?.message}
         onClose={() => {

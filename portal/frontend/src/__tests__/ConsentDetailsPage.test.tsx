@@ -25,12 +25,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import ConsentDetailsPage from '../features/consent-registry/ConsentDetailsPage'
 import i18n from '../i18n/i18n'
 import type { ConsentStatusAuditItem } from '../types/consent'
+import type { PortalScope } from '../utils/portalScopes'
+import TestAuthorizationProvider from './TestAuthorizationProvider'
+import { PORTAL_SCOPES } from '../utils/portalScopes'
 
 const fetchMock = vi.fn()
 
 function renderConsentDetailsPage(
   status: string,
   statusHistory: ConsentStatusAuditItem[] = [],
+  scopes: PortalScope[] = Object.values(PORTAL_SCOPES),
 ): void {
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockResolvedValue({
@@ -64,9 +68,11 @@ function renderConsentDetailsPage(
       <I18nextProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter initialEntries={['/consents/00000000-0000-4000-8000-000000000001']}>
-            <Routes>
-              <Route path="/consents/:id" element={<ConsentDetailsPage />} />
-            </Routes>
+            <TestAuthorizationProvider scopes={scopes}>
+              <Routes>
+                <Route path="/consents/:id" element={<ConsentDetailsPage />} />
+              </Routes>
+            </TestAuthorizationProvider>
           </MemoryRouter>
         </QueryClientProvider>
       </I18nextProvider>
@@ -95,6 +101,15 @@ describe('ConsentDetailsPage lifecycle actions', () => {
     expect(await screen.findByRole('button', { name: 'Revoke' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+  })
+
+  it('hides lifecycle actions without the consent write scope', async () => {
+    renderConsentDetailsPage('CREATED', [], [PORTAL_SCOPES.CONSENTS_READ_SELF])
+
+    expect(await screen.findByRole('heading', { name: 'Consent Details' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument()
   })
 
   it.each(['REJECTED', 'REVOKED', 'EXPIRED'])(

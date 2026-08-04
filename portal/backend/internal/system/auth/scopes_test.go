@@ -68,6 +68,25 @@ func TestCanonicalScopesAreUniqueAndPrefixed(t *testing.T) {
 	}
 }
 
+func TestGrantedPortalScopesFiltersAndPreservesCanonicalOrder(t *testing.T) {
+	granted := map[string]struct{}{
+		"openid":              {},
+		ScopePurposesWrite:    {},
+		ScopeConsentsReadSelf: {},
+		"portal:future:scope": {},
+	}
+	want := []string{ScopeConsentsReadSelf, ScopePurposesWrite}
+	got := GrantedPortalScopes(granted)
+	if len(got) != len(want) {
+		t.Fatalf("got %v; want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v; want %v", got, want)
+		}
+	}
+}
+
 func TestEveryAPIRouteHasCanonicalScopePolicy(t *testing.T) {
 	tests := []struct {
 		method string
@@ -192,6 +211,11 @@ func TestOpenAPIScopesMatchCanonicalRoutePolicies(t *testing.T) {
 					continue
 				}
 				want = policy
+			case route == "/me":
+				if len(scopes) != 0 {
+					t.Errorf("%s %s documents %v; want no business scope", upperMethod, route, scopes)
+				}
+				continue
 			case strings.HasPrefix(route, "/me/"):
 				if upperMethod == "GET" {
 					want = ScopeConsentsReadSelf

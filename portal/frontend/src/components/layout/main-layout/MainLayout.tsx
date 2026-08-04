@@ -73,6 +73,8 @@ function MainLayout(): React.JSX.Element {
             width: '100%',
             maxWidth: 'none',
             flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           <Outlet />

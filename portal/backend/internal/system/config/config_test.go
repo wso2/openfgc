@@ -21,6 +21,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -52,6 +53,28 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 	if cfg.Proxy.MaxResponseBytes != 2097152 {
 		t.Fatalf("expected max response bytes 2097152, got %d", cfg.Proxy.MaxResponseBytes)
+	}
+}
+
+func TestOrgIDOverrideFromEnv(t *testing.T) {
+	t.Setenv("BFF_AUTH__ORG_ID_OVERRIDE", "ORG-001")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected config to load, got error: %v", err)
+	}
+	if cfg.Auth.OrgIDOverride != "ORG-001" {
+		t.Fatalf("unexpected organization override: %q", cfg.Auth.OrgIDOverride)
+	}
+}
+
+func TestOrgIDClaimCanBeEmptyWhenOverrideIsConfigured(t *testing.T) {
+	cfg := validAuthValidationConfig("development")
+	cfg.Auth.OrgIDClaim = ""
+	cfg.Auth.OrgIDOverride = "ORG-001"
+
+	if err := validateAuth(cfg); err != nil {
+		t.Fatalf("expected organization override to replace claim requirement: %v", err)
 	}
 }
 
@@ -130,6 +153,7 @@ func TestPlaceholderValuesRejectedWhenModeDisabled(t *testing.T) {
 	}{
 		{name: "user id", envName: "BFF_PROXY__PLACEHOLDER_USER_ID", errText: "proxy.placeholder_user_id must be empty"},
 		{name: "org id", envName: "BFF_PROXY__PLACEHOLDER_ORG_ID", errText: "proxy.placeholder_org_id must be empty"},
+		{name: "scopes", envName: "BFF_PROXY__PLACEHOLDER_SCOPES", errText: "proxy.placeholder_scopes must be empty"},
 	}
 
 	for _, tt := range tests {
@@ -145,6 +169,22 @@ func TestPlaceholderValuesRejectedWhenModeDisabled(t *testing.T) {
 				t.Fatalf("expected error to contain %q, got %v", tt.errText, err)
 			}
 		})
+	}
+}
+
+func TestPlaceholderScopesEnv(t *testing.T) {
+	t.Setenv("BFF_PROXY__PLACEHOLDER_MODE_ENABLED", "true")
+	t.Setenv("BFF_PROXY__PLACEHOLDER_USER_ID", "local-user")
+	t.Setenv("BFF_PROXY__PLACEHOLDER_ORG_ID", "local-org")
+	t.Setenv("BFF_PROXY__PLACEHOLDER_SCOPES", "portal:consents:read:self portal:elements:read")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected config to load, got error: %v", err)
+	}
+	want := []string{"portal:consents:read:self", "portal:elements:read"}
+	if !reflect.DeepEqual(cfg.Proxy.PlaceholderScopes, want) {
+		t.Fatalf("unexpected placeholder scopes: %#v", cfg.Proxy.PlaceholderScopes)
 	}
 }
 

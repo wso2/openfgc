@@ -107,6 +107,28 @@ paths:
               schema: { $ref: '#/components/schemas/LogoutResponse' }
         '401': { $ref: '#/components/responses/AuthError' }
 
+  /me:
+    get:
+      tags: [User]
+      summary: Get the authenticated portal user
+      description: >-
+        Returns identity and canonical portal authorization scopes derived from
+        the locally validated access token. OIDC-only scopes are omitted.
+      security:
+        - PortalOAuthDocumentation: []
+          AccessTokenPart2: []
+      responses:
+        '200':
+          description: Authenticated portal user.
+          headers:
+            Cache-Control:
+              description: Prevents authenticated user data from being cached.
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentUser' }
+        '401': { $ref: '#/components/responses/AuthError' }
+
   /me/consents:
     get:
       tags: [User]
@@ -617,6 +639,26 @@ components:
     ElementID: { in: path, name: elementId, required: true, schema: { type: string } }
     Version: { in: path, name: version, required: true, schema: { type: string, pattern: '^v[1-9][0-9]*$' } }
   schemas:
+    CurrentUser:
+      type: object
+      required: [userId, organizationId, scopes]
+      properties:
+        userId: { type: string }
+        organizationId: { type: string }
+        scopes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - portal:consents:read:self
+              - portal:consents:write:self
+              - portal:consents:read:any
+              - portal:consents:write:any
+              - portal:elements:read
+              - portal:elements:write
+              - portal:purposes:read
+              - portal:purposes:write
     LogoutResponse:
       type: object
       required: [logoutUrl]

@@ -32,7 +32,7 @@ React frontend ─────► Portal Backend ─────► OpenFGC
 
 | Component | Responsibility |
 | --- | --- |
-| React frontend | Starts login and logout, sends the readable access-token half, refreshes expired sessions, and renders identity claims for display. It does not make authorization decisions. |
+| React frontend | Starts login and logout, sends the readable access-token half, refreshes expired sessions, renders ID-token claims for display, and uses the effective scopes returned by `GET /me` for route and element visibility. These UI decisions improve the user experience; Portal Backend scope enforcement remains the security boundary. |
 | Portal Backend | Acts as the OIDC confidential client and protected API boundary. It validates tokens, creates the trusted principal, enforces route policy, and maps allowed requests to OpenFGC. |
 | Identity provider | Authenticates users, exposes OIDC discovery and JWKS metadata, and issues signed ID, access, and refresh tokens. |
 | OpenFGC | Performs consent operations behind the Portal Backend. It receives identity and organization context derived by the Portal Backend. |
@@ -87,6 +87,9 @@ The frontend deduplicates concurrent refresh attempts within the current browser
 | `GET /health`, `/health/liveness`, `/health/readiness` | Public |
 | `GET /auth/login`, `GET /auth/callback`, `POST /auth/refresh` | Public protocol endpoints; login and refresh still require their corresponding split transaction or token material. |
 | `POST /auth/logout` | Authenticated |
+| `GET /me` | Authenticated without a business-scope requirement; returns the validated user ID, organization ID, and effective portal scopes. |
+
+`GET /me` returns only scopes in the canonical portal registry, preserving registry order. OIDC scopes such as `openid`, `profile`, and `email` are excluded. An authenticated principal without portal permissions receives `200 OK` with an empty `scopes` array.
 
 ### Current-user consent routes
 
@@ -131,9 +134,11 @@ Configuration is grouped into:
 - `BFF_LOG__*`: log level.
 - `BFF_CORS__*`: exact browser origins, methods, headers, and credential support.
 - `BFF_AUTH__*`: OIDC client, token validation, claims, timeouts, cookies, and token size limits.
-- `BFF_PROXY__*`: OpenFGC URL, request and response limits, timeout, passthrough methods, and local placeholder identity.
+- `BFF_PROXY__*`: OpenFGC URL, request and response limits, timeout, passthrough methods, and local placeholder identity and scopes.
 
-Production startup requires authentication, HTTPS authentication URLs, and secure cookies. Placeholder identity cannot run in production and cannot be enabled together with OIDC authentication. In permitted local environments, placeholder mode supplies a configured user and organization with all portal scopes for development without an identity provider.
+Production startup requires authentication, HTTPS authentication URLs, and secure cookies. Placeholder identity cannot run in production and cannot be enabled together with OIDC authentication. In permitted local environments, placeholder mode supplies the configured user and organization without an identity provider. `BFF_PROXY__PLACEHOLDER_SCOPES` is a space-separated list of canonical portal scopes granted to that principal. Unknown or duplicate scopes are rejected, and an empty list creates an authenticated principal without portal permissions. Placeholder identity and scope values must be empty when placeholder mode is disabled.
+
+For authenticated deployments, the organization normally comes from the access-token claim named by `BFF_AUTH__ORG_ID_CLAIM`. Set `BFF_AUTH__ORG_ID_OVERRIDE` to force a fixed organization ID instead; a non-empty override takes precedence and the token does not need the organization claim. Leave the override empty to keep claim-based resolution.
 
 ### Local topology
 
@@ -150,6 +155,6 @@ The backend Docker Compose file builds and publishes the Portal Backend on port 
 
 ## Testing
 
-Backend unit and integration tests cover configuration guardrails, OIDC transactions, token splitting and validation, cookie handling, authorization scopes, CORS, current-user ownership, proxy mappings, header sanitization, limits, and upstream failures. Frontend tests cover the auth client, refresh retry behavior, profile rendering, API integration, and production CSP generation.
+Backend unit and integration tests cover configuration guardrails, OIDC transactions, token splitting and validation, cookie handling, the `GET /me` session response, placeholder-scope filtering, authorization scopes, CORS, current-user ownership, proxy mappings, header sanitization, limits, and upstream failures. Frontend tests cover the `/me` session gate, scope-based routes and elements, sidebar visibility, authorization redirects, auth-client refresh behavior, profile rendering, API integration, and production CSP generation. A frontend test parses the backend OpenAPI document and detects missing, extra, empty, or duplicate portal scopes relative to the centralized `PORTAL_SCOPES` registry.
 
 Use the commands in the [backend README](../README.md) and [frontend README](../../frontend/README.md) to run their respective checks. Changes to routes or scopes must also update and validate the [OpenAPI specification](../openapi/portal-backend.yaml).

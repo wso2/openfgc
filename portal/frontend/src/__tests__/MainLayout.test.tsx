@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -110,5 +110,32 @@ describe('MainLayout', () => {
     renderHeaderBreadcrumbs('/consents/consent%')
 
     expect(screen.getByText('consent%')).toBeInTheDocument()
+  })
+
+  it('renders the administration hierarchy for the administrative consent registry', () => {
+    renderHeaderBreadcrumbs('/administration/consents')
+
+    const breadcrumbs = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(within(breadcrumbs).getByText('Home')).toBeInTheDocument()
+    expect(within(breadcrumbs).getByRole('link', { name: 'Administration' })).toHaveAttribute(
+      'href',
+      '/administration/consents',
+    )
+    expect(within(breadcrumbs).getByText('Consents')).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('decodes administrative consent IDs in breadcrumbs', () => {
+    renderHeaderBreadcrumbs('/administration/consents/consent%2F123%3Fdraft')
+
+    const breadcrumbs = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(within(breadcrumbs).getByRole('link', { name: 'Administration' })).toBeInTheDocument()
+    expect(within(breadcrumbs).getByRole('link', { name: 'Consents' })).toHaveAttribute(
+      'href',
+      '/administration/consents',
+    )
+    expect(within(breadcrumbs).getByText('consent/123?draft')).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 })

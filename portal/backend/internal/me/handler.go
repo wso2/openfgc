@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
 )
@@ -46,6 +47,12 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
+type currentUserResponse struct {
+	UserID         string   `json:"userId"`
+	OrganizationID string   `json:"organizationId"`
+	Scopes         []string `json:"scopes"`
+}
+
 var errRequestBodyTooLarge = errors.New("request body too large")
 var consentIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
@@ -56,6 +63,24 @@ func NewHandler(cfg config.ProxyConfig) (*Handler, error) {
 		return nil, err
 	}
 	return &Handler{svc: svc, cfg: cfg}, nil
+}
+
+// CurrentUser handles GET /me.
+func (h *Handler) CurrentUser(w http.ResponseWriter, r *http.Request) {
+	principal, ok := systemcontext.PrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(currentUserResponse{
+		UserID:         principal.UserID,
+		OrganizationID: principal.OrgID,
+		Scopes:         auth.GrantedPortalScopes(principal.Scopes),
+	})
 }
 
 // Consents handles GET /me/consents.

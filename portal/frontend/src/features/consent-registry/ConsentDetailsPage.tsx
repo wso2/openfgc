@@ -32,6 +32,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import useAuthorization from '../auth/useAuthorization'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRejectionDialog from './components/ConsentRejectionDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
@@ -51,6 +52,15 @@ import {
   isConsentRejectableStatus,
   isConsentRevokableStatus,
 } from './utils/statusChip'
+import { PORTAL_SCOPES } from '../../utils/portalScopes'
+import {
+  useAdminConsentDetailQuery,
+  useAdminRevokeConsentMutation,
+} from '../admin-consents/hooks/useAdminConsentQueries'
+
+interface ConsentDetailsPageProps {
+  variant?: 'self' | 'admin'
+}
 
 function formatResourcesForModal(resources: unknown): string {
   if (!resources) {
@@ -148,19 +158,28 @@ function ConsentDetailsLoading(): React.JSX.Element {
   )
 }
 
-function ConsentDetailsPage(): React.JSX.Element {
+function ConsentDetailsPage({ variant = 'self' }: ConsentDetailsPageProps): React.JSX.Element {
   const { t } = useTranslation('common')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const consentDetailQuery = useConsentDetailQuery(id)
+  const selfConsentDetailQuery = useConsentDetailQuery(variant === 'self' ? id : undefined)
+  const adminConsentDetailQuery = useAdminConsentDetailQuery(variant === 'admin' ? id : undefined)
   const approveMutation = useApproveConsentMutation()
   const rejectMutation = useRejectConsentMutation()
   const revokeMutation = useRevokeConsentMutation()
+  const adminRevokeMutation = useAdminRevokeConsentMutation()
   const [approvalDialogOpen, setApprovalDialogOpen] = useState<boolean>(false)
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState<boolean>(false)
   const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
   const [resourcesModalOpen, setResourcesModalOpen] = useState<boolean>(false)
   const [selectedResourcesJson, setSelectedResourcesJson] = useState<string>('')
+  const { currentUser, hasScope } = useAuthorization()
+  const canWriteSelf = hasScope(PORTAL_SCOPES.CONSENTS_WRITE_SELF)
+  const canWriteAny = hasScope(PORTAL_SCOPES.CONSENTS_WRITE_ANY)
+  const consentDetailQuery = variant === 'admin' ? adminConsentDetailQuery : selfConsentDetailQuery
+  const backPath = variant === 'admin' ? '/administration/consents' : '/consents'
+  const revokePending =
+    variant === 'admin' ? adminRevokeMutation.isPending : revokeMutation.isPending
 
   if (!id) {
     return (
@@ -170,7 +189,7 @@ function ConsentDetailsPage(): React.JSX.Element {
       >
         <Typography variant="h5">{t('consentRegistry.details.notFound')}</Typography>
         <Box>
-          <Button variant="outlined" onClick={() => navigate('/consents')}>
+          <Button variant="outlined" onClick={() => navigate(backPath)}>
             {t('consentRegistry.details.back')}
           </Button>
         </Box>
@@ -179,9 +198,13 @@ function ConsentDetailsPage(): React.JSX.Element {
   }
 
   const detail = consentDetailQuery.data
-  const canApprove = detail ? isConsentApprovableStatus(detail.status) : false
-  const canReject = detail ? isConsentRejectableStatus(detail.status) : false
-  const canRevoke = detail ? isConsentRevokableStatus(detail.status) : false
+  const canApprove =
+    variant === 'self' && detail ? canWriteSelf && isConsentApprovableStatus(detail.status) : false
+  const canReject =
+    variant === 'self' && detail ? canWriteSelf && isConsentRejectableStatus(detail.status) : false
+  const canRevoke = detail
+    ? (variant === 'admin' ? canWriteAny : canWriteSelf) && isConsentRevokableStatus(detail.status)
+    : false
 
   if (consentDetailQuery.isLoading) {
     return <ConsentDetailsLoading />
@@ -195,7 +218,7 @@ function ConsentDetailsPage(): React.JSX.Element {
       >
         <Typography color="error.main">{t('consentRegistry.messages.loadFailed')}</Typography>
         <Box>
-          <Button variant="outlined" onClick={() => navigate('/consents')}>
+          <Button variant="outlined" onClick={() => navigate(backPath)}>
             {t('consentRegistry.details.back')}
           </Button>
         </Box>
@@ -255,7 +278,7 @@ function ConsentDetailsPage(): React.JSX.Element {
               color="error"
               size="small"
               startIcon={<Ban size={16} />}
-              disabled={revokeMutation.isPending}
+              disabled={revokePending}
               onClick={() => {
                 setRevocationDialogOpen(true)
               }}
@@ -327,20 +350,29 @@ function ConsentDetailsPage(): React.JSX.Element {
         key={`revocation-${id}-${String(revocationDialogOpen)}`}
         open={revocationDialogOpen}
         consentId={id}
-        loading={revokeMutation.isPending}
+        loading={revokePending}
         onClose={() => {
           setRevocationDialogOpen(false)
         }}
         onConfirm={() => {
-          revokeMutation.mutate(id, {
+          const options = {
             onSuccess: () => {
               setRevocationDialogOpen(false)
             },
-          })
+          }
+          if (variant === 'admin') {
+            adminRevokeMutation.mutate({ consentID: id, actionBy: currentUser.userId }, options)
+          } else {
+            revokeMutation.mutate(id, options)
+          }
         }}
       />
     </Box>
   )
+}
+
+ConsentDetailsPage.defaultProps = {
+  variant: 'self',
 }
 
 export default ConsentDetailsPage
