@@ -20,13 +20,14 @@ package validator
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/wso2/openfgc/internal/authresource/model"
 	"github.com/wso2/openfgc/internal/system/config"
 )
 
 // ValidateAuthResourceCreateRequest validates an auth resource creation request.
-// Type is optional — the service defaults it to "default" when absent.
+// Type is optional — the service defaults it to "primary" when absent.
 // UserID is required — it identifies the user who performed the authorization.
 func ValidateAuthResourceCreateRequest(req model.AuthResourceCreateRequest, consentID, orgID string) error {
 	if consentID == "" {
@@ -54,9 +55,13 @@ func ValidateAuthResourceCreateRequest(req model.AuthResourceCreateRequest, cons
 }
 
 // ValidateAuthStatus rejects system-reserved statuses that users must not set directly.
+// The comparison ignores case because consent status derivation also matches these statuses
+// without regard to case. A value differing only in case would be accepted here as a caller's
+// own status and then treated as system-set during derivation, excluding that authorization
+// from the consent status while leaving it recorded on the consent.
 func ValidateAuthStatus(status string, mappings config.AuthStatusMappings) error {
-	if mappings.SystemExpiredState == status ||
-		mappings.SystemRevokedState == status {
+	if strings.EqualFold(mappings.SystemExpiredState, status) ||
+		strings.EqualFold(mappings.SystemRevokedState, status) {
 		return fmt.Errorf("authorization status '%s' is system-reserved and cannot be set by users", status)
 	}
 	return nil

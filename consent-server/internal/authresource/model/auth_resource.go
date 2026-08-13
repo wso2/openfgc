@@ -19,10 +19,47 @@
 // Package model provides data models for authorization resources.
 package model
 
+import "strings"
+
+// Authorization types recognised by OpenFGC. Any other value is a custom type: it is
+// stored and can be filtered on, but carries no meaning to the server.
 const (
-	// DefaultAuthType is used when the caller does not specify an authorization type.
-	DefaultAuthType = "default"
+	// AuthTypePrimary indicates self-consent: the person consenting for themselves.
+	// It is also the type applied when the caller omits one.
+	AuthTypePrimary = "primary"
+
+	// AuthTypeDelegate indicates a person giving consent on behalf of another
+	// (e.g., a parent consenting for a child).
+	AuthTypeDelegate = "delegate"
+
+	// AuthTypeDelegateSubject indicates a person who is incapable of providing
+	// consent by themselves (e.g., a minor child).
+	AuthTypeDelegateSubject = "delegate_subject"
 )
+
+// IsDelegationAuthType reports whether authType is one of the two roles that model
+// delegation. A consent using either role is a delegated consent and is validated as such.
+func IsDelegationAuthType(authType string) bool {
+	return authType == AuthTypeDelegate || authType == AuthTypeDelegateSubject
+}
+
+// NormalizeAuthType canonicalises the reserved authorization types so they are recognised
+// regardless of the casing a caller sends (e.g. "Delegate" becomes "delegate"). This keeps
+// type matching consistent with the case-insensitive status handling, so pairing and
+// exclusivity rules apply and searches on the persisted type stay reliable. Custom types
+// carry no reserved meaning and are returned unchanged.
+func NormalizeAuthType(authType string) string {
+	switch strings.ToLower(authType) {
+	case AuthTypePrimary:
+		return AuthTypePrimary
+	case AuthTypeDelegate:
+		return AuthTypeDelegate
+	case AuthTypeDelegateSubject:
+		return AuthTypeDelegateSubject
+	default:
+		return authType
+	}
+}
 
 // =============================================================================
 // DB types — store layer only, db tags, no json tags
@@ -46,10 +83,10 @@ type AuthResource struct {
 // =============================================================================
 
 // CreateAuthResourceInput is the input to the CreateAuthResource service method.
-// AuthType defaults to DefaultAuthType ("default") when empty.
+// AuthType defaults to AuthTypePrimary when empty.
 // AuthStatus defaults to the configured approved state when empty.
 type CreateAuthResourceInput struct {
-	AuthType   string      // optional; defaults to DefaultAuthType
+	AuthType   string // optional; defaults to AuthTypePrimary
 	UserID     *string
 	AuthStatus string      // optional; defaults to configured approved state
 	Resources  interface{} // arbitrary value; service JSON-marshals before storing
@@ -91,11 +128,11 @@ type AuthResourceListOutput struct {
 // =============================================================================
 
 // AuthResourceCreateRequest is the body for POST /consents/{consentId}/authorizations.
-// Type is optional — when absent the server uses DefaultAuthType ("default").
+// Type is optional — when absent the server uses AuthTypePrimary.
 type AuthResourceCreateRequest struct {
 	UserID    *string     `json:"userId,omitempty"`
-	Type      string      `json:"type,omitempty"`      // optional; defaults to "default"
-	Status    string      `json:"status,omitempty"`    // optional; defaults to "APPROVED"
+	Type      string      `json:"type,omitempty"`   // optional; defaults to "primary"
+	Status    string      `json:"status,omitempty"` // optional; defaults to "APPROVED"
 	Resources interface{} `json:"resources,omitempty"`
 }
 

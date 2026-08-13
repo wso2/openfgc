@@ -226,3 +226,40 @@ func TestValidateAuthResourceUpdateRequest_MultipleFields(t *testing.T) {
 	err := ValidateAuthResourceUpdateRequest(req)
 	require.NoError(t, err)
 }
+
+func TestValidateAuthStatus_SystemReservedRejectedRegardlessOfCase(t *testing.T) {
+	mappings := config.AuthStatusMappings{
+		ApprovedState:      "APPROVED",
+		RejectedState:      "REJECTED",
+		CreatedState:       "CREATED",
+		RecordedState:      "RECORDED",
+		SystemExpiredState: "SYS_EXPIRED",
+		SystemRevokedState: "SYS_REVOKED",
+	}
+
+	// Derivation matches these statuses case-insensitively, so any casing must be rejected
+	// here or a caller could have an authorization excluded from the consent status.
+	for _, status := range []string{
+		"SYS_EXPIRED", "sys_expired", "Sys_Expired",
+		"SYS_REVOKED", "sys_revoked", "Sys_Revoked", "sYs_ReVoKeD",
+	} {
+		err := ValidateAuthStatus(status, mappings)
+		require.Error(t, err, "status %q must be rejected as system-reserved", status)
+		require.Contains(t, err.Error(), "system-reserved")
+	}
+}
+
+func TestValidateAuthStatus_CallerStatusesAccepted(t *testing.T) {
+	mappings := config.AuthStatusMappings{
+		ApprovedState:      "APPROVED",
+		RejectedState:      "REJECTED",
+		CreatedState:       "CREATED",
+		RecordedState:      "RECORDED",
+		SystemExpiredState: "SYS_EXPIRED",
+		SystemRevokedState: "SYS_REVOKED",
+	}
+
+	for _, status := range []string{"APPROVED", "approved", "CREATED", "REJECTED", "RECORDED", "authorisation", ""} {
+		require.NoError(t, ValidateAuthStatus(status, mappings), "status %q must be accepted", status)
+	}
+}

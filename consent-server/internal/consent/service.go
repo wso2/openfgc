@@ -642,7 +642,7 @@ func (s *consentService) UpdateConsent(ctx context.Context, consentID, groupID, 
 	}
 
 	var resolvedLinks []resolvedPurposeLink
-	if input.Purposes != nil && len(input.Purposes) > 0 {
+	if len(input.Purposes) > 0 {
 		resolvedLinks, err = s.validatePurposesAndResolve(ctx, input.Purposes, existing.GroupID, orgID)
 		if err != nil {
 			logger.Error("Purpose resolution failed on update", log.Error(err))
@@ -1384,7 +1384,7 @@ func buildConsentOutput(
 }
 
 // buildAuthResource builds an AuthResource DB model from a CreateAuthResourceInput,
-// applying DefaultAuthType and the configured default auth status when the caller omits them.
+// applying AuthTypePrimary and the configured default auth status when the caller omits them.
 func buildAuthResource(
 	input authmodel.CreateAuthResourceInput,
 	consentID, orgID string,
@@ -1393,8 +1393,10 @@ func buildAuthResource(
 ) *authmodel.AuthResource {
 	authType := input.AuthType
 	if authType == "" {
-		authType = authmodel.DefaultAuthType
+		authType = authmodel.AuthTypePrimary
 	}
+	// Canonicalise reserved types so the persisted value matches what validation and search expect.
+	authType = authmodel.NormalizeAuthType(authType)
 	status := input.AuthStatus
 	if status == "" {
 		status = defaultAuthStatus

@@ -170,6 +170,16 @@ func TestAuthResourceResponse_JSONMarshal(t *testing.T) {
 	require.Equal(t, "authorisation", decoded.Type)
 }
 
-func TestDefaultAuthType_Constant(t *testing.T) {
-	require.Equal(t, "default", DefaultAuthType)
+func TestAuthTypeConstants(t *testing.T) {
+	require.Equal(t, "primary", AuthTypePrimary)
+	require.Equal(t, "delegate", AuthTypeDelegate)
+	require.Equal(t, "delegate_subject", AuthTypeDelegateSubject)
+}
+
+func TestIsDelegationAuthType(t *testing.T) {
+	require.True(t, IsDelegationAuthType(AuthTypeDelegate))
+	require.True(t, IsDelegationAuthType(AuthTypeDelegateSubject))
+	require.False(t, IsDelegationAuthType(AuthTypePrimary))
+	require.False(t, IsDelegationAuthType("agent"))
+	require.False(t, IsDelegationAuthType(""))
 }

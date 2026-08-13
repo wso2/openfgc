@@ -61,7 +61,7 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 			wantStatus: http.StatusOK,
 			checkResult: func(_, _ string, resp *AuthResourceResponse) {
 				ts.assertAuthResourceResponse(resp)
-				ts.Equal("default", resp.Type)
+				ts.Equal("primary", resp.Type)
 				ts.Equal("APPROVED", resp.Status)
 				ts.Require().NotNil(resp.UserID)
 				ts.Equal("user-001", *resp.UserID)
@@ -233,6 +233,25 @@ func (ts *AuthResourceAPITestSuite) TestCreateAuthResource() {
 			name: "system-reserved status 'SYS_REVOKED' → 400 AR-4002",
 			buildBody: func(_, _ string) any {
 				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "SYS_REVOKED"}
+			},
+			wantStatus:    http.StatusBadRequest,
+			wantErrorCode: "AR-4002",
+		},
+		{
+			// Consent status derivation matches system-reserved statuses without regard to
+			// case, so a differing case must be rejected here rather than stored as a
+			// caller's status and later excluded from derivation.
+			name: "system-reserved status 'sys_revoked' → 400 AR-4002",
+			buildBody: func(_, _ string) any {
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "sys_revoked"}
+			},
+			wantStatus:    http.StatusBadRequest,
+			wantErrorCode: "AR-4002",
+		},
+		{
+			name: "system-reserved status 'Sys_Expired' → 400 AR-4002",
+			buildBody: func(_, _ string) any {
+				return AuthResourceCreateRequest{UserID: strPtr("user-001"), Status: "Sys_Expired"}
 			},
 			wantStatus:    http.StatusBadRequest,
 			wantErrorCode: "AR-4002",

@@ -121,6 +121,7 @@ type AuthStatusMappings struct {
 	ApprovedState      string `yaml:"approved_state"`
 	RejectedState      string `yaml:"rejected_state"`
 	CreatedState       string `yaml:"created_state"`
+	RecordedState      string `yaml:"recorded_state"`
 	SystemExpiredState string `yaml:"system_expired_state"`
 	SystemRevokedState string `yaml:"system_revoked_state"`
 }
@@ -163,6 +164,11 @@ func (c *ConsentConfig) GetRejectedAuthStatus() AuthStatus {
 // GetCreatedAuthStatus returns the typed created auth status from config
 func (c *ConsentConfig) GetCreatedAuthStatus() AuthStatus {
 	return AuthStatus(c.AuthStatusMappings.CreatedState)
+}
+
+// GetRecordedAuthStatus returns the typed recorded auth status from config
+func (c *ConsentConfig) GetRecordedAuthStatus() AuthStatus {
+	return AuthStatus(c.AuthStatusMappings.RecordedState)
 }
 
 // GetSystemExpiredAuthStatus returns the typed system expired auth status from config
@@ -248,6 +254,8 @@ func Load(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	applyDefaults(&config)
+
 	// Validate config
 	if err := validateConfig(&config); err != nil {
 		logger.Error("Config validation failed", log.Error(err))
@@ -294,6 +302,19 @@ func substituteEnvironmentVariables(data []byte) ([]byte, error) {
 	}
 
 	return []byte(content), nil
+}
+
+// defaultRecordedAuthStatus is used when a deployment does not map the recorded auth status.
+// The status marks a participant recorded on a consent who takes no decision, such as the
+// subject of a delegated consent.
+const defaultRecordedAuthStatus = "RECORDED"
+
+// applyDefaults fills in optional settings a deployment may omit, so that configurations
+// written before a setting existed remain loadable.
+func applyDefaults(config *Config) {
+	if config.Consent.AuthStatusMappings.RecordedState == "" {
+		config.Consent.AuthStatusMappings.RecordedState = defaultRecordedAuthStatus
+	}
 }
 
 // validateConfig validates the configuration

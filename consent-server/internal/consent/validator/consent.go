@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	authmodel "github.com/wso2/openfgc/internal/authresource/model"
 	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
 	"github.com/wso2/openfgc/internal/consent/model"
 	"github.com/wso2/openfgc/internal/system/config"
@@ -36,7 +37,7 @@ const minExpirationTimestamp = int64(1_000_000_000)
 
 // ValidateConsentCreateRequest validates a consent creation request.
 // groupID is read from the group-id request header, not the body.
-// Authorization type is optional — the service defaults it to "default" when absent.
+// Authorization type is optional — the service defaults it to "primary" when absent.
 func ValidateConsentCreateRequest(req model.ConsentCreateRequest, groupID, orgID string) error {
 	if req.Type == "" {
 		return fmt.Errorf("type is required")
@@ -83,6 +84,11 @@ func ValidateConsentCreateRequest(req model.ConsentCreateRequest, groupID, orgID
 				return fmt.Errorf("authorizations[%d]: %w", i, err)
 			}
 		}
+	}
+
+	// Validate auth type constraints across the full authorization set
+	if err := ValidateAuthTypeConstraints(req.Authorizations); err != nil {
+		return err
 	}
 
 	return nil
@@ -134,7 +140,147 @@ func ValidateConsentUpdateRequest(req model.ConsentUpdateRequest) error {
 		}
 	}
 
+	// Validate auth type constraints if authorizations are being replaced
+	if req.Authorizations != nil {
+		if err := ValidateAuthTypeConstraints(req.Authorizations); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+// ValidateAuthTypeConstraints validates authorization types and participation across a full
+// set of authorizations.
+//
+// Delegation is modelled by two authorization types: "delegate", the person consenting on
+// behalf of another, and "delegate_subject", the person the consent is about who cannot
+// consent themselves. A consent using either type is a delegated consent, and must contain
+// both and nothing besides — admitting "primary" or a custom type alongside them would leave
+// it ambiguous whose decision the consent records.
+//
+// Consents that use neither delegation type are unconstrained: "primary" and custom types
+// such as "agent" or "account_owner" may appear in any combination.
+//
+// Independently of type, at least one authorization must carry a status other than the
+// configured recorded status, since a set of exclusively passive participants records no
+// decision by anyone.
+func ValidateAuthTypeConstraints(authorizations []model.AuthorizationRequest) error {
+	auths := make([]authTypeStatus, 0, len(authorizations))
+	for _, auth := range authorizations {
+		auths = append(auths, authTypeStatus{authType: effectiveAuthType(auth.Type), status: auth.Status})
+	}
+
+	return validateAuthTypeConstraints(auths)
+}
+
+// ValidateAuthResourceTypeConstraints applies the same rules as ValidateAuthTypeConstraints to
+// the authorizations a consent holds once a write completes. Callers that add or modify a single
+// authorization pass the resulting set rather than the incoming change, since the rules describe
+// a consent as a whole and cannot be evaluated from one authorization in isolation.
+func ValidateAuthResourceTypeConstraints(resources []authmodel.AuthResource) error {
+	auths := make([]authTypeStatus, 0, len(resources))
+	for _, resource := range resources {
+		auths = append(auths, authTypeStatus{authType: effectiveAuthType(resource.AuthType), status: resource.AuthStatus})
+	}
+
+	return validateAuthTypeConstraints(auths)
+}
+
+// authTypeStatus is the projection of an authorization the type and participation rules act on.
+// It lets an incoming request and a stored authorization resource be checked by the same code.
+type authTypeStatus struct {
+	authType string
+	status   string
+}
+
+func validateAuthTypeConstraints(auths []authTypeStatus) error {
+	if len(auths) == 0 {
+		return nil
+	}
+
+	if err := validateParticipation(auths); err != nil {
+		return err
+	}
+
+	return validateDelegationTypes(auths)
+}
+
+// validateParticipation requires at least one authorization whose status is not the configured
+// recorded status. The check is skipped when no recorded status is configured, leaving the
+// status validation applied elsewhere as the only constraint.
+func validateParticipation(auths []authTypeStatus) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+
+	recordedStatus := string(cfg.Consent.GetRecordedAuthStatus())
+	if recordedStatus == "" {
+		return nil
+	}
+
+	for _, auth := range auths {
+		// An omitted status is defaulted to the approved state by the service layer. The
+		// comparison ignores case to match how derivation recognises the recorded status.
+		if auth.status == "" || !strings.EqualFold(auth.status, recordedStatus) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("at least one authorization must have an active status; %s alone does not constitute consent",
+		recordedStatus)
+}
+
+// validateDelegationTypes enforces the shape of a delegated consent. Consents that use no
+// delegation type are left unvalidated.
+func validateDelegationTypes(auths []authTypeStatus) error {
+	delegated := false
+	for _, auth := range auths {
+		if authmodel.IsDelegationAuthType(auth.authType) {
+			delegated = true
+			break
+		}
+	}
+	if !delegated {
+		return nil
+	}
+
+	hasDelegate := false
+	hasDelegateSubject := false
+
+	for _, auth := range auths {
+		switch auth.authType {
+		case authmodel.AuthTypeDelegate:
+			hasDelegate = true
+		case authmodel.AuthTypeDelegateSubject:
+			hasDelegateSubject = true
+		default:
+			return fmt.Errorf("a delegated consent may only contain '%s' and '%s' authorizations; found '%s'",
+				authmodel.AuthTypeDelegate, authmodel.AuthTypeDelegateSubject, auth.authType)
+		}
+	}
+
+	if !hasDelegate {
+		return fmt.Errorf("authorization type '%s' requires at least one '%s' in the same consent",
+			authmodel.AuthTypeDelegateSubject, authmodel.AuthTypeDelegate)
+	}
+	if !hasDelegateSubject {
+		return fmt.Errorf("authorization type '%s' requires at least one '%s' in the same consent",
+			authmodel.AuthTypeDelegate, authmodel.AuthTypeDelegateSubject)
+	}
+
+	return nil
+}
+
+// effectiveAuthType returns the authorization type the service layer persists, which is
+// AuthTypePrimary when the caller omits one. Reserved types are normalized so a differently
+// cased value (e.g. "Delegate") is still recognised and validated as a delegation type.
+func effectiveAuthType(authType string) string {
+	if authType == "" {
+		return authmodel.AuthTypePrimary
+	}
+	return authmodel.NormalizeAuthType(authType)
 }
 
 // ValidateConsentGetRequest validates consent retrieval request parameters.
@@ -155,11 +301,23 @@ func ValidateConsentGetRequest(consentID, orgID string) error {
 }
 
 // EvaluateConsentStatusFromAuthStatuses determines consent status from a list of auth status strings.
-// Priority: rejected > created > active.
+//
+// Statuses that record no decision are excluded first. RECORDED marks a participant present on
+// the consent who takes no decision, such as the subject of a delegated consent. SYS_EXPIRED and
+// SYS_REVOKED are set by the server across every authorization of a consent when it expires or is
+// revoked, and describe the consent's lifecycle rather than any participant's choice.
+//
+// The remaining statuses are then evaluated by priority:
+//
+//	Any REJECTED → consent REJECTED
+//	Any CREATED  → consent CREATED
+//	All APPROVED → consent ACTIVE
+//
+// Comparison ignores case throughout.
 func EvaluateConsentStatusFromAuthStatuses(authStatuses []string) string {
 	cfg := config.Get()
 	if cfg == nil {
-		return "created" // safe fallback
+		return "created"
 	}
 	consentConfig := cfg.Consent
 	if len(authStatuses) == 0 {
@@ -167,12 +325,29 @@ func EvaluateConsentStatusFromAuthStatuses(authStatuses []string) string {
 		return string(consentConfig.GetCreatedConsentStatus())
 	}
 
-	// Evaluate ALL auth statuses with priority logic
+	recordedStatus := strings.ToUpper(string(consentConfig.GetRecordedAuthStatus()))
+	sysExpiredStatus := strings.ToUpper(string(consentConfig.GetSystemExpiredAuthStatus()))
+	sysRevokedStatus := strings.ToUpper(string(consentConfig.GetSystemRevokedAuthStatus()))
+
+	participatingStatuses := make([]string, 0, len(authStatuses))
+	for _, status := range authStatuses {
+		upper := strings.ToUpper(status)
+		if upper == recordedStatus || upper == sysExpiredStatus || upper == sysRevokedStatus {
+			continue
+		}
+		participatingStatuses = append(participatingStatuses, status)
+	}
+
+	// Every authorization is recorded or system-set, leaving no decision to evaluate.
+	if len(participatingStatuses) == 0 {
+		return string(consentConfig.GetCreatedConsentStatus())
+	}
+
 	hasRejected := false
 	hasCreated := false
 	allApproved := true
 
-	for _, authStatus := range authStatuses {
+	for _, authStatus := range participatingStatuses {
 		// Map auth status to consent status first (case-insensitive comparison)
 		authStatusUpper := strings.ToUpper(authStatus)
 		var mappedConsentStatus string

@@ -23,7 +23,7 @@ package authresource
 // =============================================================================
 
 // AuthResourceCreateRequest is the body for POST /consents/{consentId}/authorizations.
-// Type defaults to "default" and Status defaults to "APPROVED" when absent.
+// Type defaults to "primary" and Status defaults to "APPROVED" when absent.
 type AuthResourceCreateRequest struct {
 	UserID    *string     `json:"userId,omitempty"`
 	Type      string      `json:"type,omitempty"`

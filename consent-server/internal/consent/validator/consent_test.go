@@ -276,9 +276,12 @@ func setTestConfig() {
 				RejectedStatus: "REJECTED",
 			},
 			AuthStatusMappings: config.AuthStatusMappings{
-				ApprovedState: "APPROVED",
-				RejectedState: "REJECTED",
-				CreatedState:  "CREATED",
+				ApprovedState:      "APPROVED",
+				RejectedState:      "REJECTED",
+				CreatedState:       "CREATED",
+				RecordedState:      "RECORDED",
+				SystemExpiredState: "SYS_EXPIRED",
+				SystemRevokedState: "SYS_REVOKED",
 			},
 		},
 	})
@@ -359,4 +362,326 @@ func TestEvaluateConsentStatus_CaseInsensitive(t *testing.T) {
 	// Status comparison must be case-insensitive.
 	got := EvaluateConsentStatusFromAuthStatuses([]string{"approved", "approved"})
 	require.Equal(t, "ACTIVE", got)
+}
+
+// =============================================================================
+// EvaluateConsentStatusFromAuthStatuses — RECORDED filtering
+// =============================================================================
+
+func TestEvaluateConsentStatus_RecordedIsSkipped(t *testing.T) {
+	setTestConfig()
+	// Parent APPROVED + child RECORDED → skip RECORDED → only APPROVED remains → ACTIVE
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"APPROVED", "RECORDED"})
+	require.Equal(t, "ACTIVE", got)
+}
+
+func TestEvaluateConsentStatus_RecordedWithCreated(t *testing.T) {
+	setTestConfig()
+	// Delegate CREATED + child RECORDED → skip RECORDED → CREATED remains → CREATED
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"CREATED", "RECORDED"})
+	require.Equal(t, "CREATED", got)
+}
+
+func TestEvaluateConsentStatus_RecordedWithRejected(t *testing.T) {
+	setTestConfig()
+	// Delegate REJECTED + child RECORDED → skip RECORDED → REJECTED remains → REJECTED
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"REJECTED", "RECORDED"})
+	require.Equal(t, "REJECTED", got)
+}
+
+func TestEvaluateConsentStatus_MultipleRecorded(t *testing.T) {
+	setTestConfig()
+	// One APPROVED + multiple RECORDED → all RECORDED skipped → ACTIVE
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"APPROVED", "RECORDED", "RECORDED"})
+	require.Equal(t, "ACTIVE", got)
+}
+
+func TestEvaluateConsentStatus_SysExpiredIsSkipped(t *testing.T) {
+	setTestConfig()
+	// SYS_EXPIRED should be filtered out, not treated as unknown/CREATED.
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"APPROVED", "SYS_EXPIRED"})
+	require.Equal(t, "ACTIVE", got)
+}
+
+func TestEvaluateConsentStatus_SysRevokedIsSkipped(t *testing.T) {
+	setTestConfig()
+	// SYS_REVOKED should be filtered out, not treated as unknown/CREATED.
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"APPROVED", "SYS_REVOKED"})
+	require.Equal(t, "ACTIVE", got)
+}
+
+func TestEvaluateConsentStatus_AllNonParticipating_FallsBackToCreated(t *testing.T) {
+	setTestConfig()
+	// A consent whose authorizations are all recorded or system-set carries no decision to
+	// evaluate, and derivation reports the created status.
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"RECORDED", "SYS_EXPIRED"})
+	require.Equal(t, "CREATED", got)
+}
+
+func TestEvaluateConsentStatus_RecordedCaseInsensitive(t *testing.T) {
+	setTestConfig()
+	// RECORDED filtering must be case-insensitive.
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"APPROVED", "recorded"})
+	require.Equal(t, "ACTIVE", got)
+}
+
+func TestEvaluateConsentStatus_DelegationScenario_ParentChild(t *testing.T) {
+	setTestConfig()
+	// Realistic delegation: parent APPROVED, child RECORDED → ACTIVE
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"APPROVED", "RECORDED"})
+	require.Equal(t, "ACTIVE", got, "parent-child delegation: parent approved, child recorded → ACTIVE")
+}
+
+func TestEvaluateConsentStatus_DelegationScenario_ParentPending(t *testing.T) {
+	setTestConfig()
+	// Parent hasn't approved yet (CREATED), child RECORDED → CREATED
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"CREATED", "RECORDED"})
+	require.Equal(t, "CREATED", got, "parent-child delegation: parent pending, child recorded → CREATED")
+}
+
+func TestEvaluateConsentStatus_CustomTypeScenario_OwnerAndAgent(t *testing.T) {
+	setTestConfig()
+	// owner APPROVED + agent RECORDED → skip RECORDED → ACTIVE
+	got := EvaluateConsentStatusFromAuthStatuses([]string{"APPROVED", "RECORDED"})
+	require.Equal(t, "ACTIVE", got, "custom types: owner approved, agent recorded → ACTIVE")
+}
+
+// =============================================================================
+// ValidateAuthTypeConstraints
+// =============================================================================
+
+func TestValidateAuthTypeConstraints_EmptyList(t *testing.T) {
+	setTestConfig()
+	// No authorizations — nothing to validate, passes.
+	err := ValidateAuthTypeConstraints(nil)
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_PrimaryOnly(t *testing.T) {
+	setTestConfig()
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-1", Type: "primary", Status: "APPROVED"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_OmittedTypeResolvesToPrimary(t *testing.T) {
+	setTestConfig()
+	// An omitted type is persisted as "primary", so a lone authorization is self-consent.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-1", Status: "APPROVED"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_DelegateWithDelegateSubject(t *testing.T) {
+	setTestConfig()
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "father-111", Type: "delegate", Status: "APPROVED"},
+		{UserID: "child-333", Type: "delegate_subject", Status: "RECORDED"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_DelegateWithoutDelegateSubject(t *testing.T) {
+	setTestConfig()
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "father-111", Type: "delegate", Status: "APPROVED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "'delegate' requires at least one 'delegate_subject'")
+}
+
+func TestValidateAuthTypeConstraints_DelegateSubjectWithoutDelegate(t *testing.T) {
+	setTestConfig()
+	// This also fails the universal rule (only RECORDED = no active participant),
+	// but the first-class pairing check fires first.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "child-333", Type: "delegate_subject", Status: "RECORDED"},
+	})
+	require.Error(t, err)
+	// Should hit either the universal rule or the pairing rule
+}
+
+func TestValidateAuthTypeConstraints_PrimaryMixedWithDelegate(t *testing.T) {
+	setTestConfig()
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-1", Type: "primary", Status: "APPROVED"},
+		{UserID: "father-111", Type: "delegate", Status: "APPROVED"},
+		{UserID: "child-333", Type: "delegate_subject", Status: "RECORDED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "a delegated consent may only contain 'delegate' and 'delegate_subject'")
+}
+
+func TestValidateAuthTypeConstraints_PrimaryMixedWithDelegateSubject(t *testing.T) {
+	setTestConfig()
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-1", Type: "primary", Status: "APPROVED"},
+		{UserID: "child-333", Type: "delegate_subject", Status: "RECORDED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "a delegated consent may only contain 'delegate' and 'delegate_subject'")
+}
+
+func TestValidateAuthTypeConstraints_CustomTypesSkipValidation(t *testing.T) {
+	setTestConfig()
+	// A consent using no delegation type is unconstrained.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-111", Type: "owner", Status: "APPROVED"},
+		{UserID: "agent-ai", Type: "agent", Status: "RECORDED"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_AllRecordedRejected(t *testing.T) {
+	setTestConfig()
+	// Universal rule: at least one authorization must have a non-RECORDED status.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "agent-ai", Type: "agent", Status: "RECORDED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "at least one authorization must have an active status")
+}
+
+func TestValidateAuthTypeConstraints_AllRecordedMultiple(t *testing.T) {
+	setTestConfig()
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "agent-1", Type: "agent", Status: "RECORDED"},
+		{UserID: "agent-2", Type: "carer", Status: "RECORDED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "at least one authorization must have an active status")
+}
+
+func TestValidateAuthTypeConstraints_CustomWithApprovedAndRecorded(t *testing.T) {
+	setTestConfig()
+	// owner:APPROVED + agent:RECORDED → passes both universal and custom rules
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-111", Type: "owner", Status: "APPROVED"},
+		{UserID: "agent-ai", Type: "agent", Status: "RECORDED"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_EmptyStatusDefaultsToApproved(t *testing.T) {
+	setTestConfig()
+	// Empty status defaults to APPROVED at the service layer, so it counts as non-RECORDED.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-1", Type: "primary"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_MultipleDelegatesAndSubjects(t *testing.T) {
+	setTestConfig()
+	// Multiple delegates + multiple subjects is valid.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "parent-1", Type: "delegate", Status: "APPROVED"},
+		{UserID: "parent-2", Type: "delegate", Status: "APPROVED"},
+		{UserID: "child-1", Type: "delegate_subject", Status: "RECORDED"},
+		{UserID: "child-2", Type: "delegate_subject", Status: "RECORDED"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_OmittedTypeMixedWithDelegate(t *testing.T) {
+	setTestConfig()
+	// An omitted type resolves to "primary", which a delegated consent may not contain.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "user-1", Status: "APPROVED"},
+		{UserID: "father-111", Type: "delegate", Status: "APPROVED"},
+		{UserID: "child-333", Type: "delegate_subject", Status: "RECORDED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "a delegated consent may only contain 'delegate' and 'delegate_subject'")
+}
+
+func TestValidateAuthTypeConstraints_CustomTypeInDelegatedConsentRejected(t *testing.T) {
+	setTestConfig()
+	// A delegated consent admits the two delegation roles and nothing else.
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "father-111", Type: "delegate", Status: "APPROVED"},
+		{UserID: "child-333", Type: "delegate_subject", Status: "RECORDED"},
+		{UserID: "agent-ai", Type: "agent", Status: "RECORDED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "found 'agent'")
+}
+
+func TestValidateAuthTypeConstraints_AllRecordedRejectedRegardlessOfCase(t *testing.T) {
+	setTestConfig()
+
+	// Derivation recognises the recorded status case-insensitively, so a set that is entirely
+	// recorded in any casing records no decision and must be rejected.
+	for _, status := range []string{"RECORDED", "recorded", "Recorded", "rEcOrDeD"} {
+		err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+			{UserID: "father-111", Type: "delegate", Status: status},
+			{UserID: "child-333", Type: "delegate_subject", Status: status},
+		})
+		require.Error(t, err, "status %q must not satisfy the participation rule", status)
+		require.Contains(t, err.Error(), "at least one authorization must have an active status")
+	}
+}
+
+func TestValidateAuthTypeConstraints_LowercaseApprovedStillParticipates(t *testing.T) {
+	setTestConfig()
+
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "father-111", Type: "delegate", Status: "approved"},
+		{UserID: "child-333", Type: "delegate_subject", Status: "recorded"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_ParticipationSkippedWithoutRecordedStatus(t *testing.T) {
+	// A deployment that maps no recorded status has no passive state, so the participation
+	// rule has nothing to enforce and every set satisfies it.
+	config.SetGlobal(&config.Config{
+		Consent: config.ConsentConfig{
+			StatusMappings: config.ConsentStatusMappings{
+				ActiveStatus:   "ACTIVE",
+				CreatedStatus:  "CREATED",
+				RejectedStatus: "REJECTED",
+			},
+			AuthStatusMappings: config.AuthStatusMappings{
+				ApprovedState:      "APPROVED",
+				RejectedState:      "REJECTED",
+				CreatedState:       "CREATED",
+				SystemExpiredState: "SYS_EXPIRED",
+				SystemRevokedState: "SYS_REVOKED",
+			},
+		},
+	})
+	defer setTestConfig()
+
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "agent-ai", Type: "agent", Status: "RECORDED"},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateAuthTypeConstraints_DelegationRulesStillApplyWithoutRecordedStatus(t *testing.T) {
+	config.SetGlobal(&config.Config{
+		Consent: config.ConsentConfig{
+			StatusMappings: config.ConsentStatusMappings{
+				ActiveStatus:   "ACTIVE",
+				CreatedStatus:  "CREATED",
+				RejectedStatus: "REJECTED",
+			},
+			AuthStatusMappings: config.AuthStatusMappings{
+				ApprovedState: "APPROVED",
+				RejectedState: "REJECTED",
+				CreatedState:  "CREATED",
+			},
+		},
+	})
+	defer setTestConfig()
+
+	err := ValidateAuthTypeConstraints([]model.AuthorizationRequest{
+		{UserID: "father-111", Type: "delegate", Status: "APPROVED"},
+		{UserID: "agent-ai", Type: "agent", Status: "APPROVED"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "a delegated consent may only contain")
 }

@@ -76,7 +76,7 @@ type ElementApprovalRequest struct {
 }
 
 // AuthorizationRequest is one authorization entry in a consent body.
-// Type defaults to "default" and Status defaults to "APPROVED" when absent.
+// Type defaults to "primary" and Status defaults to "APPROVED" when absent.
 type AuthorizationRequest struct {
 	UserID    string      `json:"userId,omitempty"`
 	Type      string      `json:"type,omitempty"`

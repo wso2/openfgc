@@ -99,7 +99,7 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 			name:    "authorization type and status default when absent",
 			groupID: "grp-auth-defaults",
 			buildBody: func(_ string) any {
-				// Only userId provided — server defaults type to "default" and status to "APPROVED"
+				// Only userId provided — server defaults type to "primary" and status to "APPROVED"
 				return ConsentCreateRequest{
 					Type:           "accounts",
 					Authorizations: []AuthorizationRequest{{UserID: "user-001"}},
@@ -108,7 +108,7 @@ func (ts *ConsentAPITestSuite) TestCreateConsent() {
 			wantStatus: http.StatusCreated,
 			checkResult: func(_, _ string, resp *ConsentResponse) {
 				ts.Require().Len(resp.Authorizations, 1)
-				ts.Equal("default", resp.Authorizations[0].Type)
+				ts.Equal("primary", resp.Authorizations[0].Type)
 				ts.Equal("APPROVED", resp.Authorizations[0].Status)
 				ts.NotEmpty(resp.Authorizations[0].ID, "authorization id must not be empty")
 			},

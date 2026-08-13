@@ -25,20 +25,41 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/wso2/openfgc/internal/authresource/model"
+	consentModel "github.com/wso2/openfgc/internal/consent/model"
 	"github.com/wso2/openfgc/internal/system/config"
 	"github.com/wso2/openfgc/internal/system/stores"
 	"github.com/wso2/openfgc/tests/mocks/stores/interfacesmock"
 )
 
+// TestMain sets the global config before any test runs. The SQLite in-memory database lets
+// ExecuteTransaction begin and commit a real transaction while the store operations inside it
+// remain mocked, so service methods that read and write under a transaction can be unit-tested.
 func TestMain(m *testing.M) {
 	cfg := &config.Config{
+		Database: config.DatabasesConfig{
+			Consent: config.DatabaseConfig{
+				Type:     "sqlite",
+				Path:     ":memory:",
+				Hostname: "localhost",
+				Database: "consent_mgt",
+			},
+		},
 		Consent: config.ConsentConfig{
+			StatusMappings: config.ConsentStatusMappings{
+				ActiveStatus:   "ACTIVE",
+				ExpiredStatus:  "EXPIRED",
+				RevokedStatus:  "REVOKED",
+				CreatedStatus:  "CREATED",
+				RejectedStatus: "REJECTED",
+			},
 			AuthStatusMappings: config.AuthStatusMappings{
 				ApprovedState:      "APPROVED",
 				RejectedState:      "REJECTED",
 				CreatedState:       "CREATED",
+				RecordedState:      "RECORDED",
 				SystemExpiredState: "SYSTEM_EXPIRED",
 				SystemRevokedState: "SYSTEM_REVOKED",
 			},
@@ -522,26 +543,26 @@ func TestCreateAuthResource_ResourcesMarshalError(t *testing.T) {
 }
 
 func TestCreateAuthResource_GetByConsentIDError(t *testing.T) {
+	csStore := interfacesmock.NewConsentStore(t)
+	csStore.On("GetByIDForUpdate", mock.Anything, "consent-1", "org-1").
+		Return(&consentModel.Consent{ConsentID: "consent-1", OrgID: "org-1", CurrentStatus: "ACTIVE"}, nil)
+
 	arStore := interfacesmock.NewAuthResourceStore(t)
-	arStore.On("GetByConsentID", context.Background(), "consent-1", "org-1").
+	arStore.On("GetByConsentIDTx", mock.Anything, "consent-1", "org-1").
 		Return(nil, errors.New("store error"))
 
-	svc := newTestSvc(arStore, nil)
+	svc := newTestSvc(arStore, csStore)
 	_, err := svc.CreateAuthResource(context.Background(), "consent-1", "org-1",
 		model.CreateAuthResourceInput{})
 	require.NotNil(t, err)
 }
 
 func TestCreateAuthResource_ConsentGetByIDError(t *testing.T) {
-	arStore := interfacesmock.NewAuthResourceStore(t)
-	arStore.On("GetByConsentID", context.Background(), "consent-1", "org-1").
-		Return([]model.AuthResource{}, nil)
-
 	csStore := interfacesmock.NewConsentStore(t)
-	csStore.On("GetByID", context.Background(), "consent-1", "org-1").
+	csStore.On("GetByIDForUpdate", mock.Anything, "consent-1", "org-1").
 		Return(nil, errors.New("consent store error"))
 
-	svc := newTestSvc(arStore, csStore)
+	svc := newTestSvc(nil, csStore)
 	_, err := svc.CreateAuthResource(context.Background(), "consent-1", "org-1",
 		model.CreateAuthResourceInput{})
 	require.NotNil(t, err)

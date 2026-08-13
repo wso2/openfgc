@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	authmodel "github.com/wso2/openfgc/internal/authresource/model"
 	"github.com/wso2/openfgc/internal/consent/model"
 	dbconst "github.com/wso2/openfgc/internal/system/database/constants"
 	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
@@ -871,15 +872,54 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilter) (
 		}
 	}
 
-	// UserIDs filter via JOIN — kept as JOIN so COUNT(DISTINCT) handles any duplicates.
-	if len(filters.UserIDs) > 0 {
-		ph := strings.Repeat("?,", len(filters.UserIDs))
+	// The userIds, delegation and authTypes filters share one join on CONSENT_AUTH_RESOURCE, so
+	// that a single authorization must satisfy all of them together: ?delegation=true&userIds=X
+	// matches consents where X holds the delegate role, not consents where X appears alongside
+	// some other delegate.
+	needsCarJoin := len(filters.UserIDs) > 0 || filters.Delegation != nil || len(filters.AuthTypes) > 0
+	if needsCarJoin {
 		joinClause += " INNER JOIN CONSENT_AUTH_RESOURCE car ON CONSENT.CONSENT_ID = car.CONSENT_ID AND CONSENT.ORG_ID = car.ORG_ID"
-		whereConditions = append(whereConditions, fmt.Sprintf("car.USER_ID IN (%s)", ph[:len(ph)-1]))
-		for _, uid := range filters.UserIDs {
-			args = append(args, uid)
-			countArgs = append(countArgs, uid)
+
+		if len(filters.UserIDs) > 0 {
+			ph := strings.Repeat("?,", len(filters.UserIDs))
+			whereConditions = append(whereConditions, fmt.Sprintf("car.USER_ID IN (%s)", ph[:len(ph)-1]))
+			for _, uid := range filters.UserIDs {
+				args = append(args, uid)
+				countArgs = append(countArgs, uid)
+			}
 		}
+
+		// Custom types belong to neither role and are reached through the authTypes filter.
+		if filters.Delegation != nil {
+			delegationAuthType := authmodel.AuthTypePrimary
+			if *filters.Delegation {
+				delegationAuthType = authmodel.AuthTypeDelegate
+			}
+			whereConditions = append(whereConditions, "car.AUTH_TYPE = ?")
+			args = append(args, delegationAuthType)
+			countArgs = append(countArgs, delegationAuthType)
+		}
+
+		if len(filters.AuthTypes) > 0 {
+			ph := strings.Repeat("?,", len(filters.AuthTypes))
+			whereConditions = append(whereConditions, fmt.Sprintf("car.AUTH_TYPE IN (%s)", ph[:len(ph)-1]))
+			for _, at := range filters.AuthTypes {
+				args = append(args, at)
+				countArgs = append(countArgs, at)
+			}
+		}
+	}
+
+	// delegateSubject identifies a different authorization from the filters above and so takes its
+	// own join, allowing the two to be combined:
+	// ?delegation=true&userIds=father-111&delegateSubject=son-333 matches consents where the
+	// father is the delegate and the son is the subject.
+	if filters.DelegateSubject != "" {
+		joinClause += " INNER JOIN CONSENT_AUTH_RESOURCE car_ds ON CONSENT.CONSENT_ID = car_ds.CONSENT_ID AND CONSENT.ORG_ID = car_ds.ORG_ID"
+		whereConditions = append(whereConditions, "car_ds.USER_ID = ?")
+		whereConditions = append(whereConditions, "car_ds.AUTH_TYPE = ?")
+		args = append(args, filters.DelegateSubject, authmodel.AuthTypeDelegateSubject)
+		countArgs = append(countArgs, filters.DelegateSubject, authmodel.AuthTypeDelegateSubject)
 	}
 
 	// PurposeName filter via EXISTS subquery to avoid duplicate rows.
